@@ -174,7 +174,7 @@ Function TriggerLocationChange()
 		Var[] kArgs = new Var[2]
 		kArgs[0] = EVENTSTAGE_FromMasterQuest
 		kArgs[1] = EVENTSTAGEITEM_PlayerChangedLocation
-		ThreadManager.QueueRemoteFunctionThread(LocationChangedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
+		ThreadManager.QueueRemoteFunctionThread("TriggerLocationChange", LocationChangedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
 		
 		i += 1
 	endWhile
@@ -194,7 +194,7 @@ Function TriggerGameLoaded()
 		Var[] kArgs = new Var[2]
 		kArgs[0] = EVENTSTAGE_FromMasterQuest
 		kArgs[1] = EVENTSTAGEITEM_PlayerLoadedGame
-		ThreadManager.QueueRemoteFunctionThread(GameLoadedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
+		ThreadManager.QueueRemoteFunctionThread("TriggerGameLoaded", GameLoadedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
 	
 		i += 1
 	endWhile

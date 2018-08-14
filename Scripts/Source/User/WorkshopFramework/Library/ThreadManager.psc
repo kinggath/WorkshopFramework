@@ -22,8 +22,8 @@ int MAXCALLBACKID = 1000000 Const ; Some large value. We just want to make sure 
 int QUEUEFAIL = -1 Const ; Return result if we couldn't generate a CallbackID, such as if required data was missing from the QueueThread call
 
 ; Number of arguments prefixed to arguments sent to QueueThread
-int ARGCOUNT_Global = 2 Const 
-int ARGCOUNT_Remote = 3 Const 
+int ARGCOUNT_Global = 3 Const 
+int ARGCOUNT_Remote = 4 Const 
 
 int OVERLOADTHRESHOLD = 20 Const ; If a thread exceeds this number of queued actions, the edit lock will be cleared to prevent the threading from overloading the VM and causing stack dumps 
 int TOTALTHREADRUNNERS = 50 Const
@@ -145,7 +145,7 @@ Function CalculateAvailableThreads()
 	
 	if( ! bOverride)
 		; TODO - Look at list of installed plugins and determine how many threads to allow
-		iMaxThreads = 50 ; Just setting a default number for now
+		iMaxThreads = 30 ; Just setting a default number for now
 	endif
 EndFunction
 
@@ -182,7 +182,7 @@ Function RegisterForCallbackThreads(Form akRequestor)
 	if(akRequestor)
 		int i = 1
 	
-		while(i < TOTALTHREADRUNNERS)
+		while(i <= TOTALTHREADRUNNERS)
 			WorkshopFramework:Library:ThreadRunner thisRunner = Self.GetPropertyValue("ThreadRunner" + i) as WorkshopFramework:Library:ThreadRunner	
 			
 			if(thisRunner)
@@ -195,16 +195,18 @@ Function RegisterForCallbackThreads(Form akRequestor)
 EndFunction
 
 
-Int Function QueueRemoteFunctionThread(Form aCallingForm, String asCastAs, String asFunction, Var[] akArgs)
+Int Function QueueRemoteFunctionThread(String asMyCallbackID, Form aCallingForm, String asCastAs, String asFunction, Var[] akArgs)
 	if( ! aCallingForm)
 		return QUEUEFAIL
 	endif
+	
 	int inewArgsCounter = ARGCOUNT_Remote
 	Var[] newArgs = new Var[(inewArgsCounter + akArgs.Length)]
 	
-	newArgs[0] = aCallingForm
-	newArgs[1] = asCastAs
-	newArgs[2] = asFunction
+	newArgs[0] = asMyCallbackID
+	newArgs[1] = aCallingForm
+	newArgs[2] = asCastAs
+	newArgs[3] = asFunction
 	
 	int iakArgCounter = 0
 	 ; Make sure this is the next index after manually fed arguments above
@@ -219,11 +221,12 @@ Int Function QueueRemoteFunctionThread(Form aCallingForm, String asCastAs, Strin
 EndFunction
 
 
-Int Function QueueGlobalThread(String asScriptName, String asFunctionName, Var[] akArgs)
+Int Function QueueGlobalThread(String asMyCallbackID, String asScriptName, String asFunctionName, Var[] akArgs)
 	int iNewArgIndex = ARGCOUNT_Global
 	Var[] newArgs = new Var[(akArgs.Length + iNewArgIndex)]
-	newArgs[0] = asScriptName
-	newArgs[1] = asFunctionName
+	newArgs[0] = asMyCallbackID
+	newArgs[1] = asScriptName
+	newArgs[2] = asFunctionName
 	
 	int iakArgIndex = 0
 	
@@ -281,16 +284,17 @@ Int Function QueueThread(String asThreadRunnerFunction, Var[] akArgs, Bool abGlo
 	
 	; Prep vars to send to threadrunner
 	newArgs = new Var[(iPrefixedVars + 2)]
-		; Prepend CallbackID
-	newArgs[0] = iCallbackID
+	
+	newArgs[0] = iCallbackID	
+	newArgs[1] = akArgs[0]
 	
 	if(abGlobalCall)
-		newArgs[1] = akArgs[0] ; Script name
-		newArgs[2] = akArgs[1] ; function name
+		newArgs[2] = akArgs[1] ; Script name
+		newArgs[3] = akArgs[2] ; function name
 	else
-		newArgs[1] = akArgs[0] ; Object
-		newArgs[2] = akArgs[1] ; CastAs
-		newArgs[3] = akArgs[2] ; Function
+		newArgs[2] = akArgs[1] ; Object
+		newArgs[3] = akArgs[2] ; CastAs
+		newArgs[4] = akArgs[3] ; Function
 	endif
 	
 		; Append StoredArgumentsIndex
@@ -301,6 +305,17 @@ Int Function QueueThread(String asThreadRunnerFunction, Var[] akArgs, Bool abGlo
 	return iCallbackID
 EndFunction
 
+Int Function SimpleCallTest(Var[] akArgs)
+	WorkshopFramework:Library:ThreadRunner thisRunner = GetNextThreadRunner()
+	
+	if( ! thisRunner)
+		return QUEUEFAIL
+	endif
+		
+	thisRunner.CallFunctionNoWait("SpawnTestObject", akArgs)
+	
+	return -1
+EndFunction
 
 WorkshopFramework:Library:ThreadRunner Function GetNextThreadRunner(Int aiAttempted = 0)
 	if(aiAttempted > TOTALTHREADRUNNERS)
@@ -311,10 +326,115 @@ WorkshopFramework:Library:ThreadRunner Function GetNextThreadRunner(Int aiAttemp
 	aiAttempted += 1 
 	iNextRunner += 1
 	if(iNextRunner > iMaxThreads)
+		;Debug.Trace("Reached maxthread: " + iNextRunner + ", reverting to runner 1")
 		iNextRunner = 1
 	endif
 	
-	WorkshopFramework:Library:ThreadRunner thisRunner = Self.GetPropertyValue("ThreadRunner" + iNextRunner) as WorkshopFramework:Library:ThreadRunner	
+	WorkshopFramework:Library:ThreadRunner thisRunner
+	; GetPropertyValue is a latent function - we'll be way more efficient to just run a big if/else block
+	;thisRunner = Self.GetPropertyValue("ThreadRunner" + iNextRunner) as WorkshopFramework:Library:ThreadRunner	
+	if(iNextRunner == 1)
+		thisRunner = ThreadRunner1
+	elseif(iNextRunner == 2)
+		thisRunner = ThreadRunner2
+	elseif(iNextRunner == 3)
+		thisRunner = ThreadRunner3
+	elseif(iNextRunner == 4)
+		thisRunner = ThreadRunner4
+	elseif(iNextRunner == 5)
+		thisRunner = ThreadRunner5
+	elseif(iNextRunner == 6)
+		thisRunner = ThreadRunner6
+	elseif(iNextRunner == 7)
+		thisRunner = ThreadRunner7
+	elseif(iNextRunner == 8)
+		thisRunner = ThreadRunner8
+	elseif(iNextRunner == 9)
+		thisRunner = ThreadRunner9
+	elseif(iNextRunner == 10)
+		thisRunner = ThreadRunner10
+	elseif(iNextRunner == 11)
+		thisRunner = ThreadRunner11
+	elseif(iNextRunner == 12)
+		thisRunner = ThreadRunner12
+	elseif(iNextRunner == 13)
+		thisRunner = ThreadRunner13
+	elseif(iNextRunner == 14)
+		thisRunner = ThreadRunner14
+	elseif(iNextRunner == 15)
+		thisRunner = ThreadRunner15
+	elseif(iNextRunner == 16)
+		thisRunner = ThreadRunner16
+	elseif(iNextRunner == 17)
+		thisRunner = ThreadRunner17
+	elseif(iNextRunner == 18)
+		thisRunner = ThreadRunner18
+	elseif(iNextRunner == 19)
+		thisRunner = ThreadRunner19
+	elseif(iNextRunner == 20)
+		thisRunner = ThreadRunner20
+	elseif(iNextRunner == 21)
+		thisRunner = ThreadRunner21
+	elseif(iNextRunner == 22)
+		thisRunner = ThreadRunner22
+	elseif(iNextRunner == 23)
+		thisRunner = ThreadRunner23
+	elseif(iNextRunner == 24)
+		thisRunner = ThreadRunner24
+	elseif(iNextRunner == 25)
+		thisRunner = ThreadRunner25
+	elseif(iNextRunner == 26)
+		thisRunner = ThreadRunner26
+	elseif(iNextRunner == 27)
+		thisRunner = ThreadRunner27
+	elseif(iNextRunner == 28)
+		thisRunner = ThreadRunner28
+	elseif(iNextRunner == 29)
+		thisRunner = ThreadRunner29
+	elseif(iNextRunner == 30)
+		thisRunner = ThreadRunner30
+	elseif(iNextRunner == 31)
+		thisRunner = ThreadRunner31
+	elseif(iNextRunner == 32)
+		thisRunner = ThreadRunner32
+	elseif(iNextRunner == 33)
+		thisRunner = ThreadRunner33
+	elseif(iNextRunner == 34)
+		thisRunner = ThreadRunner34
+	elseif(iNextRunner == 35)
+		thisRunner = ThreadRunner35
+	elseif(iNextRunner == 36)
+		thisRunner = ThreadRunner36
+	elseif(iNextRunner == 37)
+		thisRunner = ThreadRunner37
+	elseif(iNextRunner == 38)
+		thisRunner = ThreadRunner38
+	elseif(iNextRunner == 39)
+		thisRunner = ThreadRunner39
+	elseif(iNextRunner == 40)
+		thisRunner = ThreadRunner40
+	elseif(iNextRunner == 41)
+		thisRunner = ThreadRunner41
+	elseif(iNextRunner == 42)
+		thisRunner = ThreadRunner42
+	elseif(iNextRunner == 43)
+		thisRunner = ThreadRunner43
+	elseif(iNextRunner == 44)
+		thisRunner = ThreadRunner44
+	elseif(iNextRunner == 45)
+		thisRunner = ThreadRunner45
+	elseif(iNextRunner == 46)
+		thisRunner = ThreadRunner46
+	elseif(iNextRunner == 47)
+		thisRunner = ThreadRunner47
+	elseif(iNextRunner == 48)
+		thisRunner = ThreadRunner48
+	elseif(iNextRunner == 49)
+		thisRunner = ThreadRunner49
+	elseif(iNextRunner == 50)
+		thisRunner = ThreadRunner50
+	endif
+	
 	
 	if(thisRunner)		
 		if(thisRunner.GetQueueCount() >= OVERLOADTHRESHOLD)

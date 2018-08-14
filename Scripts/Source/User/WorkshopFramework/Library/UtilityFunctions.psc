@@ -32,19 +32,14 @@ Function ModTrace(string traceString, int severity = 0, bool bNormalTraceAlso = 
 EndFunction	
 
 
-ObjectReference Function SpawnTestObject(ObjectReference akOriginRef, Form aFormToSpawn) global
-	ObjectReference kTemp
-	
-	if(aFormToSpawn)
-		kTemp = akOriginRef.PlaceAtMe(aFormToSpawn, 1, false, true)
-		Int iMin = Utility.RandomInt(-1000, -500)
-		Int iMax = Utility.RandomInt(500, 1000)
-		kTemp.SetPosition(akOriginRef.X + Utility.RandomInt(iMin, iMax), akOriginRef.Y + Utility.RandomInt(iMin, iMax), akOriginRef.Z + 200)
-		kTemp.EnableNoWait(false)
-	endif
+ObjectReference Function SpawnTestObject(ObjectReference akOriginRef, Form akSpawnMe, Keyword akLinkKeyword, Float fX, Float fY, Float fZ) global
+	ObjectReference kTemp = akOriginRef.PlaceAtMe(akSpawnMe, 1, false, false)
+	kTemp.SetLinkedRef(akOriginRef, akLinkKeyword)
+	kTemp.SetPosition(fX, fY, fZ + 200)
 	
 	return kTemp
 EndFunction
+
 
 ; -----------------------------------
 ; CleanFormList

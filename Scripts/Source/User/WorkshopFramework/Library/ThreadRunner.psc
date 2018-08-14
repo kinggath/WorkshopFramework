@@ -283,9 +283,18 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+ObjectReference Function SpawnTestObject(ObjectReference akOriginRef, Form akSpawnMe, Keyword akLinkKeyword, Float fX, Float fY, Float fZ)
+	ObjectReference kTemp = akOriginRef.PlaceAtMe(akSpawnMe, 1, false, false)
+	kTemp.SetLinkedRef(akOriginRef, akLinkKeyword)
+	
+	kTemp.SetPosition(fX, fY, fZ + 200)
+	
+	return kTemp
+EndFunction
+
 
 ; Simple threader that just calls a function and some float arguments to an arbitrary form, if multiple threads use the same aCallingForm, this won't be any faster than just calling them directly on that object in a sequence. The benefit of this particular RunThread function is as a throttle, or when many different objects need a function called on them.
-Bool Function RunRemoteFunctionThread(Int aiCallBackID, Form aCallingForm, String asCastAs, String asFunction, Int aiStoredArgumentsIndex)
+Bool Function RunRemoteFunctionThread(Int aiCallBackID, String asCustomCallbackID, Form aCallingForm, String asCastAs, String asFunction, Int aiStoredArgumentsIndex)
 	if( ! aCallingForm)
 		return false
 	endif
@@ -317,9 +326,11 @@ Bool Function RunRemoteFunctionThread(Int aiCallBackID, Form aCallingForm, Strin
 	Var response = callingScript.CallFunction(asFunction, params)
 		
 	; Send the response with the callback ID so in case the original caller needs it
-	Var[] kResultArgs = new Var[2]
-	kResultArgs[0] = aiCallBackID
-	kResultArgs[1] = response
+	Var[] kResultArgs = new Var[4]
+	kResultArgs[0] = asCustomCallbackID
+	kResultArgs[1] = aiCallBackID
+	kResultArgs[2] = "RemoteFunctionThread"
+	kResultArgs[3] = response
 	
 	SendCustomEvent("OnThreadCompleted", kResultArgs)
 	
@@ -333,11 +344,11 @@ EndFunction
 
 
 ; Calls a global function with arguements stored in one of this script's arrays
-Bool Function RunGlobalFunctionThread(Int aiCallBackID, String asGlobalScript, String asGlobalFunction, Int aiStoredArgumentsIndex)
+Bool Function RunGlobalFunctionThread(Int aiCallBackID, String asCustomCallbackID, String asGlobalScript, String asGlobalFunction, Int aiStoredArgumentsIndex)
 	Var[] gArgs
 	Var kTemp
 	
-	; Get Edit Lock ; TODO: We probably need to get the edit lock in threadmanager
+	; Get Edit Lock 
 	int iLockKey = GetLock()
 	if(iLockKey <= GENERICLOCK_KEY_NONE)
         ModTrace("Unable to get lock!", 2)
@@ -351,9 +362,11 @@ Bool Function RunGlobalFunctionThread(Int aiCallBackID, String asGlobalScript, S
 		kTemp = Utility.CallGlobalFunction(asGlobalScript, asGlobalFunction, gArgs)
     endif
 	
-	Var[] kResultArgs = new Var[2]
-	kResultArgs[0] = aiCallBackID
-	kResultArgs[1] = kTemp
+	Var[] kResultArgs = new Var[4]
+	kResultArgs[0] = asCustomCallbackID
+	kResultArgs[1] = aiCallBackID
+	kResultArgs[2] = "RunGlobalFunctionThread"
+	kResultArgs[3] = kTemp
 	
 	SendCustomEvent("OnThreadCompleted", kResultArgs)
 	
