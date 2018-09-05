@@ -13,6 +13,9 @@
 
 Scriptname WorkshopFramework:Library:UtilityFunctions Hidden Const
 
+import WorkshopFramework:Library:DataStructures
+
+
 Function StartUserLog() global DebugOnly
 	String sDebugLog = "WorkshopFrameworkLog"
 	
@@ -32,12 +35,63 @@ Function ModTrace(string traceString, int severity = 0, bool bNormalTraceAlso = 
 EndFunction	
 
 
-ObjectReference Function SpawnTestObject(ObjectReference akOriginRef, Form akSpawnMe, Keyword akLinkKeyword, Float fX, Float fY, Float fZ) global
-	ObjectReference kTemp = akOriginRef.PlaceAtMe(akSpawnMe, 1, false, false)
-	kTemp.SetLinkedRef(akOriginRef, akLinkKeyword)
-	kTemp.SetPosition(fX, fY, fZ + 200)
+; -----------------------------------
+; GetWorldObjectForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:WorldObject struct
+; -----------------------------------
+
+Form Function GetWorldObjectForm(WorldObject aObject, Int aiFormlistIndex = -1) global
+	if( ! aObject)
+		return None
+	endif
 	
-	return kTemp
+	Form thisForm
+	
+	if(aObject.ObjectForm)
+		thisForm = aObject.ObjectForm
+	elseif(aObject.iFormID > 0 && aObject.sPluginName != "" && Game.IsPluginInstalled(aObject.sPluginName))
+		thisForm = Game.GetFormFromFile(aObject.iFormID, aObject.sPluginName)
+	else
+		return None
+	endif
+	
+	Formlist asFormlist = thisForm as FormList
+	if(asFormlist)
+		Bool bUseRandom = true
+		
+		if(aiFormlistIndex >= 0)
+			if(asFormlist.GetSize() > aiFormlistIndex)
+				thisForm = asFormlist.GetAt(aiFormlistIndex)
+				bUseRandom = false
+			endif
+		endif
+		
+		if(bUseRandom)
+			thisForm = asFormlist.GetAt(Utility.RandomInt(0, asFormlist.GetSize() - 1))
+		endif
+	endif
+	
+	return thisForm
+EndFunction
+
+
+ActorValue Function GetActorValueSetForm(ActorValueSet aAVSet) global
+	if( ! aAVSet)
+		return None
+	endif
+	
+	ActorValue thisAV
+	
+	if(aAVSet.AVForm)
+		thisAV = aAVSet.AVForm
+	elseif(aAVSet.iFormID > 0 && aAVSet.sPluginName != "" && Game.IsPluginInstalled(aAVSet.sPluginName))
+		thisAV = Game.GetFormFromFile(aAVSet.iFormID, aAVSet.sPluginName) as ActorValue
+	else
+		return None
+	endif
+	
+	return thisAV
 EndFunction
 
 

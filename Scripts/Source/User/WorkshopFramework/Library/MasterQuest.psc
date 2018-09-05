@@ -203,13 +203,21 @@ Function TriggerGameLoaded()
 EndFunction
 
 
+Bool Function SafeToStartFrameworkQuests()
+	if( ! CheckQuest)
+		return true
+	else
+		return CheckQuest.GetStageDone(iCheckQuestSafeToLaunchStage)
+	endif
+EndFunction
+
 Bool Function StartQuests()
 	if(bQuestStartupsComplete)
 		return true
 	endif
 	
 	; In case of new game, be sure to wait for initialization to complete
-	if(CheckQuest.GetStageDone(iCheckQuestSafeToLaunchStage) == false)
+	if( ! SafeToStartFrameworkQuests())
 		RegisterForRemoteEvent(CheckQuest, "OnStageSet")
 		return false
 	else
