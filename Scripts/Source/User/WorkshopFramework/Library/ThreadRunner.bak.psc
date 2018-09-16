@@ -267,8 +267,6 @@ EndFunction
 ; Variables 
 ; ---------------------------------------------
 
-int iRunningThreads = 0
-
 ; ---------------------------------------------
 ; States 
 ; ---------------------------------------------
@@ -278,17 +276,13 @@ int iRunningThreads = 0
 ; Events 
 ; ---------------------------------------------
 
-Event WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef, Var[] akArgs)
-	UnregisterForCustomEvent(akThreadRef, "ThreadRunComplete")
-	CompleteRun(akArgs[0] as String, akArgs[1] as Int, akThreadRef)
-	iRunningThreads -= 1
-	TryToProcessNextQueuedThread()
-EndEvent
-
 
 ; ---------------------------------------------
 ; Event Handler Functions
 ; ---------------------------------------------
+
+
+
 
 ; ---------------------------------------------
 ; Functions
@@ -380,19 +374,8 @@ Bool Function RunGlobalFunctionThread(Int aiCallBackID, String asCustomCallbackI
 EndFunction
 
 
-Function HandleNewThread(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef)
-	QueuedThreads.AddRef(akThreadRef)
-	QueueCounter.Mod(1)
-	TryToProcessNextQueuedThread()
-EndFunction
 
-
-Function TryToProcessNextQueuedThread()
-	if(iRunningThreads > 0)
-		Debug.Trace(Self + " busy, will try again after previous thread completes.")
-		return
-	endif	
-	
+Function ProcessThreadObject(Int aiCallBackID, String asCustomCallbackID, WorkshopFramework:Library:ObjectRefs:Thread akThreadRef)
 	; Get Edit Lock 
 	int iLockKey = GetLock()
 	if(iLockKey <= GENERICLOCK_KEY_NONE)
@@ -402,41 +385,13 @@ Function TryToProcessNextQueuedThread()
 		; Lock acquired - do work
 		;
 		
-		int iCount = QueuedThreads.GetCount()
-		if(iCount > 0)
-			int i = 0
-			
-			ObjectReference kTemp = None
-			while(i < iCount && kTemp == None)
-				; loop past any None entries which could happen due to mods being uninstalled
-				kTemp = QueuedThreads.GetAt(i)
-			
-				if(kTemp)
-					WorkshopFramework:Library:ObjectRefs:Thread thisThread = kTemp as WorkshopFramework:Library:ObjectRefs:Thread
-					
-					; Clear from queue - even if it isn't a thread object, should never happen, but just in case
-					QueuedThreads.RemoveRef(kTemp)
-					
-					if(thisThread)
-						ProcessThreadObject(thisThread)
-					endif
-				endif
-				
-				i += 1
-			endWhile
-		endif
-	endif	
+		akThreadRef.StartThread()
+	endif
 	
+	CompleteRun(asCustomCallbackID, aiCallBackID, akThreadRef)
+		
 	; Release Edit Lock
 	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
         ModTrace("Failed to release lock " + iLockKey + "!", 2)
-    endif
-EndFunction
-
-
-Function ProcessThreadObject(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef)
-	iRunningThreads += 1
-	RegisterForCustomEvent(akThreadRef, "ThreadRunComplete")
-	Var[] kArgs = new Var[0]
-	akThreadRef.CallFunctionNoWait("StartThread", kArgs)	
+    endif	
 EndFunction

@@ -1,5 +1,5 @@
 ; ---------------------------------------------
-; WorkshopFramework:Library:ThreadManager.psc - by kinggath, concept by E
+; WorkshopFramework:Library:ThreadManager.psc - by kinggath
 ; ---------------------------------------------
 ; Reusage Rights ------------------------------
 ; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below).
@@ -83,7 +83,7 @@ Auto State NotInitialized
 		return NOTREADY
 	EndFunction
 	
-	Int Function QueueThread(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef, String asMyCallbackID = "")
+	Int Function QueueThread(String asMyCallbackID, String asThreadRunnerFunction, Var[] akArgs)
 		return NOTREADY
 	EndFunction
 EndState
@@ -290,24 +290,28 @@ Int Function QueueStoredArgumentThread(String asThreadRunnerFunction, Var[] akAr
 EndFunction
 
 
-Int Function QueueThread(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef, String asMyCallbackID = "")
+Int Function QueueThread(String asMyCallbackID, String asThreadRunnerFunction, Var[] akArgs)
 	int iRunnerIndex = GetNextThreadRunner()
 	
 	if(iRunnerIndex < 0)
 		return QUEUEFAIL
 	endif
 	
+	Var[] newArgs = new Var[0]
 	int iCallbackID = NextCallbackID
+	newArgs.Add(iCallbackID)
+	newArgs.Add(asMyCallbackID)
 	
-	akThreadRef.iCallbackID = iCallbackID
-	akThreadRef.sCustomCallbackID = asMyCallbackID
-	
-	Var[] kArgs = new Var[1]
-	kArgs[0] = akThreadRef
+	int i = 0
+	while(i < akArgs.Length)
+		newArgs.Add(akArgs[i])
+		
+		i += 1
+	endWhile
 	
 	WorkshopFramework:Library:ThreadRunner thisRunner = ThreadRunners[iRunnerIndex]
 	
-	thisRunner.CallFunctionNoWait("HandleNewThread", kArgs)
+	thisRunner.CallFunctionNoWait(asThreadRunnerFunction, newArgs)
 	
 	return iCallbackID
 EndFunction
@@ -332,10 +336,24 @@ EndFunction
 
 
 
-Int Function GetNextThreadRunner()
+Int Function GetNextThreadRunner(Int aiAttempted = 0)
+	if(aiAttempted > ThreadRunners.Length)
+		; Prevent from getting stuck in an infinite loop if all thread runners are overloaded
+		return QUEUEFAIL
+	endif
+	
+	aiAttempted += 1 
 	int iRunnerIndex = NextRunner	
 	
 	if(iRunnerIndex >= 0)		
+		;if(gThreadRunnerQueueCounts[iRunnerIndex].GetValueInt() >= OVERLOADTHRESHOLD)
+		;	iRunnerIndex = GetNextThreadRunner(aiAttempted)
+		;endif
+		
+		;if(iRunnerIndex < 0)
+		;	return QUEUEFAIL
+		;endif
+		
 		gThreadRunnerQueueCounts[iRunnerIndex].Mod(1)
 		
 		return iRunnerIndex
