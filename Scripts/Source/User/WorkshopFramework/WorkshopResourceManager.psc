@@ -198,7 +198,7 @@ Group SettingsToCopyToWorkshops
 	ActorValue Property WorkshopPlayerLostControl Auto Const Mandatory
 	ActorValue Property WorkshopPlayerOwnership Auto Const Mandatory
 	ActorValue Property PopulationRobots Auto Const Mandatory
-	ActorValue Property BrahminPopulation Auto Const Mandatory
+	ActorValue Property PopulationBrahmin Auto Const Mandatory
 	ActorValue Property PopulationUnassigned Auto Const Mandatory
 	ActorValue Property VendorIncome Auto Const Mandatory
 	ActorValue Property DamageCurrent Auto Const Mandatory
@@ -559,20 +559,26 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSWF_AV_maxAttackStrength = WSWF_AV_maxAttackStrength
 	akWorkshopRef.WSWF_AV_maxDefenseStrength = WSWF_AV_maxDefenseStrength
 	
+	
+	akWorkshopRef.Happiness = Happiness
 	akWorkshopRef.BonusHappiness = BonusHappiness
 	akWorkshopRef.HappinessTarget = HappinessTarget
 	akWorkshopRef.HappinessModifier = HappinessModifier
+	akWorkshopRef.Population = Population
 	akWorkshopRef.DamagePopulation = DamagePopulation
+	akWorkshopRef.Food = Food
 	akWorkshopRef.DamageFood = DamageFood
 	akWorkshopRef.FoodActual = FoodActual
 	akWorkshopRef.Power = Power
+	akWorkshopRef.Water = Water
+	akWorkshopRef.Safety = Safety
 	akWorkshopRef.DamageSafety = DamageSafety
 	akWorkshopRef.MissingSafety = MissingSafety
 	akWorkshopRef.LastAttackDaysSince = LastAttackDaysSince
 	akWorkshopRef.WorkshopPlayerLostControl = WorkshopPlayerLostControl
 	akWorkshopRef.WorkshopPlayerOwnership = WorkshopPlayerOwnership
 	akWorkshopRef.PopulationRobots = PopulationRobots
-	akWorkshopRef.BrahminPopulation = BrahminPopulation
+	akWorkshopRef.PopulationBrahmin = PopulationBrahmin
 	akWorkshopRef.PopulationUnassigned = PopulationUnassigned
 	akWorkshopRef.VendorIncome = VendorIncome
 	akWorkshopRef.DamageCurrent = DamageCurrent
@@ -582,6 +588,9 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.Radio = Radio
 	akWorkshopRef.WorkshopGuardPreference = WorkshopGuardPreference
 	akWorkshopRef.WorkshopType02 = WorkshopType02
+	akWorkshopRef.WorkshopCaravanKeyword = WorkshopCaravanKeyword
+	akWorkshopRef.ObjectTypeWater = ObjectTypeWater
+	akWorkshopRef.ObjectTypeFood = ObjectTypeFood
 	akWorkshopRef.WorkshopLinkContainer = WorkshopLinkContainer
 	akWorkshopRef.FarmDiscountFaction = FarmDiscountFaction
 	akWorkshopRef.CurrentWorkshopID = CurrentWorkshopID

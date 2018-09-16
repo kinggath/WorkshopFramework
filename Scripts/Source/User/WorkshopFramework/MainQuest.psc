@@ -122,8 +122,6 @@ Function HandleGameLoaded()
 	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
 	
 	Parent.HandleGameLoaded()
-	
-	ThreadManager.RegisterForCallbackThreads(Self)
 EndFunction
 
 
