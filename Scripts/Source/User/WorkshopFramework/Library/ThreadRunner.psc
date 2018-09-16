@@ -34,7 +34,6 @@ CustomEvent OnThreadCompleted ; kArgs[0] = iCallbackID, kArgs[1] = Result from c
 ; ---------------------------------------------
 
 GlobalVariable Property QueueCounter Auto Const
-ReferenceAlias Property ThreadSpawnPointAlias Auto Const
 RefCollectionAlias Property QueuedThreads Auto Const Mandatory
 
 ; ---------------------------------------------

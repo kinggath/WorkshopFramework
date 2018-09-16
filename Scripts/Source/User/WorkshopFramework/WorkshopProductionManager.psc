@@ -572,11 +572,11 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 	
 	Int iCurrentFoodProductionValue = Math.Ceiling(ResourceManager.GetWorkshopValue(akWorkshopRef, Food))
 	Float fLivingPopulation = akWorkshopRef.GetBaseValue(Population) - akWorkshopRef.GetBaseValue(RobotPopulation)
-	Float fBrahminPopulation = akWorkshopRef.GetValue(BrahminPopulation)
+	Float fPopulationBrahmin = akWorkshopRef.GetValue(BrahminPopulation)
 	
 	; Increase production via fertilizer (in the form of Brahmin poo)
-	if(fBrahminPopulation > 0)
-		int iBrahminMaxFoodBoost = Math.min(fBrahminPopulation * akWorkshopRef.maxProductionPerBrahmin, iCurrentFoodProductionValue) as int
+	if(fPopulationBrahmin > 0)
+		int iBrahminMaxFoodBoost = Math.min(fPopulationBrahmin * akWorkshopRef.maxProductionPerBrahmin, iCurrentFoodProductionValue) as int
 		iCurrentFoodProductionValue += Math.Ceiling(iBrahminMaxFoodBoost * akWorkshopRef.brahminProductionBoost)
 	endif
 	

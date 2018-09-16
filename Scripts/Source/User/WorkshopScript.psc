@@ -265,7 +265,7 @@ Group WSWF_AVs
 	ActorValue Property WorkshopPlayerLostControl Auto Hidden
 	ActorValue Property WorkshopPlayerOwnership Auto Hidden
 	ActorValue Property PopulationRobots Auto Hidden
-	ActorValue Property BrahminPopulation Auto Hidden
+	ActorValue Property PopulationBrahmin Auto Hidden
 	ActorValue Property PopulationUnassigned Auto Hidden
 	ActorValue Property VendorIncome Auto Hidden
 	ActorValue Property DamageCurrent Auto Hidden
@@ -1803,7 +1803,7 @@ function DailyUpdate(bool bRealUpdate = true)
 	; NOTE: GetBaseValue for these because we don't care if they can "produce" - actors that are wounded don't "produce" their population resource values
 	updateData.totalPopulation = GetBaseValue(Population) as int
 	updateData.robotPopulation = GetBaseValue(PopulationRobots) as int
-	updateData.brahminPopulation = GetBaseValue(BrahminPopulation) as int
+	updateData.brahminPopulation = GetBaseValue(PopulationBrahmin) as int
 	updateData.unassignedPopulation = GetBaseValue(PopulationUnassigned) as int
 
 	updateData.vendorIncome = GetValue(VendorIncome) * vendorIncomeBaseMult
@@ -1909,7 +1909,7 @@ function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[
 			if newWorkshopActor.GetValue(WorkshopGuardPreference) == 0
 				; see if also generate a brahmin
 				; for now just roll if no brahmin here yet
-				if GetValue(BrahminPopulation) == 0.0 && AllowBrahminRecruitment
+				if GetValue(PopulationBrahmin) == 0.0 && AllowBrahminRecruitment
 					int brahminRoll = utility.RandomInt()
 					
 					if brahminRoll <= recruitmentBrahminChance
