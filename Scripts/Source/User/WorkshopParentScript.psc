@@ -178,8 +178,6 @@ RefCollectionAlias Property PermanentActorAliases Auto const mandatory
 Group TradeCaravans
 	RefCollectionAlias Property TradeCaravanWorkshops Auto Const
 	{ pointer to ref collection of workshops }
-	int Property TradeCaravanMinimumPopulation = 5 auto const
-	{ minimum population for a settlement to count as a valid trade caravan destination }
 EndGroup
 
 ReferenceAlias Property WorkshopActorApply Auto const mandatory
@@ -541,48 +539,47 @@ WorkshopScript UFO4P_WorkshopRef_ResetDelayed = none
 ;------------------------------------------------------
 
 
+; WSWF - Leaving these as straight variables for backwards compatibility, but moving the functional versions to workshop level variables
+Int Property recruitmentGuardChance = 20 auto const hidden
+Int Property recruitmentBrahminChance = 20 auto const hidden
+Int Property recruitmentSynthChance = 10 auto const hidden
+Float Property actorDeathHappinessModifier = -20.0 auto const hidden
+Int Property maxAttackStrength = 100 auto const hidden
+Int Property maxDefenseStrength = 100 auto const hidden
+
+
 ; ------------------------------------------------------
 ;
 ; WSWF - Variables converted into editable properties - Likely will convert all these to have globals as well. By doing them as non-Auto properties we can just edit the Property functions to call and set the global values as opposed to having to edit every call throughout the script.
 ;
 ; ------------------------------------------------------
-int WSWF_iRecuitmentGuardChance = 20  		; % chance of getting a "guard" NPC
-Int Property recruitmentGuardChance
+
+Bool Property bUseGlobalTradeCaravanMinimumPopulation = true Auto Hidden
+int WSWF_iTradeCaravanMinimumPopulation = 5  ; min population for rolling for a synth
+Int Property TradeCaravanMinimumPopulation ; minimum population for a settlement to count as a valid trade caravan destination
 	Int Function Get()
-		return WSWF_iRecuitmentGuardChance
+		if(bUseGlobalTradeCaravanMinimumPopulation)
+			return WSWF_Setting_TradeCaravanMinimumPopulation.GetValueInt()
+		else
+			return WSWF_iTradeCaravanMinimumPopulation
+		endif
 	EndFunction
 	
 	Function Set(Int aiValue)
-		WSWF_iRecuitmentGuardChance = aiValue
+		WSWF_iTradeCaravanMinimumPopulation = aiValue
 	EndFunction
 EndProperty
-
-int WSWF_iRecruitmentBrahminChance = 20		; % chance of getting a brahmin with a "farmer" NPC
-Int Property recruitmentBrahminChance ; WSWF
-	Int Function Get()
-		return WSWF_iRecruitmentBrahminChance
-	EndFunction
 	
-	Function Set(Int aiValue)
-		WSWF_iRecruitmentBrahminChance = aiValue
-	EndFunction
-EndProperty
-
-int WSWF_iRecruitmentSynthChance = 10  		; % chance of getting a synth
-Int Property recruitmentSynthChance ; WSWF
-	Int Function Get()
-		return WSWF_iRecruitmentSynthChance
-	EndFunction
 	
-	Function Set(Int aiValue)
-		WSWF_iRecruitmentSynthChance = aiValue
-	EndFunction
-EndProperty
-
+Bool Property bUseGlobalrecruitmentMinPopulationForSynth = true Auto Hidden
 int WSWF_iRecruitmentMinPopulationForSynth = 4  ; min population for rolling for a synth
 Int Property recruitmentMinPopulationForSynth
 	Int Function Get()
-		return WSWF_iRecruitmentMinPopulationForSynth
+		if(bUseGlobalrecruitmentMinPopulationForSynth)
+			return WSWF_Setting_recruitmentMinPopulationForSynth.GetValueInt()
+		else
+			return WSWF_iRecruitmentMinPopulationForSynth
+		endif
 	EndFunction
 	
 	Function Set(Int aiValue)
@@ -590,10 +587,15 @@ Int Property recruitmentMinPopulationForSynth
 	EndFunction
 EndProperty
 
+Bool Property bUseGlobalstartingHappiness = true Auto Hidden
 Float WSWF_fStartingHappiness = 50.0  ; happiness of a new workshop starts here
 Float Property startingHappiness
 	Float Function Get()
-		return WSWF_fStartingHappiness
+		if(bUseGlobalstartingHappiness)
+			return WSWF_Setting_startingHappiness.GetValue()
+		else
+			return WSWF_fStartingHappiness
+		endif
 	EndFunction
 	
 	Function Set(Float afValue)
@@ -601,10 +603,15 @@ Float Property startingHappiness
 	EndFunction
 EndProperty
 
+Bool Property bUseGlobalstartingHappinessMin = true Auto Hidden
 Float WSWF_fStartingHappinessMin = 20.0  ; when resetting happiness, don't start lower than this
 Float Property startingHappinessMin
 	Float Function Get()
-		return WSWF_fStartingHappinessMin
+		if(bUseGlobalstartingHappinessMin)
+			return WSWF_Setting_startingHappinessMin.GetValue()
+		else
+			return WSWF_fStartingHappinessMin
+		endif
 	EndFunction
 	
 	Function Set(Float afValue)
@@ -612,10 +619,15 @@ Float Property startingHappinessMin
 	EndFunction
 EndProperty
 	
+Bool Property bUseGlobalstartingHappinessTarget = true Auto Hidden	
 Float WSWF_fStartingHappinessTarget = 50.0  ; init happiness target to this
 Float Property startingHappinessTarget
 	Float Function Get()
-		return WSWF_fStartingHappinessTarget
+		if(bUseGlobalstartingHappinessTarget)
+			return WSWF_Setting_startingHappinessTarget.GetValue()
+		else
+			return WSWF_fStartingHappinessTarget
+		endif
 	EndFunction
 	
 	Function Set(Float afValue)
@@ -623,43 +635,15 @@ Float Property startingHappinessTarget
 	EndFunction
 EndProperty	
 
-Float WSWF_fActorDeathHappinessModifier = -20.0  ; happiness modifier when an actor dies
-Float Property actorDeathHappinessModifier
-	Float Function Get()
-		return WSWF_fActorDeathHappinessModifier
-	EndFunction
-	
-	Function Set(Float afValue)
-		WSWF_fActorDeathHappinessModifier = afValue
-	EndFunction
-EndProperty			
-
-Int WSWF_iMaxAttackStrength = 100 
-Int Property maxAttackStrength
-	Int Function Get()
-		return WSWF_iMaxAttackStrength
-	EndFunction
-	
-	Function Set(Int aValue)
-		WSWF_iMaxAttackStrength = aValue
-	EndFunction
-EndProperty
-
-Int WSWF_iMaxDefenseStrength = 100
-Int Property maxDefenseStrength
-	Int Function Get()
-		return WSWF_iMaxDefenseStrength
-	EndFunction
-	
-	Function Set(Int aValue)
-		WSWF_iMaxDefenseStrength = aValue
-	EndFunction
-EndProperty
-
-Int WSWF_iResolveAttackMaxAttackRoll = 150 ; max allowed attack roll
+Bool Property bUseGlobalresolveAttackMaxAttackRoll = true Auto Hidden	
+Int WSWF_iResolveAttackMaxAttackRoll = 150 ; max allowed attack roll when resolving offscreen
 Int Property resolveAttackMaxAttackRoll
 	Int Function Get()
-		return WSWF_iResolveAttackMaxAttackRoll
+		if(bUseGlobalresolveAttackMaxAttackRoll)
+			return WSWF_Setting_resolveAttackMaxAttackRoll.GetValueInt()
+		else
+			return WSWF_iResolveAttackMaxAttackRoll
+		endif
 	EndFunction
 	
 	Function Set(Int aValue)
@@ -667,10 +651,15 @@ Int Property resolveAttackMaxAttackRoll
 	EndFunction
 EndProperty
 
-Float WSWF_fResolveAttackAllowedDamageMin = 25.0 ; this is as low as max allowed damage can go
+Bool Property bUseGlobalresolveAttackAllowedDamageMin = true Auto Hidden
+Float WSWF_fResolveAttackAllowedDamageMin = 25.0 ; this is as low as allowed damage can go when an attack is resolved offscreen
 Float Property resolveAttackAllowedDamageMin
 	Float Function Get()
-		return WSWF_fResolveAttackAllowedDamageMin
+		if(bUseGlobalresolveAttackAllowedDamageMin)
+			return WSWF_Setting_resolveAttackAllowedDamageMin.GetValue()
+		else
+			return WSWF_fResolveAttackAllowedDamageMin
+		endif
 	EndFunction
 	
 	Function Set(Float aValue)
@@ -679,10 +668,15 @@ Float Property resolveAttackAllowedDamageMin
 EndProperty
 
 
+Bool Property bUseGlobalworkshopRadioInnerRadius = true Auto Hidden
 Float WSWF_fWorkshopRadioInnerRadius = 9000.0
 Float Property workshopRadioInnerRadius
 	Float Function Get()
-		return WSWF_fWorkshopRadioInnerRadius
+		if(bUseGlobalworkshopRadioInnerRadius)
+			return WSWF_Setting_workshopRadioInnerRadius.GetValue()
+		else
+			return WSWF_fWorkshopRadioInnerRadius
+		endif
 	EndFunction
 	
 	Function Set(Float aValue)
@@ -691,10 +685,15 @@ Float Property workshopRadioInnerRadius
 EndProperty
 
 
-Float WSWF_fWorkshopRadioOuterRadius = 9000.0
+Bool Property bUseGlobalworkshopRadioOuterRadius = true Auto Hidden
+Float WSWF_fWorkshopRadioOuterRadius = 20000.0
 Float Property workshopRadioOuterRadius
 	Float Function Get()
-		return WSWF_fWorkshopRadioOuterRadius
+		if(bUseGlobalworkshopRadioOuterRadius)
+			return WSWF_Setting_workshopRadioOuterRadius.GetValue()
+		else
+			return WSWF_fWorkshopRadioOuterRadius
+		endif
 	EndFunction
 	
 	Function Set(Float aValue)
@@ -703,10 +702,15 @@ Float Property workshopRadioOuterRadius
 EndProperty
 
 
+Bool Property bUseGlobalhappinessModifierMax = true Auto Hidden
 Float WSWF_fHappinessModifierMax = 40.0
 Float Property happinessModifierMax
 	Float Function Get()
-		return WSWF_fHappinessModifierMax
+		if(bUseGlobalhappinessModifierMax)
+			return WSWF_Setting_happinessModifierMax.GetValue()
+		else
+			return WSWF_fHappinessModifierMax
+		endif
 	EndFunction
 	
 	Function Set(Float aValue)
@@ -715,10 +719,15 @@ Float Property happinessModifierMax
 EndProperty
 
 
+Bool Property bUseGlobalhappinessModifierMin = true Auto Hidden
 Float WSWF_fHappinessModifierMin = -50.0
 Float Property happinessModifierMin
 	Float Function Get()
-		return WSWF_fHappinessModifierMin
+		if(bUseGlobalhappinessModifierMin)
+			return WSWF_Setting_happinessModifierMin.GetValue()
+		else
+			return WSWF_fHappinessModifierMin
+		endif
 	EndFunction
 	
 	Function Set(Float aValue)
@@ -863,8 +872,20 @@ Group WSWF_Properties
 	GlobalVariable Property WSWF_Setting_AutoAssignDefense Auto Const Mandatory
 	GlobalVariable Property WSWF_Setting_MaxFoodWorkPerSettler Auto Const Mandatory
 	GlobalVariable Property WSWF_Setting_MaxDefenseWorkPerSettler Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_TradeCaravanMinimumPopulation Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_recruitmentMinPopulationForSynth Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_startingHappiness Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_startingHappinessMin Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_startingHappinessTarget Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_resolveAttackMaxAttackRoll Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_resolveAttackAllowedDamageMin Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_workshopRadioInnerRadius Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_workshopRadioOuterRadius Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_happinessModifierMax Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_happinessModifierMin Auto Const Mandatory
 	FormList Property ExcludeFromAssignmentRules Auto Const Mandatory
 	{ Items in this list won't be auto-unassigned when a settler is assigned to them. Instead an event will be fired so the mod involved can act on the information. }
+	WorkshopFramework:NPCManager Property WSWF_NPCManager Auto Const Mandatory
 EndGroup
 
 
@@ -881,6 +902,14 @@ EndGroup
 ; kArgs[0] = actorRef
 ; kArgs[1] = workshopRef
 CustomEvent WorkshopRemoveActor 
+
+; WorkshopActorAssignedToBed
+; Event when an actor is assigned to a bed (only fires if this is a new bed for them, as the bed code often runs quite frequently)
+; 
+; kArgs[0] = actorRef
+; kArgs[1] = workshopRef
+; kArgs[2] = objectRef
+CustomEvent WorkshopActorAssignedToBed
 
 ; AssignmentRulesOverriden
 ;
@@ -1390,20 +1419,6 @@ Event Actor.OnLocationChange(Actor akSender, Location akOldLoc, Location akNewLo
 	;also not result in repeated resets carried out. Travels to other locations and back only do when the workshop location unloads in the meantime or when they
 	;take more than one game day.
 
-	;UFO4P 2.0.4 Bug #24122: removed these lines since the IsLoaded check is not reliable:
-	;UFO4P_PreviousWorkshopLocation is now reset to 'none' by UFO4P_ResetCurrentWorkshop
-	;/
-	If UFO4P_PreviousWorkshopLocation
-		;wsTrace (" OnLocationChange: akOldLoc = " + akOldLoc)
-		;wsTrace (" OnLocationChange: akNewLoc = " + akNewLoc)
-		;wsTrace (" OnLocationChange: UFO4P_PreviousWorkshopLocation = " + UFO4P_PreviousWorkshopLocation + "; IsLoaded = " + UFO4P_PreviousWorkshopLocation.IsLoaded())
-		If UFO4P_PreviousWorkshopLocation.IsLoaded() == False
-			UFO4P_PreviousWorkshopLocation = None
-			;wsTrace (" OnLocationChange: UFO4P_PreviousWorkshopLocation reset to none.")
-		EndIf
-	EndIf
-	/;
-
 	if akNewLoc && akNewLoc.HasKeyword(LocTypeWorkshopSettlement)
 		;wsTrace(" OnLocationChange: entered workshop settlement location " + akNewLoc)
 		; when player enters a workshop location, recalc the workbench ratings
@@ -1413,32 +1428,6 @@ Event Actor.OnLocationChange(Actor akSender, Location akOldLoc, Location akNewLo
 			wsTrace(" ERROR - OnLocationChange: failed to find workshop matching " + akNewLoc + " which has the LocTypeWorkshopSettlement keyword", 2)
 			return
 		else
-			;/
-			UFO4P 2.0.1 Bug #22271: Added the following lines to handle cases of the player changing locations immediately after arriving at a workshop
-			under attack, and while the attack is still running (otherwise, UFO4P_AttackRunning would have been reset to 'false' already):
-			if UFO4P_AttackRunning
-				;Failsafe (UFO4P_WorkshopRef_ResetDelayed should not be 'none' here)
-				if UFO4P_WorkshopRef_ResetDelayed == none
-					UFO4P_AttackRunning = false
-				else
-					;If this is the workshop under attack, return (in this case, a reset has already been scheduled to run after the attack is over)
-					if workshopRef == UFO4P_WorkshopRef_ResetDelayed
-						return
-					;Otherwise, the player has moved to a different workshop. In that case, clear all attack data:
-					else
-						UFO4P_WorkshopRef_ResetDelayed.UFO4P_CurrentlyUnderAttack = false
-						UFO4P_WorkshopRef_ResetDelayed = none
-						UFO4P_AttackRunning = false
-					endif
-				endif
-			endif
-			
-			UFO4P 2.0.4 Bug #24503: removed the code added by UFO4P 2.0.1
-			Attack bools are now reset by UFO4P_ResetCurrentWorkshop if the player leaves a workshop location. This is faster than waiting until he has
-			;moved to another workshop and thus makes sure that any activities of the workshop scripts that were suspende because of a running attack
-			can be resumed as quickly as possible.
-			/;
-
 			;UFO4P 2.0.2 Bug #23016: Moved this line up here from the ResetWorkshop function:
 			;This makes sure that all properties holding the current workshop are updated as soon as the player arrives at a workshop location.
 			;If a reset is delayed, this would have happened with some delay otherwise because only the reset would have called this function.
@@ -1476,11 +1465,6 @@ Event Actor.OnLocationChange(Actor akSender, Location akOldLoc, Location akNewLo
 				UFO4P_GameTimeOfLastResetStarted = Utility.GetCurrentGameTime()
 				ResetWorkshop(workshopRef)
 			endIf
-
-			; send change location script event
-			; OBSOLETE - moved to always use MinRadiantStart
-;			WorkshopEventChangeLocation.SendStoryEvent(akNewLoc, workshopRef)
-
 		EndIf
 	EndIf
 
@@ -1642,10 +1626,12 @@ function HandleActorDeath(WorkShopNPCScript deadActor, Actor akKiller)
 	;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes on that function for explanation)
 	UnassignActor_Private(deadActor, bRemoveFromWorkshop = true)
 	
-	; consequences of death:
+		; consequences of death:
 	; for people, count this as negative to happiness (blame player since they're all protected)
 	if deadActor.bCountsForPopulation
-		ModifyHappinessModifier(workshopRef, actorDeathHappinessModifier)
+		; WSWF - Using workshop local version
+		;ModifyHappinessModifier(workshopRef, actorDeathHappinessModifier)
+		ModifyHappinessModifier(workshopRef, workshopRef.actorDeathHappinessModifier)
 	endif	
 
 	;UFO4P 2.0 Bug #21899: unlock editing
@@ -1793,84 +1779,21 @@ endFunction
 ;------------------------------------------------------------------
 
 
-;TODO WSWF: Reroute this to our NPCManager
 WorkshopNPCScript function CreateActor(WorkshopScript workshopRef, bool bBrahmin = false, ObjectReference spawnMarker = NONE, bool bNewSettlerAlias = false)
-	wsTrace("  CreateActor for " + workshopRef)
-	if spawnMarker == NONE
-		spawnMarker = workshopRef.GetLinkedRef(WorkshopLinkSpawn)
-	endif
-
-	; create actor, set workshop ID on actor value
-	actorBase newActorBase
-
-	if bBrahmin
-		newActorBase = WorkshopBrahmin
-		;newActor = spawnMarker.PlaceAtMe(WorkshopBrahmin, abDeleteWhenAble = false) as Actor
+	; WSWF - Rerouting to our NPCManager quest
+	if(bBrahmin)
+		return WSWF_NPCManager.CreateBrahmin(workshopRef, spawnMarker)
 	else
-		if workshopRef.CustomWorkshopNPC
-			newActorBase = workshopRef.CustomWorkshopNPC
-		else
-			; roll for farmer vs. guard
-			if Utility.RandomInt(1, 100) <= recruitmentGuardChance
-				newActorBase = WorkshopNPCGuard
-				;newActor = spawnMarker.PlaceAtMe(WorkshopNPCGuard, abDeleteWhenAble = false) as Actor
-			else
-				newActorBase = WorkshopNPC
-				;newActor = spawnMarker.PlaceAtMe(WorkshopNPC, abDeleteWhenAble = false) as Actor
-			endif
-		endif
+		return WSWF_NPCManager.CreateSettler(workshopRef, spawnMarker)
 	endif
-	Actor newActor = spawnMarker.PlaceAtMe(newActorBase, abDeleteWhenAble = false) as Actor
-
-	; flag as "new"
-	WorkshopNPCScript newWorkshopActor = newActor as WorkShopNPCScript
-
-	If !bBrahmin
-		newWorkshopActor.bNewSettler = true
-		;UFO4P 1.0.3 Bug #20456: Moved this here to prevent the script from creating synth Brahmins:
-		;check for synth
-		if workshopRef.GetBaseValue(WorkshopRatings[WorkshopRatingPopulationSynths].resourceValue) == 0 && workshopRef.GetBaseValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue) >= recruitmentMinPopulationForSynth
-			if Utility.RandomInt(1, 100) <= recruitmentSynthChance
-				newWorkshopActor.SetSynth(true)
-			endif
-		endif
-	EndIf	
-	AddActorToWorkshop(newWorkshopActor, workshopRef)
-	
-	; try to automatically assign to do something:
-	if !bBrahmin
-		TryToAutoAssignActor(workshopRef, newWorkshopActor)
-	endif
-
-	if bNewSettlerAlias
-		WorkshopNewSettler.ForceRefTo(newWorkshopActor)
-	endif
-	return newWorkshopActor
 endFunction
 
 
 function TryToAutoAssignActor(WorkshopScript workshopRef, WorkshopNPCScript actorToAssign)
-
-	;/
-	ActorValue resourceValue
-	if actorToAssign.GetValue(WorkshopGuardPreference) > 0
-		resourceValue = WorkshopRatings[WorkshopRatingSafety].resourceValue
-	else
-		resourceValue = WorkshopRatings[WorkshopRatingFood].resourceValue
-	endif
-	actorToAssign.SetMultiResource(resourceValue)
-	TryToAssignResourceType(workshopRef, resourceValue)
-	if actorToAssign.multiResourceProduction == 0.0
-		; if didn't pick up anything, clear it - nothing for him to do
-		actorToAssign.SetMultiResource(NONE)
-	endif
-
-	-----------------------------------------------------------------------------------------------------------------------------------------
+	;/	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 		Performance optimizations required substantial modifications to this function. In order to maintain legibility, the code has been
-		rewritten. Any comments on modifications prior to UFO4P 2.0.4 (except for official patch notes) have been left out (they are still
-		preserved in the commented out code above though). A summary of the modifications is included in the comment on the ResetWorkshop
-		function.
+		rewritten.
 	;-----------------------------------------------------------------------------------------------------------------------------------------
 	/;
 	
@@ -1973,6 +1896,16 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 		; mark assigned object as assigned to this actor
 		assignedObject.AssignActor(assignedActor)
 		wsTrace("		Bed - assigned " + assignedObject + " to " + assignedActor +": owner=" + assignedObject.GetActorRefOwner())
+		
+		; WSWF - Add bed event
+		if(previousOwner != assignedActor)
+			Var[] kargs = new Var[0]
+			kargs.Add(assignedObject)
+			kargs.Add(workshopRef)
+			kargs.Add(assignedActor)
+			
+			SendCustomEvent("WorkshopActorAssignedToBed", kargs)		
+		endif
 	elseif assignedObject.HasKeyword(WorkshopWorkObject)
 		; work object
 		; actor no longer counts as "new"
@@ -2794,158 +2727,16 @@ endFunction
 
 
 function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript workshopRef, bool bResetMode = false, ObjectReference[] WorkshopActors = NONE)
+	;/
 	; bResetMode: true means to ignore TryToAssignFarms/Beds calls (ResetWorkshop calls it once at the end)
 	; WorkshopActors: if NONE, get new list, otherwise use passed in list (to save time)
 
 	; As called from ResetWorkshop:
 	; AddActorToWorkshop(actorRef, workshopRef, true, WorkshopActors)
-
-	;/
-	wsTrace("	AddActorToWorkshop actor=" + assignedActor + ", workshop=" + workshopRef + ", resetMode? " + bResetMode)
-	
-	bool bResetHappiness = false
-
-	; if already in the list, do nothing
-	if WorkshopActors == NONE
-		WorkshopActors = GetWorkshopActors(workshopRef)
-	endif
-
-	bool bAlreadyAssigned = false
-	if WorkshopActors.Find(assignedActor) > -1 && assignedActor.GetWorkshopID() == workshopRef.GetWorkshopID()
-		wsTrace("	AddActorToWorkshop actor=" + assignedActor + " already assigned to this workshop")
-		bAlreadyAssigned = true
-	endif
-
-	; if actor is currently assigned to a different workshop, remove from that one
-	int oldWorkshopID = assignedActor.GetWorkshopID()
-	wsTrace("	AddActorToWorkshop: oldWorkshopID=" + oldWorkshopID)
-	if oldWorkshopID > -1 && oldWorkshopID != workshopRef.GetWorkshopID()
-		; 89671: no need to remove actor from workshop completely when assigning to different workshop
-		;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes on that function for explanation)
-		UnassignActor_Private(assignedActor, false)
-		; clear "new settler" flag on actor
-		assignedActor.bNewSettler = false
-	endif
-	wsTrace("	AddActorToWorkshop: step 2")
-
-	if bAlreadyAssigned == false
-		assignedActor.SetWorkshopID(workshopRef.GetWorkshopID())
-		if workshopRef.SettlementOwnershipFaction && workshopRef.UseOwnershipFaction && assignedActor.bApplyWorkshopOwnerFaction
-			if assignedActor.bCountsForPopulation
-				assignedActor.SetCrimeFaction(workshopRef.SettlementOwnershipFaction)
-			else
-				assignedActor.SetFactionOwner(workshopRef.SettlementOwnershipFaction)
-			endif
-		endif
-		
-		; add linked ref so workshop knows about me
-		assignedActor.SetLinkedRef(workshopRef, WorkshopItemKeyword)
-
-		; assign "home" linked ref (for packages)
-		AssignHomeMarkerToActor(assignedActor, workshopRef)
-
-		; "stamp" alias data so they keep it even after being in alias - allows them to initialize to correct package even if Reset hasn't finished running
-		ApplyWorkshopAliasData(assignedActor)
-		wsTrace("	AddActorToWorkshop: step 3")
-
-		; set player ownership actor value
-		assignedActor.UpdatePlayerOwnership(workshopRef)
-		
-		; 98730: Recalc workshop ratings on old workshop (if there is one) now that actor is linked to new workshop
-		if oldWorkshopID > -1 && oldWorkshopID != workshopRef.GetWorkshopID()
-			WorkshopScript oldWorkshopRef = GetWorkshop(oldWorkshopID)		
-			if oldWorkshopRef
-				oldWorkshopRef.RecalculateWorkshopResources()
-			endif 
-		endif
-
-		;UFO4P 2.0 Bug #21896: Call SetResourceData_Private instead of SetResourceData below (see notes on that function for explanation)
-
-		; if this was the first actor, this is the first actor - set happiness to "baseline" and modifiers to 0
-		if assignedActor.bCountsForPopulation
-			int totalPopulation = workshopRef.GetBaseValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue) as int
-			float currentHappiness = workshopRef.GetValue(WorkshopRatings[WorkshopRatingHappiness].resourceValue)
-			wsTrace("	AddActorToWorkshop: step 4: totalPopulation=" + totalPopulation)
-			if totalPopulation == 0
-				wsTrace("	AddActorToWorkshop: total population was ZERO, resetting happiness")
-				; clear happiness modifier
-				SetResourceData_Private(WorkshopRatings[WorkshopRatingHappinessModifier].resourceValue, workshopRef, 0)
-				if bResetMode
-					; just set happiness to baseline (nothing else we can do)
-					SetResourceData_Private(WorkshopRatings[WorkshopRatingHappiness].resourceValue, workshopRef, startingHappiness)
-					SetResourceData_Private(WorkshopRatings[WorkshopRatingHappinessTarget].resourceValue, workshopRef, startingHappiness)
-				else
-					; reset happiness to happiness target later (once everything is assigned)
-					bResetHappiness = true
-				endif
-				; set "last attacked" to a very large number (so they don't act like they were just attacked)
-				SetResourceData_Private(WorkshopRatings[WorkshopRatingLastAttackDaysSince].resourceValue, workshopRef, 99)
-			endif
-			; update workshop rating - increment unassigned actors resource value
-			assignedActor.SetValue(WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, 1)
-
-			; update vendor data in all stores
-			UpdateVendorFlagsAll(workshopRef)
-		endif
-
-		; assign persist location (if created)
-		if assignedActor.IsCreated()
-			assignedActor.SetPersistLoc(workshopRef.myLocation)
-			; make Boss loc ref type for this location
-			if assignedActor.bIsSynth
-				wstrace(" 	" + assignedActor + " is a SYNTH - adding synth ref type")
-				assignedActor.SetLocRefType(workshopRef.myLocation, WorkshopSynthRefType)
-				wstrace(" 	" + assignedActor + " GetLocRefType = " + assignedActor.GetLocRefTypes())
-				assignedActor.ClearFromOldLocations() ; 101931: make sure location data is correct
-			elseif assignedActor.bCountsForPopulation
-				assignedActor.SetAsBoss(workshopRef.myLocation)
-			endif
-		endif
-
-	endif
-
-	; reset mode - called by ResetWorkshop (so usually these actors will already be assigned to the workshop)
-	if bResetMode
-		; clear multiresource production VALUE on reset - otherwise we keep adding to the total each time the actor is added during Reset process
-		wsTrace("	AddActorToWorkshop: clearing multiResourceProduction")
-		assignedActor.multiResourceProduction = 0.0
-	endif
-
-	; clear actor worker flag
-	if workshopRef.PlayerHasVisited && bAlreadyAssigned == false
-		wsTrace("	AddActorToWorkshop: clearing worker flag")
-		assignedActor.SetWorker(false)
-	endif
-
-	; try to assign a bed
-	wsTrace("	AddActorToWorkshop: step 5 - try to assign a bed, maybe")
-
-	if !bResetMode
-		TryToAssignBedToActor(workshopRef, assignedActor)
-	endif
-
-	; pick up new package if necessary
-	assignedActor.EvaluatePackage()
-
-	if !workshopRef.RecalculateWorkshopResources()
-		wsTrace(" 	RecalculateWorkshopResources returned false - add population manually")
-		; add population manually if couldn't recalc
-		;UFO4P 2.0 Bug #21896: Call ModifyResourceData_Private instead of ModifyResourceData here (see notes on that function for explanation)
-		ModifyResourceData_Private(WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, 1)
-	endif
-
-	if !bResetMode && bResetHappiness
-		ResetHappiness(workshopRef)
-	endif
-
-	wsTrace("	AddActorToWorkshop: DONE")
-
 	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 		Performance optimizations required substantial modifications to this function. In order to maintain legibility, the code has been
-		rewritten. Any comments on modifications prior to UFO4P 2.0.4 (except for official patch notes) have been left out (they are still
-		preserved in the commented out code above though). A summary of the modifications is included in the comment on the ResetWorkshop
-		function.
+		rewritten. 
 	;-----------------------------------------------------------------------------------------------------------------------------------------
 	/;
 	
@@ -4493,7 +4284,7 @@ bool function ResolveAttack(WorkshopScript workshopRef, int attackStrength, Fact
 	RecordAttack(workshopRef, attackFaction)
 
 	; defense strength: safety + totalPopulation 
-	int defenseStrength = CalculateDefenseStrength(safety, totalPopulation)
+	int defenseStrength = workshopRef.CalculateDefenseStrength(safety, totalPopulation)
 	wsTrace("   ResolveAttack on " + workshopRef + ":		attack strength=" + attackStrength)
 	wsTrace("   ResolveAttack on " + workshopRef + ":		defenseStrength=" + defenseStrength)
 
@@ -6709,7 +6500,7 @@ objectReference[] UFO4P_UnassignedFoodObjects
 objectReference[] UFO4P_UnassignedSafetyObjects
 
 WorkshopObjectScript[] UFO4P_UnassignedBeds
-WorkshopNPCScript[] UFO4P_ActorsWithoutBeds
+WorkshopNPCScript[] Property UFO4P_ActorsWithoutBeds Auto Hidden ; WSWF - Made into a property
 WorkshopNPCScript[] UFO4P_FoodWorkers
 WorkshopNPCScript[] UFO4P_SafetyWorkers
 

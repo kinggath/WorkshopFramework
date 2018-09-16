@@ -46,11 +46,6 @@ Scene Property WorkshopRadioScene01 Auto Const Mandatory
 ObjectReference Property WorkshopRadioRef Auto Mandatory
 { Found on WorkshopParent script property of same name }
 
-float Property workshopRadioInnerRadius = 9000.0 Auto Const
-{ TODO: Tap into globals after rewriting WSScripts }
-float Property workshopRadioOuterRadius = 20000.0 Auto Const
-{ TODO: Tap into globals after rewriting WSScripts }
-
 
 ; -
 ; Properties
@@ -233,7 +228,7 @@ Function ConfigureRadio(WorkshopObjectScript akWorkshopObject, WorkshopScript ak
 				akWorkshopRef.WorkshopRadioScene.Start()
 			endif
 		else 
-			akWorkshopObject.MakeTransmitterRepeater(WorkshopRadioRef, workshopRadioInnerRadius, workshopRadioOuterRadius)
+			akWorkshopObject.MakeTransmitterRepeater(WorkshopRadioRef, akWorkshopRef.workshopRadioInnerRadius, akWorkshopRef.workshopRadioOuterRadius)
 			if(WorkshopRadioScene01.IsPlaying() == false)
 				WorkshopRadioScene01.Start()
 			endif

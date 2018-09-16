@@ -95,6 +95,49 @@ ActorValue Function GetActorValueSetForm(ActorValueSet aAVSet) global
 EndFunction
 
 
+
+; -----------------------------------
+; SetAndRestoreActorValue
+;
+; Description: Sets an actor value and restores the current value to the max
+;
+; -----------------------------------
+Function SetAndRestoreActorValue(ObjectReference akObjectRef, ActorValue someValue, Float afNewValue) global
+	if(akObjectRef == NONE || someValue == NONE)
+		return
+	endif
+	
+    Float BaseValue = akObjectRef.GetBaseValue(someValue)
+    Float CurrentValue = akObjectRef.GetValue(someValue)
+
+    if(CurrentValue < BaseValue)
+        akObjectRef.RestoreValue(someValue, BaseValue - CurrentValue)
+    endif
+
+    akObjectRef.SetValue(someValue, afNewValue)
+EndFunction
+
+
+; -----------------------------------
+; AdjustActorValue
+;
+; Description: Adjust a value, increasing max if necessary
+;
+; -----------------------------------
+Function ModifyActorValue(ObjectReference akObjectRef, ActorValue someValue, float afAdjustBy) global
+	if(akObjectRef == NONE || someValue == NONE)
+		return
+	endif
+	
+	Float fCurrentValue = akObjectRef.GetValue(someValue)
+
+	; don't mod value below 0
+	Float fNewValue = math.Max(fCurrentValue + afAdjustBy, 0)
+	
+	SetAndRestoreActorValue(akObjectRef, someValue, fNewValue)
+endFunction
+
+
 ; -----------------------------------
 ; CleanFormList
 ;

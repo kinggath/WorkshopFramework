@@ -1,5 +1,5 @@
 ; ---------------------------------------------
-; WorkshopFramework:Library:ThreadManager.psc - by kinggath
+; WorkshopFramework:Library:ThreadManager.psc - by kinggath, concept by E
 ; ---------------------------------------------
 ; Reusage Rights ------------------------------
 ; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below).
@@ -332,13 +332,7 @@ EndFunction
 
 
 
-Int Function GetNextThreadRunner(Int aiAttempted = 0)
-	if(aiAttempted > ThreadRunners.Length)
-		; Prevent from getting stuck in an infinite loop if all thread runners are overloaded
-		return QUEUEFAIL
-	endif
-	
-	aiAttempted += 1 
+Int Function GetNextThreadRunner()
 	int iRunnerIndex = NextRunner	
 	
 	if(iRunnerIndex >= 0)		

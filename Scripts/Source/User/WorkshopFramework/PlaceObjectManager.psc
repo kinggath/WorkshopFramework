@@ -299,10 +299,7 @@ Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = N
 			kThread.fScale = aPlaceMe.fScale
 			kThread.kWorkshopRef = akWorkshopRef
 			
-			kArgs = new Var[1]			
-			kArgs[0] = kThread as WorkshopFramework:Library:ObjectRefs:Thread
-			
-			int iCallBackID = ThreadManager.QueueThread("", "ProcessThreadObject", kArgs)
+			int iCallBackID = ThreadManager.QueueThread(kThread)
 			
 			return iCallBackID
 		endif

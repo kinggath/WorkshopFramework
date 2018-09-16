@@ -23,36 +23,6 @@ Scriptname WorkshopFramework:MainThreadManager extends WorkshopFramework:Library
 ; Editor Properties
 ; -----------------------------------
 
-Group Keywords
-	Keyword Property MakeStaticKeyword Auto Const Mandatory
-	{ Temporary keyword to be assigned to objects that need to be made static once they load }
-	Keyword Property WorkshopItemKeyword Auto Const Mandatory
-	{ Autofill }
-EndGroup
-
-Group AVs
-	ActorValue Property PositionXAV Auto Const Mandatory
-	{ Temp AV to store position data }
-	ActorValue Property PositionYAV Auto Const Mandatory
-	{ Temp AV to store position data }
-	ActorValue Property PositionZAV Auto Const Mandatory
-	{ Temp AV to store position data }
-	ActorValue Property RotationXAV Auto Const Mandatory
-	{ Temp AV to store rotation data }
-	ActorValue Property RotationYAV Auto Const Mandatory
-	{ Temp AV to store rotation data }
-	ActorValue Property RotationZAV Auto Const Mandatory
-	{ Temp AV to store rotation data }
-	ActorValue Property ScaleAV Auto Const Mandatory
-	{ Temp AV to store scale data }
-EndGroup
-
-
-Group Assets
-	Form Property PositionHelper Auto Const Mandatory
-	{ Form to be used for marking positions }
-EndGroup
-
 
 ; --------------------------------------------- 
 ; Consts
@@ -115,18 +85,9 @@ Function UpdateThreadRunnerVars()
 	while(i < ThreadRunners.Length && bInterrupt)
 		WorkshopFramework:MainThreadRunner thisRunner = ThreadRunners[i] as WorkshopFramework:MainThreadRunner
 		
-		if(thisRunner && ! thisRunner.MakeStaticKeyword)
+		if(thisRunner)
 			if(thisRunner.IsRunning())
-				thisRunner.MakeStaticKeyword = MakeStaticKeyword
-				thisRunner.WorkshopItemKeyword = WorkshopItemKeyword
-				thisRunner.PositionXAV = PositionXAV
-				thisRunner.PositionYAV = PositionYAV
-				thisRunner.PositionZAV = PositionZAV
-				thisRunner.RotationXAV = RotationXAV
-				thisRunner.RotationYAV = RotationYAV
-				thisRunner.RotationZAV = RotationZAV
-				thisRunner.ScaleAV = ScaleAV
-				thisRunner.PositionHelper = PositionHelper
+				; Add any vars that need to be copied from a property on the manager down to each runner
 			else
 				bInterrupt = true				
 			endif

@@ -176,6 +176,41 @@ Group SettingsToCopyToWorkshops
 	ActorValue Property WSWF_AV_minDaysSinceLastAttack Auto Const Mandatory
 	ActorValue Property WSWF_AV_damageDailyRepairBase Auto Const Mandatory
 	ActorValue Property WSWF_AV_damageDailyPopulationMult Auto Const Mandatory
+	ActorValue Property WSWF_AV_MaxBrahmin Auto Const Mandatory
+	ActorValue Property WSWF_AV_MaxSynths Auto Const Mandatory
+	ActorValue Property WSWF_AV_recruitmentGuardChance Auto Const Mandatory	
+	ActorValue Property WSWF_AV_recruitmentBrahminChance Auto Const Mandatory	
+	ActorValue Property WSWF_AV_recruitmentSynthChance Auto Const Mandatory	
+	ActorValue Property WSWF_AV_actorDeathHappinessModifier Auto Const Mandatory	
+	ActorValue Property WSWF_AV_maxAttackStrength Auto Const Mandatory	
+	ActorValue Property WSWF_AV_maxDefenseStrength Auto Const Mandatory	
+	
+	ActorValue Property BonusHappiness Auto Const Mandatory
+	ActorValue Property HappinessTarget Auto Const Mandatory
+	ActorValue Property HappinessModifier Auto Const Mandatory
+	ActorValue Property DamagePopulation Auto Const Mandatory
+	ActorValue Property DamageFood Auto Const Mandatory
+	ActorValue Property FoodActual Auto Const Mandatory
+	ActorValue Property Power Auto Const Mandatory
+	ActorValue Property DamageSafety Auto Const Mandatory
+	ActorValue Property MissingSafety Auto Const Mandatory
+	ActorValue Property LastAttackDaysSince Auto Const Mandatory
+	ActorValue Property WorkshopPlayerLostControl Auto Const Mandatory
+	ActorValue Property WorkshopPlayerOwnership Auto Const Mandatory
+	ActorValue Property PopulationRobots Auto Const Mandatory
+	ActorValue Property BrahminPopulation Auto Const Mandatory
+	ActorValue Property PopulationUnassigned Auto Const Mandatory
+	ActorValue Property VendorIncome Auto Const Mandatory
+	ActorValue Property DamageCurrent Auto Const Mandatory
+	ActorValue Property Beds Auto Const Mandatory
+	ActorValue Property MissingBeds Auto Const Mandatory 
+	ActorValue Property Caravan Auto Const Mandatory
+	ActorValue Property Radio Auto Const Mandatory
+	ActorValue Property WorkshopGuardPreference Auto Const Mandatory
+	Keyword Property WorkshopType02 Auto Const Mandatory
+	Keyword Property WorkshopLinkContainer Auto Const Mandatory
+	Faction Property FarmDiscountFaction Auto Const Mandatory
+	GlobalVariable Property CurrentWorkshopID Auto Const Mandatory
 EndGroup
 
 
@@ -515,6 +550,42 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSWF_AV_ExtraNeeds_Safety = ExtraNeeds_Safety
 	akWorkshopRef.WSWF_AV_ExtraNeeds_Water = ExtraNeeds_Water
 	
+	akWorkshopRef.WSWF_AV_MaxBrahmin = WSWF_AV_MaxBrahmin
+	akWorkshopRef.WSWF_AV_MaxSynths = WSWF_AV_MaxSynths
+	akWorkshopRef.WSWF_AV_recruitmentGuardChance = WSWF_AV_recruitmentGuardChance
+	akWorkshopRef.WSWF_AV_recruitmentBrahminChance = WSWF_AV_recruitmentBrahminChance
+	akWorkshopRef.WSWF_AV_recruitmentSynthChance = WSWF_AV_recruitmentSynthChance
+	akWorkshopRef.WSWF_AV_actorDeathHappinessModifier = WSWF_AV_actorDeathHappinessModifier
+	akWorkshopRef.WSWF_AV_maxAttackStrength = WSWF_AV_maxAttackStrength
+	akWorkshopRef.WSWF_AV_maxDefenseStrength = WSWF_AV_maxDefenseStrength
+	
+	akWorkshopRef.BonusHappiness = BonusHappiness
+	akWorkshopRef.HappinessTarget = HappinessTarget
+	akWorkshopRef.HappinessModifier = HappinessModifier
+	akWorkshopRef.DamagePopulation = DamagePopulation
+	akWorkshopRef.DamageFood = DamageFood
+	akWorkshopRef.FoodActual = FoodActual
+	akWorkshopRef.Power = Power
+	akWorkshopRef.DamageSafety = DamageSafety
+	akWorkshopRef.MissingSafety = MissingSafety
+	akWorkshopRef.LastAttackDaysSince = LastAttackDaysSince
+	akWorkshopRef.WorkshopPlayerLostControl = WorkshopPlayerLostControl
+	akWorkshopRef.WorkshopPlayerOwnership = WorkshopPlayerOwnership
+	akWorkshopRef.PopulationRobots = PopulationRobots
+	akWorkshopRef.BrahminPopulation = BrahminPopulation
+	akWorkshopRef.PopulationUnassigned = PopulationUnassigned
+	akWorkshopRef.VendorIncome = VendorIncome
+	akWorkshopRef.DamageCurrent = DamageCurrent
+	akWorkshopRef.Beds = Beds
+	akWorkshopRef.MissingBeds = MissingBeds 
+	akWorkshopRef.Caravan = Caravan
+	akWorkshopRef.Radio = Radio
+	akWorkshopRef.WorkshopGuardPreference = WorkshopGuardPreference
+	akWorkshopRef.WorkshopType02 = WorkshopType02
+	akWorkshopRef.WorkshopLinkContainer = WorkshopLinkContainer
+	akWorkshopRef.FarmDiscountFaction = FarmDiscountFaction
+	akWorkshopRef.CurrentWorkshopID = CurrentWorkshopID
+	
 	; Add workshop and location to our copy of the arrays
 	Workshops.Add(akWorkshopRef)
 	WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
@@ -779,8 +850,6 @@ EndFunction
 
 
 Function StartConsumptionTimer()
-	Debug.MessageBox("Consumption timer started")
-	
 	StartTimerGameTime(fConsumptionLoopTime, ConsumptionLoopTimerID)
 EndFunction
 
@@ -1004,6 +1073,17 @@ WorkshopScript Function GetWorkshop(Int aiWorkshopID)
 	endif
 	
 	return Workshops[aiWorkshopID]
+EndFunction
+
+
+WorkshopScript Function GetWorkshopFromLocation(Location akLocation)
+	int iIndex = WorkshopLocations.Find(akLocation)
+	
+	if(iIndex >= 0)
+		return Workshops[iIndex] as WorkshopScript
+	endif
+	
+	return None
 EndFunction
 
 

@@ -22,7 +22,6 @@ import WorkshopFramework:WorkshopFunctions
 ;/TODO 	
 - Create report holotape or note (ala AFT) for viewing all of the custom resources
 - How can we support productivity boosts?
-
 /;
 
 ; ---------------------------------------------
@@ -30,7 +29,7 @@ import WorkshopFramework:WorkshopFunctions
 ; ---------------------------------------------
 
 int ProductionLoopTimerID = 100 Const
-
+float fThrottleContainerRouting = 0.5 Const
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -99,6 +98,7 @@ Group Assets
 	LeveledItem Property DefaultScavProductionItem_Rare Auto Const Mandatory
 	LeveledItem Property DefaultFertilizerProductionItem Auto Const Mandatory
 	Form Property Caps001 Auto Const Mandatory
+	Form Property DummyContainerForm Auto Const Mandatory
 EndGroup
 
 
@@ -107,6 +107,14 @@ Group Formlists
 	{ Used to determine how much scavenge the workshop has }
 	FormList Property FertilizerList Auto Const Mandatory
 	{ Making a formlist so mods can inject alternate types of fertilizer }
+	FormList Property ScavengeList_BuildingMaterials Auto Const Mandatory
+	{ Point to active list used by injection manager }
+	FormList Property ScavengeList_General Auto Const Mandatory
+	{ Point to active list used by injection manager }
+	FormList Property ScavengeList_Parts Auto Const Mandatory
+	{ Point to active list used by injection manager }
+	FormList Property ScavengeList_Rare Auto Const Mandatory
+	{ Point to active list used by injection manager }
 EndGroup
 
 
@@ -141,7 +149,10 @@ Group Keywords
 		
 	Keyword Property ObjectTypeFood Auto Const Mandatory
 	Keyword Property ObjectTypeWater Auto Const Mandatory
-	; TODO - Setup other object types for automatic distribution of objects
+	Keyword Property ObjectTypeAlcohol Auto Const Mandatory
+	Keyword Property ObjectTypeChem Auto Const Mandatory
+	Keyword Property ObjectTypeDrink Auto Const Mandatory
+	Keyword Property ObjectTypeNukaCola Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -176,6 +187,8 @@ Bool bProductionUnderwayBlock ; Unlike a lock, with the block we will just rejec
 ; Food and water are handled special since they affect the UI and gameplay mechanics. So even with specialty production, we're going to want to include high AVs. Whereas Scavenge, we can just applied a .01 scavege rating to get the UI to flag the assigned settler as a scavenger.
 Int[] iSpecialFoodProduction ; Total food value for each settlement that is producing specialty resources
 Int[] iSpecialWaterProduction ; Total water value for each settlement that is producing specialty resources
+
+ObjectReference[] RouteContainers ; Holds containers we'll monitor for OnItemAdded to re-distribute items to appropriate containers
 
 ; ---------------------------------------------
 ; Events 
@@ -213,6 +226,75 @@ Event Quest.OnStageSet(Quest akSenderRef, Int aiStageID, Int aiItemID)
 	endif
 EndEvent
 
+
+Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akSourceContainer)
+	int iWorkshopID = RouteContainers.Find(akAddedTo)
+	WorkshopScript kTargetWorkshop = ResourceManager.Workshops[iWorkshopID]
+	ObjectReference kContainer = None
+	
+	if(kTargetWorkshop)
+		Keyword TargetContainerKeyword = None
+		
+		; Try and auto-classify
+		if(akBaseItem as Potion)
+			if(akBaseItem.HasKeyword(ObjectTypeAlcohol))
+				TargetContainerKeyword = AlcoholContainerKeyword
+			elseif(akBaseItem.HasKeyword(ObjectTypeNukaCola))
+				TargetContainerKeyword = NukaColaContainerKeyword
+			elseif(akBaseItem.HasKeyword(ObjectTypeWater))
+				TargetContainerKeyword = WaterContainerKeyword
+			elseif(akBaseItem.HasKeyword(ObjectTypeDrink))
+				TargetContainerKeyword = DrinkContainerKeyword
+			elseif(akBaseItem.HasKeyword(ObjectTypeFood))
+				TargetContainerKeyword = FoodContainerKeyword
+			elseif(akBaseItem.HasKeyword(ObjectTypeChem))
+				TargetContainerKeyword = ChemContainerKeyword
+			else
+				TargetContainerKeyword = AidContainerKeyword
+			endif
+		elseif(akBaseItem as Component)
+			TargetContainerKeyword = ComponentContainerKeyword
+		elseif(akBaseItem == Caps001)
+			TargetContainerKeyword = CapsContainerKeyword
+		elseif(akBaseItem as Holotape)
+			TargetContainerKeyword = HolotapeContainerKeyword
+		elseif(akBaseItem as Book)
+			TargetContainerKeyword = NoteContainerKeyword
+		elseif(FertilizerList.Find(akBaseItem) >= 0)
+			TargetContainerKeyword = FertilizerContainerKeyword
+		elseif(akBaseItem as Ammo)
+			TargetContainerKeyword = AmmoContainerKeyword
+		elseif(akBaseItem as Armor)
+			TargetContainerKeyword = ArmorContainerKeyword
+		elseif(akBaseItem as ObjectMod)
+			TargetContainerKeyword = ModContainerKeyword
+		elseif(akBaseItem as Weapon)
+			TargetContainerKeyword = WeaponContainerKeyword
+		elseif(akBaseItem as MiscObject)
+			if(ScavengeList_BuildingMaterials.Find(akBaseItem) >= 0)
+				TargetContainerKeyword = ScavengeBuildingMaterialsContainerKeyword
+			elseif(ScavengeList_General.Find(akBaseItem) >= 0)
+				TargetContainerKeyword = ScavengeGeneralScrapContainerKeyword
+			elseif(ScavengeList_Parts.Find(akBaseItem) >= 0)
+				TargetContainerKeyword = ScavengePartsContainerKeyword
+			elseif(ScavengeList_Rare.Find(akBaseItem) >= 0)
+				TargetContainerKeyword = ScavengeRareContainerKeyword
+			else
+				TargetContainerKeyword = MiscContainerKeyword
+			endif
+		endif
+		
+		kContainer = GetContainer(kTargetWorkshop, TargetContainerKeyword)
+	endif
+	
+	if( ! kContainer)
+		Debug.Trace("Unable to locate an eligible container for this item, deleting: " + akBaseItem + ".")
+	endif
+	
+	; Route item
+	akAddedTo.RemoveItem(akBaseItem, aiItemCount, akOtherContainer = kContainer)
+EndEvent
+
 ; ---------------------------------------------
 ; Extended Handlers
 ; ---------------------------------------------
@@ -223,10 +305,12 @@ Function HandleQuestInit()
 	; Register for events
 	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
 	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectDestroyed")
+	AddInventoryEventFilter(None)
 	
 	; Init arrays
 	iSpecialFoodProduction = new Int[128]
 	iSpecialWaterProduction = new Int[128]
+	RouteContainers = new ObjectReference[0]
 	
 	; Setup defaults
 	FoodProductionItem = DefaultFoodProductionItem
@@ -299,7 +383,20 @@ EndFunction
 
 
 Function StartProductionTimer()
-	Debug.MessageBox("Production timer started")
+	WorkshopScript[] kWorkshops = ResourceManager.Workshops
+	if(RouteContainers.Length < kWorkshops.Length)
+		int i = RouteContainers.Length
+		while(i < kWorkshops.Length)
+			ObjectReference kTemp = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abForcePersist = true, abDeleteWhenAble = false)
+			
+			if(kTemp)
+				RouteContainers.Add(kTemp)
+				RegisterForRemoteEvent(kTemp, "OnItemAdded")
+			endif
+			
+			i += 1
+		endWhile
+	endif
 	
 	StartTimerGameTime(fProductionLoopTime, ProductionLoopTimerID)
 EndFunction
@@ -450,7 +547,8 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 					ProduceItems(kRecord.ProduceItem, akWorkshopRef, kRecord.iCount, kRecord.TargetContainerKeyword)
 				endif
 			else
-				; TODO: Expand the storage system for more gameplay options - things like limitations on non-scavenge items so players can build more storage
+				; TODO: Expand the storage system for more gameplay options - things like limitations on non-scavenge items so players can build more storage. Ex. MaxProduceWeapons or MaxProduceAmmo
+								
 				ProduceItems(kRecord.ProduceItem, akWorkshopRef, kRecord.iCount, kRecord.TargetContainerKeyword)
 			endif
 		endif
@@ -812,7 +910,17 @@ EndFunction
 
 
 Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount = 1, Keyword aTargetContainerKeyword = None)
-	ObjectReference kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+	ObjectReference kContainer 
+	
+	if( ! aTargetContainerKeyword)
+		; Send to temporary container so we can reroute all items
+		int iWorkshopID = akWorkshopRef.GetWorkshopID()
+		kContainer = RouteContainers[iWorkshopID]
+		; Give a brief pause so we don't overwhelm ourselves with OnItemAdded events
+		Utility.Wait(fThrottleContainerRouting)
+	else
+		kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+	endif
 	
 	if(kContainer)
 		kContainer.AddItem(aProduceMe, aiCount)

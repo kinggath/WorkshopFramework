@@ -53,3 +53,19 @@ Struct LinkToMe
 	String sPluginName = ""
 	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or BaseForm have to be set. }
 EndStruct
+
+
+Struct InjectableActorMap
+	LeveledActor TargetLeveledActor
+	FormList DefaultEntries
+	FormList AdditionalEntries
+	FormList RemovedDefaultEntries
+EndStruct
+
+
+Struct InjectableItemMap
+	LeveledItem TargetLeveledItem
+	FormList DefaultEntries
+	FormList AdditionalEntries
+	FormList RemovedDefaultEntries
+EndStruct
