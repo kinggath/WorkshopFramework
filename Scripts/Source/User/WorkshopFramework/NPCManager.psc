@@ -38,6 +38,7 @@ Group Controllers
 	WorkshopFramework:WorkshopResourceManager Property ResourceManager Auto Const Mandatory
 	GlobalVariable Property WorkshopCurrentWorkshopID Auto Const Mandatory
 	GlobalVariable Property WSWF_Setting_RobotsCountTowardsMaxPopulation Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_RecruitSettlersOnFirstBeaconActivation Auto Const Mandatory
 EndGroup
 
 
@@ -88,11 +89,17 @@ Group Assets
 	{ Actorbase that should be using InjectionManger.SettlerLCharHolder as its template source }
 EndGroup
 
+Group Settings
+	Float[] Property DefaultFirstSettlersRecruitmentChances Auto Const
+	{ Each entry represents the percent chance of getting that settler when a beacon is first built in a settlement. For example, if the first number is 100, you will guarantee that settler. If the next number is 30, you'd have a 30% chance of getting a second settler, etc. }
+EndGroup
+
 ; ---------------------------------------------
 ; Properties
 ; ---------------------------------------------
 
 Float Property fRecruitmentLoopTime = 24.0 Auto Hidden
+Float[] Property FirstSettlersRecruitmentChances Auto Hidden
 
 ; ---------------------------------------------
 ; Vars
@@ -186,6 +193,15 @@ Function HandleQuestInit()
 	RegisterForCustomEvent(WorkshopParent, "WorkshopRemoveActor")
 	RegisterForCustomEvent(WorkshopParent, "AssignmentRulesOverriden")
 	
+	; Configure Initial Settler Chances
+	FirstSettlersRecruitmentChances = new Float[0]
+	int i = 0
+	while(i < DefaultFirstSettlersRecruitmentChances.Length)
+		FirstSettlersRecruitmentChances.Add(i)
+		
+		i += 1
+	endWhile
+	
 	; Start Recruitment Loop
 	if(WorkshopParent.GetStageDone(iWorkshopParentInitializedStage))
 		StartRecruitmentTimer()
@@ -205,6 +221,33 @@ EndFunction
 
 Function StartRecruitmentTimer()
 	StartTimerGameTime(fRecruitmentLoopTime, RecruitmentLoopTimerID)
+EndFunction
+
+
+Function AlterFirstSettlersRecruitmentChances(Int aiChanceIndex, Int aiNewChancePercentage)
+	if(aiChanceIndex >= FirstSettlersRecruitmentChances.Length)
+		return
+	endif
+	
+	if(aiNewChancePercentage < 0)
+		aiNewChancePercentage = 0
+	elseif(aiNewChancePercentage > 100)
+		aiNewChancePercentage = 100
+	endif
+	
+	FirstSettlersRecruitmentChances[aiChanceIndex] = aiNewChancePercentage
+EndFunction
+
+
+; Returns number of chance entries after adding this, or -1 if the array was full
+Int Function AddFirstSettlerRecruitmentChance(Int aiNewChancePercentage)
+	if(FirstSettlersRecruitmentChances.Length >= 128)
+		return -1
+	endif
+	
+	FirstSettlersRecruitmentChances.Add(aiNewChancePercentage)
+	
+	return FirstSettlersRecruitmentChances.Length
 EndFunction
 
 
@@ -294,6 +337,32 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 			endif
 		endif
 	endif
+EndFunction
+
+
+Function CreateInitialSettlers(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
+	if( ! akWorkshopRef || WSWF_Setting_RecruitSettlersOnFirstBeaconActivation.GetValue() == 0)
+		return
+	endif
+	
+	int recruitRoll = utility.randomint(1, 100)
+	int iRecruitCount = 0
+	int i = 0
+	while(i < FirstSettlersRecruitmentChances.Length)
+		if(recruitRoll <= FirstSettlersRecruitmentChances[i])
+			iRecruitCount += 1
+		endif
+		
+		i += 1
+	endWhile
+	
+	; Create settlers
+	i = 0
+	while(i < iRecruitCount)
+		CreateSettler(akWorkshopRef, akSpawnAtRef)
+		
+		i += 1
+	endWhile
 EndFunction
 
 

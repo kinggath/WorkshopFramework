@@ -1233,6 +1233,7 @@ Float UFO4P_TimeOfLastWorkshopExitUpdateStarted = 0.0
 ;TimerIDs to handle calls of the DailyUpdate function with bRealUpdate = false
 int UFO4P_DailyUpdateTimerID = 98
 int UFO4P_DailyUpdateResetHappinessTimerID = 99
+int WSWF_RetryRealDailyUpdateTimerID = 100
 
 ;-----------------------------------------------------------
 ;	Added by UFO4P 1.0.5. for Bug #21039:
@@ -1395,7 +1396,6 @@ endEvent
 
 ; block activation until player "owns" this workbench
 Event OnActivate(ObjectReference akActionRef)
-	;;debug.trace(self + "OnActivate")
 	if akActionRef == Game.GetPlayer()
 		CheckOwnership()
 
@@ -1439,7 +1439,6 @@ Event OnWorkshopMode(bool aStart)
 	;UFO4P 2.0.4 Bug #24122: added this line:
 	UFO4P_InWorkshopMode = aStart
 
-	;debug.trace(self + " OnWorkshopMode " + aStart)
 	if aStart
 		if OwnedByPlayer
 			; make this the current workshop
@@ -1466,9 +1465,7 @@ Event OnWorkshopMode(bool aStart)
 	endif
 
 	; Companion scene
-	;debug.trace(self + " OnWorkshopMode " + WorkshopParent.CompanionAlias.GetRef())
 	if aStart && WorkshopParent.CompanionAlias.GetRef()
-		;debug.trace(self + " starting WorkshopParent.WorkshopCompanionWhileBuildingScene")
 		WorkshopParent.WorkshopCompanionWhileBuildingScene.Start()
 	else
 		WorkshopParent.WorkshopCompanionWhileBuildingScene.Stop()
@@ -1515,6 +1512,8 @@ Event OnTimer(int aiTimerID)
 		;UFO4P 2.0.1 Bug #22234: set bResetHappiness to 'true' to tell the DailyUpdate function to call ResetHappinessPUBLIC before it stops running:
 		bResetHappiness = true
 		DailyUpdate(bRealUpdate = false)
+	elseif(aiTimerID == WSWF_RetryRealDailyUpdateTimerID)
+		TryRealDailyUpdate()
 	endif
 EndEvent
 
@@ -1531,6 +1530,17 @@ Event OnTimerGameTime(int aiTimerID)
 		endif	
 	endif
 endEvent
+
+
+Function TryRealDailyUpdate()
+	if(WorkshopParent.IsEditLocked() || WorkshopParent.DailyUpdateInProgress)
+		Debug.Trace("Starting timer to retry daily update." + Self)
+		; run another timer - system is too busy
+		StartTimer(Utility.RandomInt(5, 10), WSWF_RetryRealDailyUpdateTimerID)
+	else
+		DailyUpdate()
+	endif	
+EndFunction
 
 function SetOwnedByPlayer(bool bIsOwned)
 	; is state changing?
@@ -1578,7 +1588,6 @@ function SetOwnedByPlayer(bool bIsOwned)
 
 		; if this is the first time player owns this, increment stat
 		if GetValue(WorkshopParent.WorkshopPlayerLostControl) == 0
-			;debug.trace("Increment Workshops Unlocked stat")
 			Game.IncrementStat("Workshops Unlocked")
 			;UFO4P 2.0.2 Bug #21408: Also run this function to clear faction ownership on all preplaced beds:
 			UFO4P_ClearFactionOwnershipOnBeds()
@@ -1696,9 +1705,12 @@ endFunction
 
 Event WorkshopParentScript.WorkshopDailyUpdate(WorkshopParentScript akSender, Var[] akArgs)
 	; calculate custom time interval for this workshop (to stagger out the update process throughout the day)
-	float waitTime = WorkshopParent.dailyUpdateIncrement * workshopID
+	;float waitTime = WorkshopParent.dailyUpdateIncrement * workshopID
 	
-	StartTimerGameTime(waitTime, dailyUpdateTimerID)
+	;StartTimerGameTime(waitTime, dailyUpdateTimerID)
+	
+	; WSWF - Now that we've separated out most of the daily update functionality to other quests, the portion the workshops handle is very small and can just use a normal quick time for thread safety
+	StartTimer(workshopID, WSWF_RetryRealDailyUpdateTimerID) ; We'll use the workshopID as our number of seconds to wait so that they each fire one after the other a second apart
 EndEvent
 
 ; return max NPCs for this workshop
@@ -1753,7 +1765,6 @@ bool bDailyUpdateInProgress = false
 ;the thread that will call WorkshopParentScript (e.g. there may be another thread alread waiting in the lock). Fortunately though, this doesn't matter here
 ;as long as WorkshopParentScript is called from the right workshop.
 function DailyUpdate(bool bRealUpdate = true)
-;	;debug.tracestack(self + " DailyUpdate " + bRealUpdate)
 	;UFO4P 1.0.2 Bug #20295: GENERAL NOTES:
 	;---------------------------------------
 	;
@@ -2068,7 +2079,6 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 	;For i = 0, none of the conditions checksd in the loop would return true and there is also no need to call the CheckActorHappiness function (because there
 	;are no happiness caps applying when no resources are missing). Therefore, we take the following value as start value and begin the loop with i = 1
 	updateData.totalHappiness = updateData.totalHappiness + (ActorCount * ActorHappiness)
-		
 	i = 1	
 	while i < 5 && RemainingActors > 0
 
@@ -2097,13 +2107,11 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 
 		Float CorrectedActorHappiness = CheckActorHappiness (ActorHappiness, ActorFood, ActorWater, ActorBed, ActorShelter)
 		updateData.totalHappiness = updateData.totalHappiness + ActorCount * CorrectedActorHappiness
-		
 		i += 1
 
 	EndWhile
 
 	updateData.totalHappiness = updateData.totalHappiness + ( 50 * updateData.robotPopulation)
-	
 	int iMissingBeds = Math.Max (0, Actors_Human - updateData.availableBeds) As Int
 	SetAndRestoreActorValue(self, MissingBeds, iMissingBeds)
 	
@@ -2113,16 +2121,16 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 
 	; add "bonus happiness" and any happiness modifiers
 	updateData.totalHappiness = updateData.totalHappiness + updateData.bonusHappiness
-
 	; calculate happiness
 	; add happiness modifier here - it isn't dependent on population
 	updateData.totalHappiness = math.max(updateData.totalHappiness/updateData.totalPopulation + updateData.happinessModifier, 0)
+	
 	; don't let happiness exceed 100
 	updateData.totalHappiness = math.min(updateData.totalHappiness, 100)
 
 	; for now, record this as a rating
 	SetAndRestoreActorValue(self, HappinessTarget, updateData.totalHappiness)
-
+	
 	; REAL UPDATE ONLY:
 	if bRealUpdate
 		float deltaHappinessFloat = (updateData.totalHappiness - updateData.currentHappiness) * happinessChangeMult
@@ -2139,6 +2147,8 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 			deltaHappiness = minHappinessChangePerUpdate * (deltaHappiness/math.abs(deltaHappiness)) as int
 		endif
 		
+		;Debug.MessageBox("Preparing to update happiness: Target " + updateData.totalHappiness + ", Delta: " + deltaHappiness + ", happinessChangeMult: " + happinessChangeMult + ", MinChange: " + minHappinessChangePerUpdate)
+		
 		; update happiness rating on workshop's location
 		ModifyActorValue(self, Happiness, deltaHappiness)
 
@@ -2147,7 +2157,6 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 		
 		; achievement
 		if finalHappiness >= WorkshopParent.HappinessAchievementValue
-			;debug.Trace(self + " HAPPINESS ACHIEVEMENT UNLOCKED!!!!")
 			Game.AddAchievement(WorkshopParent.HappinessAchievementID)
 		endif
 
@@ -2191,7 +2200,6 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 		endif
 
 	EndIf
-
 endFunction
 
 function DailyUpdateSurplusResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef)

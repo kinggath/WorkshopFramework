@@ -21,8 +21,10 @@ Scriptname WorkshopFramework:WSWF_APIQuest extends WorkshopFramework:Library:Sla
 
 Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
+	WorkshopFramework:MainQuest Property WSWF_Main Auto Const Mandatory
 	WorkshopFramework:PlaceObjectManager Property PlaceObjectManager Auto Const Mandatory
 	WorkshopFramework:WorkshopResourceManager Property WorkshopResourceManager Auto Const Mandatory
+	WorkshopFramework:NPCManager Property NPCManager Auto Const Mandatory
 EndGroup
 
 

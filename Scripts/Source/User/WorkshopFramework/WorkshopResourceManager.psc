@@ -134,6 +134,16 @@ Group SettingsToCopyToWorkshops
 	GlobalVariable Property WSWF_Setting_minDaysSinceLastAttack Auto Const Mandatory
 	GlobalVariable Property WSWF_Setting_damageDailyRepairBase Auto Const Mandatory
 	GlobalVariable Property WSWF_Setting_damageDailyPopulationMult Auto Const Mandatory
+	GlobalVariable Property WSWF_Setting_iBaseMaxBrahmin Auto Hidden	
+	GlobalVariable Property WSWF_Setting_iBaseMaxSynths Auto Hidden	
+	GlobalVariable Property WSWF_Setting_recruitmentGuardChance Auto Hidden	
+	GlobalVariable Property WSWF_Setting_recruitmentBrahminChance Auto Hidden	
+	GlobalVariable Property WSWF_Setting_recruitmentSynthChance Auto Hidden	
+	GlobalVariable Property WSWF_Setting_actorDeathHappinessModifier Auto Hidden	
+	GlobalVariable Property WSWF_Setting_maxAttackStrength Auto Hidden	
+	GlobalVariable Property WSWF_Setting_maxDefenseStrength Auto Hidden	
+	GlobalVariable Property WSWF_Setting_AdjustMaxNPCsByCharisma Auto Hidden
+	
 	ActorValue Property WSWF_AV_minProductivity Auto Const Mandatory
 	ActorValue Property WSWF_AV_productivityHappinessMult Auto Const Mandatory
 	ActorValue Property WSWF_AV_maxHappinessNoFood  Auto Const Mandatory
@@ -503,7 +513,15 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSWF_Setting_minDaysSinceLastAttack = WSWF_Setting_minDaysSinceLastAttack
 	akWorkshopRef.WSWF_Setting_damageDailyRepairBase = WSWF_Setting_damageDailyRepairBase
 	akWorkshopRef.WSWF_Setting_damageDailyPopulationMult = WSWF_Setting_damageDailyPopulationMult
-	
+	akWorkshopRef.WSWF_Setting_iBaseMaxBrahmin = WSWF_Setting_iBaseMaxBrahmin
+	akWorkshopRef.WSWF_Setting_iBaseMaxSynths = WSWF_Setting_iBaseMaxSynths
+	akWorkshopRef.WSWF_Setting_recruitmentGuardChance = WSWF_Setting_recruitmentGuardChance
+	akWorkshopRef.WSWF_Setting_recruitmentBrahminChance = WSWF_Setting_recruitmentBrahminChance
+	akWorkshopRef.WSWF_Setting_recruitmentSynthChance = WSWF_Setting_recruitmentSynthChance
+	akWorkshopRef.WSWF_Setting_actorDeathHappinessModifier = WSWF_Setting_actorDeathHappinessModifier
+	akWorkshopRef.WSWF_Setting_maxAttackStrength = WSWF_Setting_maxAttackStrength
+	akWorkshopRef.WSWF_Setting_maxDefenseStrength = WSWF_Setting_maxDefenseStrength
+	akWorkshopRef.WSWF_Setting_AdjustMaxNPCsByCharisma = WSWF_Setting_AdjustMaxNPCsByCharisma
 	akWorkshopRef.WSWF_AV_minProductivity = WSWF_AV_minProductivity
 	akWorkshopRef.WSWF_AV_productivityHappinessMult = WSWF_AV_productivityHappinessMult
 	akWorkshopRef.WSWF_AV_maxHappinessNoFood = WSWF_AV_maxHappinessNoFood
@@ -697,8 +715,10 @@ Function FixSettlerCount()
 		i += 1
 	endWhile
 	
-	ObjectReference thisWorkshop = LatestWorkshop.GetRef()
-	thisWorkshop.SetValue(Population, iPopulation as Float)
+	if(iPopulation > 0)
+		ObjectReference thisWorkshop = LatestWorkshop.GetRef()
+		thisWorkshop.SetValue(Population, iPopulation as Float)
+	endif
 EndFunction
 
 
