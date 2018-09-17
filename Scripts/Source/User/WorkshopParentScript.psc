@@ -948,7 +948,9 @@ Bool Function IsExcludedFromAssignmentRules(Form aFormToCheck)
 		aFormToCheck = (aFormToCheck as ObjectReference).GetBaseObject()
 	endif
 	
-	return ExcludeFromAssignmentRules.HasForm(aFormToCheck)
+	Bool bExclude = ExcludeFromAssignmentRules.HasForm(aFormToCheck)
+	
+	return bExclude
 EndFunction
 
 ; WSWF - Internal use
@@ -1856,173 +1858,10 @@ endFunction
 ; bResetMode: TRUE means to skip trying to assign other resource objects of this type
 ; bAddActorCheck: TRUE is default; FALSE means to skip adding the actor - calling function guarantees that the actor is already assigned to this workshop (speed optimization)
 function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScript assignedObject, bool bResetMode = false, bool bAddActorCheck = true)
-
-	;/
-	wsTrace("	AssignActorToObject actor=" + assignedActor + ", object=" + assignedObject + ", resetMode=" + bResetMode)
-
-	WorkshopScript workshopRef
-	if assignedObject.workshopID > -1
-		workshopRef = GetWorkshop(assignedObject.workshopID)
-	endif
-	if workshopRef == NONE
-		wsTrace(" 		AssignActorToObject: ERROR - " + assignedObject + " has invalid workshopID=" + assignedObject.workshopID + " - returning without assigning actor to object", 2)
-		return
-	endif
-
-	; make sure I'm added to this workshop
-	if bAddActorCheck
-		AddActorToWorkshop(assignedActor, workshopRef, bResetMode)
-	endif
-
-	; get object's current owner
-	WorkshopNPCScript previousOwner = assignedObject.GetAssignedActor()
-
-	; is this a bed or work object?
-	if assignedObject.IsBed()
-		wsTrace("		Bed - clear ownership of any other bed, then assign")
-		; bed
-		; find bed that was assigned to this actor and clear ownership
-
-		ObjectReference[] WorkshopBeds = GetBeds(workshopRef)
-		int i = 0
-		while i < WorkshopBeds.Length
-			WorkshopObjectScript theBed = WorkshopBeds[i] as WorkshopObjectScript
-			if theBed && theBed.GetActorRefOwner() == assignedActor
-				theBed.AssignActor(NONE)
-			endif
-			i += 1
-		endWhile
-
-		; mark assigned object as assigned to this actor
-		assignedObject.AssignActor(assignedActor)
-		wsTrace("		Bed - assigned " + assignedObject + " to " + assignedActor +": owner=" + assignedObject.GetActorRefOwner())
-		
-		; WSWF - Add bed event
-		if(previousOwner != assignedActor)
-			Var[] kargs = new Var[0]
-			kargs.Add(assignedObject)
-			kargs.Add(workshopRef)
-			kargs.Add(assignedActor)
-			
-			SendCustomEvent("WorkshopActorAssignedToBed", kargs)		
-		endif
-	elseif assignedObject.HasKeyword(WorkshopWorkObject)
-		; work object
-		; actor no longer counts as "new"
-		assignedActor.bNewSettler = false
-
-		; is object already assigned to this actor?
-		bool bAlreadyAssigned = (previousOwner == assignedActor)
-		wsTrace("		bAlreadyAssigned=" + bAlreadyAssigned)
-		; unassign actor from whatever he was doing
-		actorValue multiResourceValue = assignedActor.assignedMultiResource
-		; if assigned actor is assigned to multi-resource, AND this has that resource, don't unassign him - can work on multiple resource objects
-		wsTrace("		assignedMultiResource=" + multiResourceValue + ", assignedObject.HasResourceValue=" + assignedObject.HasResourceValue(multiResourceValue))
-		bool bShouldUnassign = true
-		if (multiResourceValue && assignedObject.HasResourceValue(multiResourceValue))
-			; same multi resource - may not need to unassign if actor has enough unused resource points left
-			float totalProduction = assignedActor.multiResourceProduction + assignedObject.GetResourceRating(multiResourceValue)
-			int resourceIndex = GetResourceIndex(multiResourceValue)
-			wsTrace("		totalProduction (with new object)=" + totalProduction + ", allowed max production=" + WorkshopRatings[resourceIndex].maxProductionPerNPC)
-			if totalProduction <= WorkshopRatings[resourceIndex].maxProductionPerNPC
-				bShouldUnassign = false
-				; don't unassign - can work on multiple resource objects
-				wsTrace("		actor already assigned to this resource type - don't unassign")
-			else
-				wsTrace("		actor will exceed max production for this resource type - DO unassign")
-			endif
-		elseif bAlreadyAssigned
-			; already assigned
-			wsTrace("		actor already assigned to this object - don't unassign")
-			bShouldUnassign = false
-		endif
-
-		if bShouldUnassign
-			wsTrace("		bShouldUnassign = true: unassigning " + assignedActor + " from previous work object")
-			; unassign actor from previous work object
-			;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes on that function for explanation)
-			UnassignActor_Private(assignedActor, bSendUnassignEvent = !bAlreadyAssigned)
-		endif
-
-		; unassign current owner, if any (and different from new owner)
-		if previousOwner && previousOwner != assignedActor
-			wsTrace("		unassign previous owner " + previousOwner)
-			UnassignActorFromObject(previousOwner, assignedObject)
-		endif
-
-		; mark assigned object as assigned to this actor
-		assignedObject.AssignActor(assignedActor)
-
-		; flag actor as a worker
-		assignedActor.SetWorker(true)
-
-		; 1.5 - new 24-hour work flag
-		if assignedObject.bWork24Hours
-			assignedActor.bWork24Hours = true 
-		endif
-
-		; if assigned object has scavenge rating, flag worker as scavenger (for packages)
-		if assignedObject.HasResourceValue(WorkshopRatings[WorkshopRatingScavengeGeneral].resourceValue)
-			assignedActor.SetScavenger(true)
-		endif
-
-		; add vendor faction if any
-		if assignedObject.VendorType > -1
-			SetVendorData(workshopRef, assignedActor, assignedObject)
-		endif
-
-		; update workshop ratings for new assignment
-		UpdateWorkshopRatingsForResourceObject(assignedObject, workshopRef)
-
-		; remove "unassigned" resource value
-		assignedActor.SetValue(WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, 0)
-
-		; to save time, in reset mode we ignore this and do it at the end
-		if !bResetMode
-			; reset unassigned population count
-			SetUnassignedPopulationRating(workshopRef)
-		endif
-
-		; special cases:
-		; is this a multi-resource object?
-		if assignedObject.HasMultiResource()
-			multiResourceValue = assignedObject.GetMultiResourceValue()
-			; flag actor with this keyword
-			assignedActor.SetMultiResource(multiResourceValue)
-			assignedActor.AddMultiResourceProduction(assignedObject.GetResourceRating(multiResourceValue))
-			if !bResetMode
-				TryToAssignResourceType(workshopRef, multiResourceValue)				
-			endif
-		endif
-
-		; reset ai to get him to notice the new markers
-		assignedActor.EvaluatePackage()
-
-		wsTrace("	AssignActorToObject actor=" + assignedActor + ", object=" + assignedObject + ", resetMode=" + bResetMode + " DONE: bAlreadyAssigned=" + bAlreadyAssigned)
-
-		; send custom event for this object
-		; don't send event in reset mode, or if already assigned to this actor
-		if bAlreadyAssigned == false
-			; WSWF - Adding Actor Arg
-			;Var[] kargs = new Var[2]
-			;kargs[0] = assignedObject
-			;kargs[1] = workshopRef
-			
-			Var[] kargs = new Var[0]
-			kargs.Add(assignedObject)
-			kargs.Add(workshopRef)
-			kargs.Add(assignedActor)
-			
-			wsTrace(" 	sending WorkshopActorAssignedToWork event")
-			SendCustomEvent("WorkshopActorAssignedToWork", kargs)		
-		endif
-	endif
-	
-	-----------------------------------------------------------------------------------------------------------------------------------------
+	;/ ----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 		Performance optimizations required substantial modifications to this function. In order to maintain legibility, the code has been
-		rewritten. Any comments on modifications prior to UFO4P 2.0.4 (except for official patch notes) have been left out (they are still
-		preserved in the commented out code above though). A summary of the modifications is included in the comment on the ResetWorkshop
+		rewritten. Any comments on modifications prior to UFO4P 2.0.4 (except for official patch notes) have been left out. A summary of the modifications is included in the comment on the ResetWorkshop
 		function.
 	;-----------------------------------------------------------------------------------------------------------------------------------------
 	/;
@@ -2054,7 +1893,6 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 	bool bAlreadyAssigned = (previousOwner == assignedActor)
 
 	if assignedObject.IsBed()
-
 		bool UFO4P_IsRobot = (assignedActor.GetBaseValue(WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue) > 0)
 	
 		if bAlreadyAssigned
@@ -2078,14 +1916,17 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 			;No need to run this if assignedActor is in the UFO4P_ActorsWithoutBeds array:
 			;Note: after a workshop loads, this function will not run until ResetWorkshop starts looping through the resource object
 			;arrays, and at this point, the UFO4P_ActorsWithoutBeds array is already up to date.
-			if UFO4P_ActorsWithoutBeds && UFO4P_ActorsWithoutBeds.Find (assignedActor) < 0
+			; WSWF - Since we've introduced a possibility where an NPC can have multiple beds, we have to account for it here
+			; WSWF - The UFO4P_ActorsWithoutBeds update is not always timed correctly, have found multiple instances where it isn't updated correctly and it prevents the unassign code from ever running. So we're removing it for now.
+			; WSWF if UFO4P_ActorsWithoutBeds && UFO4P_ActorsWithoutBeds.Find (assignedActor) < 0
 				ObjectReference[] WorkshopBeds = GetBeds (workshopRef)
 				int countBeds = WorkshopBeds.Length
-				; WSWF - Removing loopshortcut since we've introduced a possibility where an NPC can have multiple beds
+				
 				; bool ExitLoop = false
 				int i = 0
 				while i < countBeds ; WSWF - Removing Loop Shortcut && ExitLoop == false
 					WorkshopObjectScript theBed = WorkshopBeds[i] as WorkshopObjectScript
+					
 					if theBed && theBed.GetActorRefOwner() == assignedActor
 						; WSWF - Exclusion from assignment rules
 						if(IsExcludedFromAssignmentRules(theBed))
@@ -2102,7 +1943,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 					endif
 					i += 1
 				endWhile
-			endif
+			; WSWF endif
 			wsTrace("		Assigning bed " + assignedObject + " to " + assignedActor)
 			assignedObject.AssignActor (assignedActor)
 		endif
@@ -4726,362 +4567,6 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	wsTrace("------------------------------------------------------------------------------ ")
 
 	;/
-	GetEditLock()
-
-	;UFO4P 2.0 Bug #21895: clear UFO4P_WorkshopRef_ResetDelayed and reset the attack bool:
-	;In case a reset was delayed because there was an attack running at this location, there will also be daily updates pending (they are delayed as lomg
-	;as UFO4P_AttackRunning is 'true'). Resetting this bool to 'false' within this function makes sure that the delayed reset gets priority over pending
-	;daily updates. If there was no reset delayed, this bool should be 'false' anyway.
-	UFO4P_WorkshopRef_ResetDelayed = none
-	UFO4P_AttackRunning = false
-	
-	wsTrace("	ResetWorkshop: " + workshopRef + " Total population: " + workshopRef.GetValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue))
-
-;	Debug.StartStackProfiling()
-
-	; set current workshopID to this workshop
-	int workshopID = workshopRef.GetWorkshopID()
-
-	; set current workshopID to this workshop (can be reset when player interacts with a workshop)
-	;UFO4P 2.0.2 Bug #23016: removed the following line: This is now called by the OnLocationChange event as soon as the player arrives at a workshop.
-	;SetCurrentWorkshop(workshopref)
-
-	; clear parent alias collections
-	WorkshopNewSettler.Clear()
-	WorkshopSpokesmanAfterRaiderAttack.Clear()
-
-	; get resources and actors
-	; NOTE: this HAS to be done after the aliases are cleared - otherwise things flagged for deletion will still be persisting and we'll still find them
-	ObjectReference[] WorkshopActors = GetWorkshopActors(workshopRef)
-	ObjectReference[] ResourceObjectsDamaged = GetResourceObjects(workshopRef, NONE, 1)
-	ObjectReference[] ResourceObjectsUndamaged = GetResourceObjects(workshopRef, NONE, 2)
-
-	; if automatic ownership turned on, clear the location if there aren't any live bosses - this will allow the player to "own" the workshop by activating it
-	if workshopRef.EnableAutomaticPlayerOwnership && !workshopRef.OwnedByPlayer
-		int bossIndex = 0
-		int bossCount = 0
-		while bossIndex < BossLocRefTypeList.GetSize()
-			LocationRefType bossRefType = BossLocRefTypeList.GetAt(bossIndex) as LocationRefType
-			bossCount += WorkshopLocations[workshopID].GetRefTypeAliveCount(bossRefType)
-			bossIndex += 1
-		endWhile
-
-		wsTrace("	ResetWorkshop: " + workshopRef + " Checking for automatic player ownership... bossCount=" + bossCount)
-		if bossCount == 0
-			wsTrace("	ResetWorkshop: " + workshopRef + " 	Clearing location " + WorkshopLocations[workshopID])
-			WorkshopLocations[workshopID].SetCleared(true)
-		endif
-	endif
-
-	; make sure to clear FarmDiscountFaction from NPCs in unowned farm
-	bool bFirstResetAfterLostControl = false
-	if !workshopRef.OwnedByPlayer && workshopRef.GetValue(WorkshopPlayerLostControl) == 1
-		workshopRef.SetValue(WorkshopPlayerLostControl, 2)
-		bFirstResetAfterLostControl = true
-	endif
-
-	; DAMAGE - how many NPCs/objects to damage?
-	; get current damage rating - so we can damage/wound things as they come in
-	float currentDamage = workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamageCurrent].resourceValue)/100
-	wsTrace("	ResetWorkshop: " + workshopRef + "   Current damage %=" + currentDamage)
-	; get current food & water ratings (before we clear them) - use this to damage resource objects as they come in
-	float foodToDamage = math.Ceiling(workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamageFood].resourceValue))
-	float waterToDamage = math.Ceiling(workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamageWater].resourceValue))
-	float safetyToDamage = math.Ceiling(workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamageSafety].resourceValue))
-	float powerToDamage = math.Ceiling(workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamagePower].resourceValue))
-	; RESOURCE CHANGE: population damage rating is now EXTRA population damage, on top of difference between base and current population rating
-	;  -- used to track damage to population when location isn't loaded
-	float populationDamage = workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamagePopulation].resourceValue) + workshopRef.GetBaseValue(WorkshopRatings[WorkshopRatingDamagePopulation].resourceValue) - workshopRef.GetValue(WorkshopRatings[WorkshopRatingDamagePopulation].resourceValue)
-	int populationToDamage = math.Ceiling(populationDamage)
-	
-	wsTrace("	ResetWorkshop: " + workshopRef + "   food to damage=" + foodToDamage)
-	wsTrace("	ResetWorkshop: " + workshopRef + "   water to damage=" + waterToDamage)
-	wsTrace("	ResetWorkshop: " + workshopRef + "   safety to damage=" + safetyToDamage)
-	wsTrace("	ResetWorkshop: " + workshopRef + "   power to damage=" + powerToDamage)
-	wsTrace("	ResetWorkshop: " + workshopRef + "   population to damage=" + populationToDamage)
-
-	; recalculate workshop ratings for this workbench
-	workshopRef.RecalculateWorkshopResources(false)
-
-	; get center marker
-	WorkshopCenterMarker.ForceRefTo(workshopRef.GetLinkedRef(WorkshopLinkCenter))
-	
-	; add the actors
-	wsTrace("------------------------------------------------------------------------------ ")
-	wsTrace("	ResetWorkshop: " + workshopRef + "  ACTORS: " + WorkshopActors.length + " in area", bNormalTraceAlso = true)
-
-	; first pass - check for already wounded actors
-	int i = 0
-	while i < WorkshopActors.length
-		WorkshopNPCScript actorRef = WorkshopActors[i] as WorkshopNPCScript
-		if actorRef && (actorRef.GetWorkshopID() == workshopID || actorRef.GetWorkshopID() < 0)
-
-			wsTrace("	------------------------------------------------------------------------------ ")
-			wsTrace("	" + i + ": " + actorRef, bNormalTraceAlso = true)
-			wsTrace("	------------------------------------------------------------------------------ ")
-
-			if actorRef.IsDead()
-				; failsafe - remove them
-				;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes on that function for explanation)
-				UnassignActor_Private(actorRef, bRemoveFromWorkshop = true, bSendUnassignEvent = false)
-			else
-				; on first reset after losing control, clear discount factions from NPCs
-				if bFirstResetAfterLostControl
-					actorRef.RemoveFromFaction(FarmDiscountFaction)
-				endif
-
-				; make sure actor value ownership is set
-				actorRef.UpdatePlayerOwnership(workshopRef)			
-
-				; clear any remaining assignment actor values
-				actorRef.StartAssignmentTimer(false)
-
-				if workshopRef.DaysSinceLastVisit > 3
-					; clear Minutemen radiant quest factions from NPCs
-					actorRef.RemoveFromFaction(MinRadiantDialogueThankful)
-					actorRef.RemoveFromFaction(MinRadiantDialogueDisappointed)
-					actorRef.RemoveFromFaction(MinRadiantDialogueFailure)
-				endif
-
-				if actorRef.IsWounded() && actorRef.IsDead() == false
-					wsTrace("	ResetWorkshop: " + workshopRef + "   found WOUNDED actor " + actorRef)
-					; make sure not a caravan actor - if so, don't add to unassigned actors list
-					if CaravanActorAliases.Find(actorRef) < 0
-						AddActorToWorkshop(actorRef, workshopRef, true, WorkshopActors)
-						; set reset flag
-						actorRef.bResetDone = true
-						if populationToDamage > 0
-							populationToDamage += -1
-						else
-							; heal me
-							wsTrace("	ResetWorkshop: " + workshopRef + "   HEALING actor " + actorRef)
-							actorRef.SetWounded(false)
-						endif
-					else
-						wsTrace("	ResetWorkshop: " + workshopRef + "     assigned to caravan - ignore")
-					endif
-				endif
-			endif
-		endif
-		i += 1
-	endWhile
-
-	; second pass - remaining actors
-	i = 0
-	while i < WorkshopActors.length
-		WorkshopNPCScript actorRef = WorkshopActors[i] as WorkshopNPCScript
-		if actorRef && actorRef.IsDead() == false && (actorRef.GetWorkshopID() == workshopID || actorRef.GetWorkshopID() < 0) && actorRef.bResetDone == false
-			wsTrace("	ResetWorkshop: " + workshopRef + "   found actor " + actorRef)
-			; make sure not a caravan actor - if so, don't add to unassigned actors list
-			if CaravanActorAliases.Find(actorRef) < 0
-				AddActorToWorkshop(actorRef, workshopRef, true, WorkshopActors)
-				; DAMAGE - clear "wounded value"
-				actorRef.SetWounded(false)
-				if populationToDamage > 0
-					wsTrace("	ResetWorkshop: " + workshopRef + "   WOUNDING actor " + actorRef)
-					actorRef.SetWounded(true)
-					populationToDamage += -1
-				endif
-			else
-				wsTrace("	ResetWorkshop: " + workshopRef + "     assigned to caravan - ignore")
-			endif
-		endif
-		;UFO4P 2.0.3 Bug #23271: added sanity check:
-		if actorRef
-			; clear reset flag on all actors as we go
-			actorRef.bResetDone = false
-		endif
-		i += 1
-	endWhile
-
-	;UFO4P 1.0.5 Bug #21039: Get bool from workshop, for faster access:
-	bool bCleanupDamageHelpers_WorkObjects = workshopRef.UFO4P_CleanupDamageHelpers_WorkObjects
-
-	; clear damaged population rating - it should have all been resolved now
-	;UFO4P 2.0 Bug #21896: Call SetResourceData_Private instead of SetResourceData here (see notes on that function for explanation)
-	SetResourceData_Private(WorkshopRatings[WorkshopRatingDamagePopulation].resourceValue, workshopRef, 0)
-
-	wsTrace("	ResetWorkshop: " + workshopRef + " Total population: " + workshopRef.GetValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue))
-
-	wsTrace("------------------------------------------------------------------------------ ")
-	wsTrace("	ResetWorkshop: " + workshopRef + "  RESOURCE OBJECTS: " + (ResourceObjectsDamaged.length + ResourceObjectsUndamaged.length) + " in area", bNormalTraceAlso = true)
-	wsTrace("------------------------------------------------------------------------------ ")
-	wsTrace("	Check damaged objects:" + ResourceObjectsDamaged.length)
-	; FIRST - loop through looking for objects already flagged as damage - decrement damage totals from them first (so we don't change which objects are damaged if when you leave and return)
-	i = 0
-	while i < ResourceObjectsDamaged.length
-		WorkshopObjectScript resourceRef = ResourceObjectsDamaged[i] as WorkshopObjectScript
-		if resourceRef
-			;UFO4P: removed the following trace:
-			;wsTrace("	" + i + ": " + resourceRef)
-			if resourceRef.workshopID == -1
-				; no workshop assigned = initially placed item (not player-created)
-				; so assign this to the current workshop
-				resourceRef.workshopID = workshopID
-				; initialize any scripted creation stuff
-				resourceRef.HandleCreation(false)
-			endif
-				
-			; if damaged, apply damage
-			wsTrace("	------------------------------------------------------------------------------ ")
-			;UFO4P: Modified traces to print the base object ID (instead of a useless FFxxxxxx reference only)
-			wsTrace("	" + i + ": Resource type: " + ResourceObjectsDamaged[i].GetBaseObject(), bNormalTraceAlso = true)
-			wsTrace("	Resource ref=" + resourceRef + ", owner=" + resourceRef.GetAssignedActor() + " damaged? " + resourceRef.HasResourceDamage(), bNormalTraceAlso = true)
-			wsTrace("	------------------------------------------------------------------------------ ")
-
-			; damaged - what kind of resource(s) does this produce?
-			foodToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingFood].resourceValue, foodToDamage)
-			waterToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingWater].resourceValue, waterToDamage)
-			safetyToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingSafety].resourceValue, safetyToDamage)
-			powerToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingPower].resourceValue, powerToDamage)
-
-			; flag this object as "done" so we ignore it on next pass
-			resourceRef.bResetDone = true
-			AssignObjectToWorkshop(resourceRef, workshopRef, true)
-
-			; any reset stuff the object needs to do
-			resourceRef.HandleWorkshopReset()
-
-			;UFO4P 1.0.5 Bug #21039: if damage helpers need to be cleaned up at this workshop and resourceRef is a crop, do this now:
-			if bCleanupDamageHelpers_WorkObjects && resourceRef.GetBaseObject() as Flora
-				;resourceRef.UFO4P_CleanupDamageHelpersAtWorkObject(UFO4P_WorkshopFloraDamageHelpers)
-				;UFO4P 2.0 Bug #21894: Removed the previous line. With this fix in place, the UFO4P_CleanupDamageHelpersAtWorkObject became obsolete and was removed.
-				;To perform a cleanup, the UFO4P_ValidateDamageHelperRef function is now called instead:
-				resourceRef.UFO4P_ValidateDamageHelperRef()
-			endif
-
-		endif
-		i += 1
-	endWhile
-
-
-	; now we do another pass, looking at the rest of the objects in the list
-	wsTrace("------------------------------------------------------------------------------ ")
-	wsTrace("	Check undamaged objects: " + ResourceObjectsUndamaged.Length)
-	i = 0
-	while i < ResourceObjectsUndamaged.length
-		WorkshopObjectScript resourceRef = ResourceObjectsUndamaged[i] as WorkshopObjectScript
-		if resourceRef
-			if resourceRef.workshopID == -1
-				; no workshop assigned = initially placed item (not player-created)
-				; so assign this to the current workshop
-				resourceRef.workshopID = workshopID
-				; initialize any scripted creation stuff
-				resourceRef.HandleCreation(false)
-			endif
-				
-
-			wsTrace("	------------------------------------------------------------------------------ ")
-			;UFO4P: Modified traces to print the base object ID (instead of a useless FFxxxxxx reference only)
-			wsTrace("	" + i + ": Resource type: " + ResourceObjectsUndamaged[i].GetBaseObject(), bNormalTraceAlso = true)
-			wsTrace("	Resource ref=" + resourceRef + ", owner=" + resourceRef.GetAssignedActor() + " damaged? " + resourceRef.HasResourceDamage(), bNormalTraceAlso = true)
-			wsTrace("	------------------------------------------------------------------------------ ")
-
-			; before assigning, see if should damage
-			foodToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingFood].resourceValue, foodToDamage)
-			waterToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingWater].resourceValue, waterToDamage)
-			safetyToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingSafety].resourceValue, safetyToDamage)
-			powerToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingPower].resourceValue, powerToDamage)
-
-			AssignObjectToWorkshop(resourceRef, workshopRef, true)
-
-			; any reset stuff the object needs to do
-			resourceRef.HandleWorkshopReset()
-
-			;UFO4P 1.0.5 Bug #21039: if damage helpers need to be cleaned up at this workshop and resourceRef is a crop, do this now:
-			if bCleanupDamageHelpers_WorkObjects && resourceRef.GetBaseObject() as Flora
-				;resourceRef.UFO4P_CleanupDamageHelpersAtWorkObject(UFO4P_WorkshopFloraDamageHelpers)
-				;UFO4P 2.0 Bug #21894: Removed the previous line. With this fix in place, the UFO4P_CleanupDamageHelpersAtWorkObject became obsolete and was removed.
-				;To perform a cleanup, the UFO4P_ValidateDamageHelperRef function is now called instead:
-				resourceRef.UFO4P_ValidateDamageHelperRef()
-			endif
-
-			; clear the object's reset flag since we don't have any more passes
-			resourceRef.bResetDone = false
-		endif
-		i += 1
-	endWhile
-
-	;UFO4P 2.0 Bug #21896: Call SetResourceData_Private instead of SetResourceData below (see notes on that function for explanation)
-
-	wstrace("	Damage pass done: foodToDamage=" + foodToDamage + ", waterToDamage=" + waterToDamage + ", safetyToDamage=" + safetyToDamage + ", powerToDamage=" + powerToDamage)
-	; remaining damage is invalid - clear it
-;	if foodToDamage > 0
-		wstrace("		Removing " + foodToDamage + " extraneous food damage")
-		SetResourceData_Private(WorkshopRatings[WorkshopRatingDamageFood].resourceValue, workshopRef, 0)
-;	endif
-;	if waterToDamage > 0
-		wstrace("		Removing " + waterToDamage + " extraneous water damage")
-		SetResourceData_Private(WorkshopRatings[WorkshopRatingDamageWater].resourceValue, workshopRef, 0)
-;	endif
-;	if safetyToDamage > 0
-		wstrace("		Removing " + safetyToDamage + " extraneous safety damage")
-		SetResourceData_Private(WorkshopRatings[WorkshopRatingDamageSafety].resourceValue, workshopRef, 0)
-;	endif
-;	if powerToDamage > 0
-		wstrace("		Removing " + powerToDamage + " extraneous power damage")
-		SetResourceData_Private(WorkshopRatings[WorkshopRatingDamagePower].resourceValue, workshopRef, 0)
-;	endif
-
-	;UFO4P 2.0.2 Bug #23016: 
-	;Skip the following operations if the workshop location has unloaded in the meantime. All other operations in this function are safe because it runs on
-	;workshop resource object arrays that have been filled right at the start (i.e. when the location was still loaded). The functions called hereinafter
-	;however fill new WorkshopActor arrays when they start running, and if the workshop has unloaded, those arrays will be empty.
-	;UFO4P 2.0.4 Bug #24122:
-	;Removed this check because all of these functions now check individually whether the workshop is still loaded.
-	;if UFO4P_IsWorkshopLoaded (workshopRef)
-	; assign beds, farms, safety objects
-	TryToAssignBeds(workshopRef)
-	TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
-	TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
-	; reset unassigned population count
-	SetUnassignedPopulationRating (workshopRef)
-	;else
-	;	wstrace(" ResetWorkshop: Workshop has unloaded. Skipping bed and food/safety resource object assignment.")
-	;endif
-
-	; set "visited" flag
-	workshopRef.PlayerHasVisited = true
-
-	;UFO4P 2.0.2: removed the following trace: no need to log this twice (it's also logged in line 3898 below and won't change in the meantime)
-	;wsTrace("	ResetWorkshop: " + workshopRef + " Total population: " + workshopRef.GetValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue))
-
-	; check for new settlers
-	CurrentNewSettlerCount = 0
-	if WorkshopActors.Length > 0
-		i = 0
-		while i <  WorkshopActors.Length
-			workshopNPCScript theActor = WorkshopActors[i] as workshopNPCScript
-			if theActor && theActor.bIsWorker == false && theActor.bNewSettler == true
-				; put first into the new settler alias so he'll forcegreet
-				if CurrentNewSettlerCount == 0
-					WorkshopNewSettler.ForceRefTo(theActor)
-				endif
-				if i >= MaxNewSettlerCount
-					theActor.bNewSettler = false
-					theActor.EvaluatePackage()
-				endif
-				CurrentNewSettlerCount += 1
-			endif
-			i += 1
-		endWhile
-	endif
-
-	wsTrace("	ResetWorkshop: " + workshopRef + " Total population: " + workshopRef.GetValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue))
-
-	wsTrace("------------------------------------------------------------------------------ ")
-	wsTrace(" RESET WORKSHOP for " + workshopRef + "   - DONE", bNormalTraceAlso = true)
-	wsTrace("------------------------------------------------------------------------------ ")
-
-	;UFO4P 1.0.5 Bug #21039: If damage helpers had to be cleaned up for the crops at this workshop, this will have been done now. Thus set the respective
-	;bool on WorkshopScript to 'false':
-	if bCleanupDamageHelpers_WorkObjects
-		workshopRef.UFO4P_CleanupDamageHelpers_WorkObjects = false
-	endIf
-
-	EditLock = false
-;	Debug.StopStackProfiling()
-
 	-----------------------------------------------------------------------------------------------------------------------------------------
 
 		UFO4P 2.0.4 Bug #24312:

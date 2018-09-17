@@ -23,7 +23,7 @@ import WorkshopFramework:Library:UtilityFunctions
 ; ------------------------------
 
 WorkshopFramework:WSWF_APIQuest Function GetAPI() global
-	WorkshopFramework:WSWF_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esp") as WorkshopFramework:WSWF_APIQuest
+	WorkshopFramework:WSWF_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSWF_APIQuest
 	
 	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
 		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
@@ -128,7 +128,7 @@ EndFunction
 ; Description: Grabs the default AV to expect from the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated event so you can check that the event data matches what your object is expecting
 ; ------------------------------
 ActorValue Function GetDefaultPlaceObjectsBatchAV() global
-	return Game.GetFormFromFile(0x00004CA2, "WorkshopFramework.esp") as ActorValue
+	return Game.GetFormFromFile(0x00004CA2, "WorkshopFramework.esm") as ActorValue
 EndFunction
 
 
@@ -191,4 +191,60 @@ WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
 	endif
 	
 	return nearestWorkshop
+EndFunction
+
+
+; -----------------------------------
+; SpawnWorkshopNPC
+;
+; Description: Spawns an NPC at the targeted settlement.
+;
+; Parameters:
+; WorkshopScript akWorkshopRef - the settlement workshop to spawn at
+; 
+; Bool abBrahmin - Whether this should be a brahmin or a settler
+;
+; ActorBase aActorFormOverride - Allows you to spawn a custom NPC. Make sure that the Actor form you are sending has the WorkshopNPCScript attached and configured!
+;
+; Returns:
+; Created NPC ref
+; -----------------------------------
+
+WorkshopNPCScript Function SpawnWorkshopNPC(WorkshopScript akWorkshopRef, Bool abBrahmin = false, ActorBase aActorFormOverride = None) global
+	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		return None
+	endif
+	
+	if(aActorFormOverride != None)
+		return API.NPCManager.CreateWorkshopNPC(aActorFormOverride, akWorkshopRef)
+	elseif(abBrahmin)
+		return API.NPCManager.CreateBrahmin(akWorkshopRef)
+	else
+		return API.NPCManager.CreateSettler(akWorkshopRef)
+	endif
+EndFunction
+
+
+; -----------------------------------
+; IsPlayerInWorkshopMode
+; -----------------------------------
+
+Bool Function IsPlayerInWorkshopMode() global
+	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		return None
+	endif
+	
+	WorkshopScript workshopRef = API.WSWF_Main.LastWorkshopAlias.GetRef() as WorkshopScript
+	
+	if(workshopRef)
+		return workshopRef.UFO4P_InWorkshopMode
+	else
+		return false
+	endif
 EndFunction
