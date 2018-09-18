@@ -1,5 +1,5 @@
 ; ---------------------------------------------
-; WorkshopFramework:WSWF_API.psc - by kinggath
+; WorkshopFramework:WSFW_API.psc - by kinggath
 ; ---------------------------------------------
 ; Reusage Rights ------------------------------
 ; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below.
@@ -11,7 +11,7 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:WSWF_API Hidden Const
+Scriptname WorkshopFramework:WSFW_API Hidden Const
 
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
@@ -22,8 +22,8 @@ import WorkshopFramework:Library:UtilityFunctions
 ; Description: Used internally by these functions to get simple access to properties
 ; ------------------------------
 
-WorkshopFramework:WSWF_APIQuest Function GetAPI() global
-	WorkshopFramework:WSWF_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSWF_APIQuest
+WorkshopFramework:WSFW_APIQuest Function GetAPI() global
+	WorkshopFramework:WSFW_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSFW_APIQuest
 	
 	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
 		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
@@ -61,7 +61,7 @@ EndFunction
 ; ------------------------------
 
 Int Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
@@ -103,7 +103,7 @@ EndFunction
 ; ------------------------------
 
 Int Function CreateBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
@@ -141,7 +141,7 @@ EndFunction
 ; ------------------------------
 
 Float Function GetWorkshopValue(ObjectReference akWorkshopRef, ActorValue aValueToCheck) global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
@@ -160,7 +160,7 @@ EndFunction
 ; -----------------------------------
 
 WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
@@ -211,7 +211,7 @@ EndFunction
 ; -----------------------------------
 
 WorkshopNPCScript Function SpawnWorkshopNPC(WorkshopScript akWorkshopRef, Bool abBrahmin = false, ActorBase aActorFormOverride = None) global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
@@ -233,14 +233,14 @@ EndFunction
 ; -----------------------------------
 
 Bool Function IsPlayerInWorkshopMode() global
-	WorkshopFramework:WSWF_APIQuest API = GetAPI()
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
 		Debug.Trace("[WorkshopFramework] Failed to get API.")
 		return None
 	endif
 	
-	WorkshopScript workshopRef = API.WSWF_Main.LastWorkshopAlias.GetRef() as WorkshopScript
+	WorkshopScript workshopRef = API.WSFW_Main.LastWorkshopAlias.GetRef() as WorkshopScript
 	
 	if(workshopRef)
 		return workshopRef.UFO4P_InWorkshopMode

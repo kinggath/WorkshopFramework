@@ -92,108 +92,105 @@ EndGroup
 
 
 Group SettingsToCopyToWorkshops
-	GlobalVariable Property WSWF_Setting_minProductivity Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_productivityHappinessMult  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxHappinessNoFood  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxHappinessNoWater  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxHappinessNoShelter  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusFood  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusWater  Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusBed Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusShelter Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusSafety Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minHappinessChangePerUpdate Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessChangeMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minHappinessThreshold Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minHappinessWarningThreshold Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minHappinessClearWarningThreshold Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_happinessBonusChangePerUpdate Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredFoodBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredFoodPerPopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredWaterBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredWaterPerPopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredScavengeBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredScavengePerPopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_brahminProductionBoost Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxProductionPerBrahmin Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxBrahminFertilizerProduction Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxStoredFertilizerBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minVendorIncomePopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_maxVendorIncome Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_vendorIncomePopulationMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_vendorIncomeBaseMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_iMaxSurplusNPCs Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attractNPCDailyChance Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_iMaxBonusAttractChancePopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_iBaseMaxNPCs Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attractNPCHappinessMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attackChanceBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attackChanceResourceMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attackChanceSafetyMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_attackChancePopulationMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_minDaysSinceLastAttack Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_damageDailyRepairBase Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_damageDailyPopulationMult Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_iBaseMaxBrahmin Auto Hidden	
-	GlobalVariable Property WSWF_Setting_iBaseMaxSynths Auto Hidden	
-	GlobalVariable Property WSWF_Setting_recruitmentGuardChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_recruitmentBrahminChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_recruitmentSynthChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_actorDeathHappinessModifier Auto Hidden	
-	GlobalVariable Property WSWF_Setting_maxAttackStrength Auto Hidden	
-	GlobalVariable Property WSWF_Setting_maxDefenseStrength Auto Hidden	
-	GlobalVariable Property WSWF_Setting_AdjustMaxNPCsByCharisma Auto Hidden
+	GlobalVariable Property WSFW_Setting_minProductivity Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_productivityHappinessMult  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxHappinessNoFood  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxHappinessNoWater  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxHappinessNoShelter  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusFood  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusWater  Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusBed Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusShelter Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusSafety Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minHappinessChangePerUpdate Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessChangeMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minHappinessThreshold Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minHappinessWarningThreshold Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minHappinessClearWarningThreshold Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_happinessBonusChangePerUpdate Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredFoodBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredFoodPerPopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredWaterBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredWaterPerPopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredScavengeBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredScavengePerPopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_brahminProductionBoost Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxProductionPerBrahmin Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxBrahminFertilizerProduction Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxStoredFertilizerBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minVendorIncomePopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_maxVendorIncome Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_vendorIncomePopulationMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_vendorIncomeBaseMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_iMaxSurplusNPCs Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attractNPCDailyChance Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_iMaxBonusAttractChancePopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_iBaseMaxNPCs Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attractNPCHappinessMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attackChanceBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attackChanceResourceMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attackChanceSafetyMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_attackChancePopulationMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_minDaysSinceLastAttack Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_damageDailyRepairBase Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_damageDailyPopulationMult Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_iBaseMaxBrahmin Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_iBaseMaxSynths Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_recruitmentGuardChance Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_recruitmentBrahminChance Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_recruitmentSynthChance Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_actorDeathHappinessModifier Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_maxAttackStrength Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Mandatory	
+	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Mandatory
 	
-	ActorValue Property WSWF_AV_minProductivity Auto Const Mandatory
-	ActorValue Property WSWF_AV_productivityHappinessMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxHappinessNoFood  Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxHappinessNoWater  Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxHappinessNoShelter  Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusFood  Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusWater  Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusBed Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusShelter Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusSafety Auto Const Mandatory
-	ActorValue Property WSWF_AV_minHappinessChangePerUpdate Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessChangeMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_minHappinessThreshold Auto Const Mandatory
-	ActorValue Property WSWF_AV_minHappinessWarningThreshold Auto Const Mandatory
-	ActorValue Property WSWF_AV_minHappinessClearWarningThreshold Auto Const Mandatory
-	ActorValue Property WSWF_AV_happinessBonusChangePerUpdate Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredFoodBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredFoodPerPopulation Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredWaterBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredWaterPerPopulation Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredScavengeBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredScavengePerPopulation Auto Const Mandatory
-	ActorValue Property WSWF_AV_brahminProductionBoost Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxProductionPerBrahmin Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxBrahminFertilizerProduction Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxStoredFertilizerBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_minVendorIncomePopulation Auto Const Mandatory
-	ActorValue Property WSWF_AV_maxVendorIncome Auto Const Mandatory
-	ActorValue Property WSWF_AV_vendorIncomePopulationMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_vendorIncomeBaseMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_iMaxSurplusNPCs Auto Const Mandatory
-	ActorValue Property WSWF_AV_attractNPCDailyChance Auto Const Mandatory
-	ActorValue Property WSWF_AV_iMaxBonusAttractChancePopulation Auto Const Mandatory
-	ActorValue Property WSWF_AV_iBaseMaxNPCs Auto Const Mandatory
-	ActorValue Property WSWF_AV_attractNPCHappinessMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_attackChanceBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_attackChanceResourceMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_attackChanceSafetyMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_attackChancePopulationMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_minDaysSinceLastAttack Auto Const Mandatory
-	ActorValue Property WSWF_AV_damageDailyRepairBase Auto Const Mandatory
-	ActorValue Property WSWF_AV_damageDailyPopulationMult Auto Const Mandatory
-	ActorValue Property WSWF_AV_MaxBrahmin Auto Const Mandatory
-	ActorValue Property WSWF_AV_MaxSynths Auto Const Mandatory
-	ActorValue Property WSWF_AV_recruitmentGuardChance Auto Const Mandatory	
-	ActorValue Property WSWF_AV_recruitmentBrahminChance Auto Const Mandatory	
-	ActorValue Property WSWF_AV_recruitmentSynthChance Auto Const Mandatory	
-	ActorValue Property WSWF_AV_actorDeathHappinessModifier Auto Const Mandatory	
-	ActorValue Property WSWF_AV_maxAttackStrength Auto Const Mandatory	
-	ActorValue Property WSWF_AV_maxDefenseStrength Auto Const Mandatory	
+	ActorValue Property WSFW_AV_minProductivity Auto Const Mandatory
+	ActorValue Property WSFW_AV_productivityHappinessMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxHappinessNoFood  Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxHappinessNoWater  Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxHappinessNoShelter  Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusFood  Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusWater  Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusBed Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusShelter Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusSafety Auto Const Mandatory
+	ActorValue Property WSFW_AV_minHappinessChangePerUpdate Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessChangeMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_happinessBonusChangePerUpdate Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredFoodBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredFoodPerPopulation Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredWaterBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredWaterPerPopulation Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredScavengeBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredScavengePerPopulation Auto Const Mandatory
+	ActorValue Property WSFW_AV_brahminProductionBoost Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxProductionPerBrahmin Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxBrahminFertilizerProduction Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxStoredFertilizerBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_minVendorIncomePopulation Auto Const Mandatory
+	ActorValue Property WSFW_AV_maxVendorIncome Auto Const Mandatory
+	ActorValue Property WSFW_AV_vendorIncomePopulationMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_vendorIncomeBaseMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_iMaxSurplusNPCs Auto Const Mandatory
+	ActorValue Property WSFW_AV_attractNPCDailyChance Auto Const Mandatory
+	ActorValue Property WSFW_AV_iMaxBonusAttractChancePopulation Auto Const Mandatory
+	ActorValue Property WSFW_AV_iBaseMaxNPCs Auto Const Mandatory
+	ActorValue Property WSFW_AV_attractNPCHappinessMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_attackChanceBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_attackChanceResourceMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_attackChanceSafetyMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_attackChancePopulationMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_minDaysSinceLastAttack Auto Const Mandatory
+	ActorValue Property WSFW_AV_damageDailyRepairBase Auto Const Mandatory
+	ActorValue Property WSFW_AV_damageDailyPopulationMult Auto Const Mandatory
+	ActorValue Property WSFW_AV_MaxBrahmin Auto Const Mandatory
+	ActorValue Property WSFW_AV_MaxSynths Auto Const Mandatory
+	ActorValue Property WSFW_AV_recruitmentGuardChance Auto Const Mandatory	
+	ActorValue Property WSFW_AV_recruitmentBrahminChance Auto Const Mandatory	
+	ActorValue Property WSFW_AV_recruitmentSynthChance Auto Const Mandatory	
+	ActorValue Property WSFW_AV_actorDeathHappinessModifier Auto Const Mandatory	
+	ActorValue Property WSFW_AV_maxAttackStrength Auto Const Mandatory	
+	ActorValue Property WSFW_AV_maxDefenseStrength Auto Const Mandatory	
 	
 	ActorValue Property BonusHappiness Auto Const Mandatory
 	ActorValue Property HappinessTarget Auto Const Mandatory
@@ -471,111 +468,108 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 		return
 	endif
 	
-	akWorkshopRef.WSWF_Setting_minProductivity = WSWF_Setting_minProductivity
-	akWorkshopRef.WSWF_Setting_productivityHappinessMult = WSWF_Setting_productivityHappinessMult
-	akWorkshopRef.WSWF_Setting_maxHappinessNoFood = WSWF_Setting_maxHappinessNoFood
-	akWorkshopRef.WSWF_Setting_maxHappinessNoWater = WSWF_Setting_maxHappinessNoWater
-	akWorkshopRef.WSWF_Setting_maxHappinessNoShelter = WSWF_Setting_maxHappinessNoShelter
-	akWorkshopRef.WSWF_Setting_happinessBonusFood = WSWF_Setting_happinessBonusFood
-	akWorkshopRef.WSWF_Setting_happinessBonusWater = WSWF_Setting_happinessBonusWater
-	akWorkshopRef.WSWF_Setting_happinessBonusBed = WSWF_Setting_happinessBonusBed
-	akWorkshopRef.WSWF_Setting_happinessBonusShelter = WSWF_Setting_happinessBonusShelter
-	akWorkshopRef.WSWF_Setting_happinessBonusSafety = WSWF_Setting_happinessBonusSafety
-	akWorkshopRef.WSWF_Setting_minHappinessChangePerUpdate = WSWF_Setting_minHappinessChangePerUpdate
-	akWorkshopRef.WSWF_Setting_happinessChangeMult = WSWF_Setting_happinessChangeMult
-	akWorkshopRef.WSWF_Setting_minHappinessThreshold = WSWF_Setting_minHappinessThreshold
-	akWorkshopRef.WSWF_Setting_minHappinessWarningThreshold = WSWF_Setting_minHappinessWarningThreshold
-	akWorkshopRef.WSWF_Setting_minHappinessClearWarningThreshold = WSWF_Setting_minHappinessClearWarningThreshold
-	akWorkshopRef.WSWF_Setting_happinessBonusChangePerUpdate = WSWF_Setting_happinessBonusChangePerUpdate
-	akWorkshopRef.WSWF_Setting_maxStoredFoodBase = WSWF_Setting_maxStoredFoodBase
-	akWorkshopRef.WSWF_Setting_maxStoredFoodPerPopulation = WSWF_Setting_maxStoredFoodPerPopulation
-	akWorkshopRef.WSWF_Setting_maxStoredWaterBase = WSWF_Setting_maxStoredWaterBase
-	akWorkshopRef.WSWF_Setting_maxStoredWaterPerPopulation = WSWF_Setting_maxStoredWaterPerPopulation
-	akWorkshopRef.WSWF_Setting_maxStoredScavengeBase = WSWF_Setting_maxStoredScavengeBase
-	akWorkshopRef.WSWF_Setting_maxStoredScavengePerPopulation = WSWF_Setting_maxStoredScavengePerPopulation
-	akWorkshopRef.WSWF_Setting_brahminProductionBoost = WSWF_Setting_brahminProductionBoost
-	akWorkshopRef.WSWF_Setting_maxProductionPerBrahmin = WSWF_Setting_maxProductionPerBrahmin
-	akWorkshopRef.WSWF_Setting_maxBrahminFertilizerProduction = WSWF_Setting_maxBrahminFertilizerProduction
-	akWorkshopRef.WSWF_Setting_maxStoredFertilizerBase = WSWF_Setting_maxStoredFertilizerBase
-	akWorkshopRef.WSWF_Setting_minVendorIncomePopulation = WSWF_Setting_minVendorIncomePopulation
-	akWorkshopRef.WSWF_Setting_maxVendorIncome = WSWF_Setting_maxVendorIncome
-	akWorkshopRef.WSWF_Setting_vendorIncomePopulationMult = WSWF_Setting_vendorIncomePopulationMult
-	akWorkshopRef.WSWF_Setting_vendorIncomeBaseMult = WSWF_Setting_vendorIncomeBaseMult
-	akWorkshopRef.WSWF_Setting_iMaxSurplusNPCs = WSWF_Setting_iMaxSurplusNPCs
-	akWorkshopRef.WSWF_Setting_attractNPCDailyChance = WSWF_Setting_attractNPCDailyChance
-	akWorkshopRef.WSWF_Setting_iMaxBonusAttractChancePopulation = WSWF_Setting_iMaxBonusAttractChancePopulation
-	akWorkshopRef.WSWF_Setting_iBaseMaxNPCs = WSWF_Setting_iBaseMaxNPCs
-	akWorkshopRef.WSWF_Setting_attractNPCHappinessMult = WSWF_Setting_attractNPCHappinessMult
-	akWorkshopRef.WSWF_Setting_attackChanceBase = WSWF_Setting_attackChanceBase
-	akWorkshopRef.WSWF_Setting_attackChanceResourceMult = WSWF_Setting_attackChanceResourceMult
-	akWorkshopRef.WSWF_Setting_attackChanceSafetyMult = WSWF_Setting_attackChanceSafetyMult
-	akWorkshopRef.WSWF_Setting_attackChancePopulationMult = WSWF_Setting_attackChancePopulationMult
-	akWorkshopRef.WSWF_Setting_minDaysSinceLastAttack = WSWF_Setting_minDaysSinceLastAttack
-	akWorkshopRef.WSWF_Setting_damageDailyRepairBase = WSWF_Setting_damageDailyRepairBase
-	akWorkshopRef.WSWF_Setting_damageDailyPopulationMult = WSWF_Setting_damageDailyPopulationMult
-	akWorkshopRef.WSWF_Setting_iBaseMaxBrahmin = WSWF_Setting_iBaseMaxBrahmin
-	akWorkshopRef.WSWF_Setting_iBaseMaxSynths = WSWF_Setting_iBaseMaxSynths
-	akWorkshopRef.WSWF_Setting_recruitmentGuardChance = WSWF_Setting_recruitmentGuardChance
-	akWorkshopRef.WSWF_Setting_recruitmentBrahminChance = WSWF_Setting_recruitmentBrahminChance
-	akWorkshopRef.WSWF_Setting_recruitmentSynthChance = WSWF_Setting_recruitmentSynthChance
-	akWorkshopRef.WSWF_Setting_actorDeathHappinessModifier = WSWF_Setting_actorDeathHappinessModifier
-	akWorkshopRef.WSWF_Setting_maxAttackStrength = WSWF_Setting_maxAttackStrength
-	akWorkshopRef.WSWF_Setting_maxDefenseStrength = WSWF_Setting_maxDefenseStrength
-	akWorkshopRef.WSWF_Setting_AdjustMaxNPCsByCharisma = WSWF_Setting_AdjustMaxNPCsByCharisma
-	akWorkshopRef.WSWF_AV_minProductivity = WSWF_AV_minProductivity
-	akWorkshopRef.WSWF_AV_productivityHappinessMult = WSWF_AV_productivityHappinessMult
-	akWorkshopRef.WSWF_AV_maxHappinessNoFood = WSWF_AV_maxHappinessNoFood
-	akWorkshopRef.WSWF_AV_maxHappinessNoWater = WSWF_AV_maxHappinessNoWater
-	akWorkshopRef.WSWF_AV_maxHappinessNoShelter = WSWF_AV_maxHappinessNoShelter
-	akWorkshopRef.WSWF_AV_happinessBonusFood = WSWF_AV_happinessBonusFood
-	akWorkshopRef.WSWF_AV_happinessBonusWater = WSWF_AV_happinessBonusWater
-	akWorkshopRef.WSWF_AV_happinessBonusBed = WSWF_AV_happinessBonusBed
-	akWorkshopRef.WSWF_AV_happinessBonusShelter = WSWF_AV_happinessBonusShelter
-	akWorkshopRef.WSWF_AV_happinessBonusSafety = WSWF_AV_happinessBonusSafety
-	akWorkshopRef.WSWF_AV_minHappinessChangePerUpdate = WSWF_AV_minHappinessChangePerUpdate
-	akWorkshopRef.WSWF_AV_happinessChangeMult = WSWF_AV_happinessChangeMult
-	akWorkshopRef.WSWF_AV_minHappinessThreshold = WSWF_AV_minHappinessThreshold
-	akWorkshopRef.WSWF_AV_minHappinessWarningThreshold = WSWF_AV_minHappinessWarningThreshold
-	akWorkshopRef.WSWF_AV_minHappinessClearWarningThreshold = WSWF_AV_minHappinessClearWarningThreshold
-	akWorkshopRef.WSWF_AV_happinessBonusChangePerUpdate = WSWF_AV_happinessBonusChangePerUpdate
-	akWorkshopRef.WSWF_AV_maxStoredFoodBase = WSWF_AV_maxStoredFoodBase
-	akWorkshopRef.WSWF_AV_maxStoredFoodPerPopulation = WSWF_AV_maxStoredFoodPerPopulation
-	akWorkshopRef.WSWF_AV_maxStoredWaterBase = WSWF_AV_maxStoredWaterBase
-	akWorkshopRef.WSWF_AV_maxStoredWaterPerPopulation = WSWF_AV_maxStoredWaterPerPopulation
-	akWorkshopRef.WSWF_AV_maxStoredScavengeBase = WSWF_AV_maxStoredScavengeBase
-	akWorkshopRef.WSWF_AV_maxStoredScavengePerPopulation = WSWF_AV_maxStoredScavengePerPopulation
-	akWorkshopRef.WSWF_AV_brahminProductionBoost = WSWF_AV_brahminProductionBoost
-	akWorkshopRef.WSWF_AV_maxProductionPerBrahmin = WSWF_AV_maxProductionPerBrahmin
-	akWorkshopRef.WSWF_AV_maxBrahminFertilizerProduction = WSWF_AV_maxBrahminFertilizerProduction
-	akWorkshopRef.WSWF_AV_maxStoredFertilizerBase = WSWF_AV_maxStoredFertilizerBase
-	akWorkshopRef.WSWF_AV_minVendorIncomePopulation = WSWF_AV_minVendorIncomePopulation
-	akWorkshopRef.WSWF_AV_maxVendorIncome = WSWF_AV_maxVendorIncome
-	akWorkshopRef.WSWF_AV_vendorIncomePopulationMult = WSWF_AV_vendorIncomePopulationMult
-	akWorkshopRef.WSWF_AV_vendorIncomeBaseMult = WSWF_AV_vendorIncomeBaseMult
-	akWorkshopRef.WSWF_AV_iMaxSurplusNPCs = WSWF_AV_iMaxSurplusNPCs
-	akWorkshopRef.WSWF_AV_attractNPCDailyChance = WSWF_AV_attractNPCDailyChance
-	akWorkshopRef.WSWF_AV_iMaxBonusAttractChancePopulation = WSWF_AV_iMaxBonusAttractChancePopulation
-	akWorkshopRef.WSWF_AV_iBaseMaxNPCs = WSWF_AV_iBaseMaxNPCs
-	akWorkshopRef.WSWF_AV_attractNPCHappinessMult = WSWF_AV_attractNPCHappinessMult
-	akWorkshopRef.WSWF_AV_attackChanceBase = WSWF_AV_attackChanceBase
-	akWorkshopRef.WSWF_AV_attackChanceResourceMult = WSWF_AV_attackChanceResourceMult
-	akWorkshopRef.WSWF_AV_attackChanceSafetyMult = WSWF_AV_attackChanceSafetyMult
-	akWorkshopRef.WSWF_AV_attackChancePopulationMult = WSWF_AV_attackChancePopulationMult
-	akWorkshopRef.WSWF_AV_minDaysSinceLastAttack = WSWF_AV_minDaysSinceLastAttack
-	akWorkshopRef.WSWF_AV_damageDailyRepairBase = WSWF_AV_damageDailyRepairBase
-	akWorkshopRef.WSWF_AV_damageDailyPopulationMult = WSWF_AV_damageDailyPopulationMult
-	akWorkshopRef.WSWF_AV_ExtraNeeds_Food = ExtraNeeds_Food
-	akWorkshopRef.WSWF_AV_ExtraNeeds_Safety = ExtraNeeds_Safety
-	akWorkshopRef.WSWF_AV_ExtraNeeds_Water = ExtraNeeds_Water
+	akWorkshopRef.WSFW_Setting_minProductivity = WSFW_Setting_minProductivity
+	akWorkshopRef.WSFW_Setting_productivityHappinessMult = WSFW_Setting_productivityHappinessMult
+	akWorkshopRef.WSFW_Setting_maxHappinessNoFood = WSFW_Setting_maxHappinessNoFood
+	akWorkshopRef.WSFW_Setting_maxHappinessNoWater = WSFW_Setting_maxHappinessNoWater
+	akWorkshopRef.WSFW_Setting_maxHappinessNoShelter = WSFW_Setting_maxHappinessNoShelter
+	akWorkshopRef.WSFW_Setting_happinessBonusFood = WSFW_Setting_happinessBonusFood
+	akWorkshopRef.WSFW_Setting_happinessBonusWater = WSFW_Setting_happinessBonusWater
+	akWorkshopRef.WSFW_Setting_happinessBonusBed = WSFW_Setting_happinessBonusBed
+	akWorkshopRef.WSFW_Setting_happinessBonusShelter = WSFW_Setting_happinessBonusShelter
+	akWorkshopRef.WSFW_Setting_happinessBonusSafety = WSFW_Setting_happinessBonusSafety
+	akWorkshopRef.WSFW_Setting_minHappinessChangePerUpdate = WSFW_Setting_minHappinessChangePerUpdate
+	akWorkshopRef.WSFW_Setting_happinessChangeMult = WSFW_Setting_happinessChangeMult
+	akWorkshopRef.WSFW_Setting_minHappinessThreshold = WSFW_Setting_minHappinessThreshold
+	akWorkshopRef.WSFW_Setting_minHappinessWarningThreshold = WSFW_Setting_minHappinessWarningThreshold
+	akWorkshopRef.WSFW_Setting_minHappinessClearWarningThreshold = WSFW_Setting_minHappinessClearWarningThreshold
+	akWorkshopRef.WSFW_Setting_happinessBonusChangePerUpdate = WSFW_Setting_happinessBonusChangePerUpdate
+	akWorkshopRef.WSFW_Setting_maxStoredFoodBase = WSFW_Setting_maxStoredFoodBase
+	akWorkshopRef.WSFW_Setting_maxStoredFoodPerPopulation = WSFW_Setting_maxStoredFoodPerPopulation
+	akWorkshopRef.WSFW_Setting_maxStoredWaterBase = WSFW_Setting_maxStoredWaterBase
+	akWorkshopRef.WSFW_Setting_maxStoredWaterPerPopulation = WSFW_Setting_maxStoredWaterPerPopulation
+	akWorkshopRef.WSFW_Setting_maxStoredScavengeBase = WSFW_Setting_maxStoredScavengeBase
+	akWorkshopRef.WSFW_Setting_maxStoredScavengePerPopulation = WSFW_Setting_maxStoredScavengePerPopulation
+	akWorkshopRef.WSFW_Setting_brahminProductionBoost = WSFW_Setting_brahminProductionBoost
+	akWorkshopRef.WSFW_Setting_maxProductionPerBrahmin = WSFW_Setting_maxProductionPerBrahmin
+	akWorkshopRef.WSFW_Setting_maxBrahminFertilizerProduction = WSFW_Setting_maxBrahminFertilizerProduction
+	akWorkshopRef.WSFW_Setting_maxStoredFertilizerBase = WSFW_Setting_maxStoredFertilizerBase
+	akWorkshopRef.WSFW_Setting_minVendorIncomePopulation = WSFW_Setting_minVendorIncomePopulation
+	akWorkshopRef.WSFW_Setting_maxVendorIncome = WSFW_Setting_maxVendorIncome
+	akWorkshopRef.WSFW_Setting_vendorIncomePopulationMult = WSFW_Setting_vendorIncomePopulationMult
+	akWorkshopRef.WSFW_Setting_vendorIncomeBaseMult = WSFW_Setting_vendorIncomeBaseMult
+	akWorkshopRef.WSFW_Setting_iMaxSurplusNPCs = WSFW_Setting_iMaxSurplusNPCs
+	akWorkshopRef.WSFW_Setting_attractNPCDailyChance = WSFW_Setting_attractNPCDailyChance
+	akWorkshopRef.WSFW_Setting_iMaxBonusAttractChancePopulation = WSFW_Setting_iMaxBonusAttractChancePopulation
+	akWorkshopRef.WSFW_Setting_iBaseMaxNPCs = WSFW_Setting_iBaseMaxNPCs
+	akWorkshopRef.WSFW_Setting_attractNPCHappinessMult = WSFW_Setting_attractNPCHappinessMult
+	akWorkshopRef.WSFW_Setting_attackChanceBase = WSFW_Setting_attackChanceBase
+	akWorkshopRef.WSFW_Setting_attackChanceResourceMult = WSFW_Setting_attackChanceResourceMult
+	akWorkshopRef.WSFW_Setting_attackChanceSafetyMult = WSFW_Setting_attackChanceSafetyMult
+	akWorkshopRef.WSFW_Setting_attackChancePopulationMult = WSFW_Setting_attackChancePopulationMult
+	akWorkshopRef.WSFW_Setting_minDaysSinceLastAttack = WSFW_Setting_minDaysSinceLastAttack
+	akWorkshopRef.WSFW_Setting_damageDailyRepairBase = WSFW_Setting_damageDailyRepairBase
+	akWorkshopRef.WSFW_Setting_damageDailyPopulationMult = WSFW_Setting_damageDailyPopulationMult
+	akWorkshopRef.WSFW_Setting_iBaseMaxBrahmin = WSFW_Setting_iBaseMaxBrahmin
+	akWorkshopRef.WSFW_Setting_iBaseMaxSynths = WSFW_Setting_iBaseMaxSynths
+	akWorkshopRef.WSFW_Setting_recruitmentGuardChance = WSFW_Setting_recruitmentGuardChance
+	akWorkshopRef.WSFW_Setting_recruitmentBrahminChance = WSFW_Setting_recruitmentBrahminChance
+	akWorkshopRef.WSFW_Setting_recruitmentSynthChance = WSFW_Setting_recruitmentSynthChance
+	akWorkshopRef.WSFW_Setting_actorDeathHappinessModifier = WSFW_Setting_actorDeathHappinessModifier
+	akWorkshopRef.WSFW_Setting_maxAttackStrength = WSFW_Setting_maxAttackStrength
+	akWorkshopRef.WSFW_Setting_maxDefenseStrength = WSFW_Setting_maxDefenseStrength
+	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_AdjustMaxNPCsByCharisma
+	akWorkshopRef.WSFW_AV_minProductivity = WSFW_AV_minProductivity
+	akWorkshopRef.WSFW_AV_productivityHappinessMult = WSFW_AV_productivityHappinessMult
+	akWorkshopRef.WSFW_AV_maxHappinessNoFood = WSFW_AV_maxHappinessNoFood
+	akWorkshopRef.WSFW_AV_maxHappinessNoWater = WSFW_AV_maxHappinessNoWater
+	akWorkshopRef.WSFW_AV_maxHappinessNoShelter = WSFW_AV_maxHappinessNoShelter
+	akWorkshopRef.WSFW_AV_happinessBonusFood = WSFW_AV_happinessBonusFood
+	akWorkshopRef.WSFW_AV_happinessBonusWater = WSFW_AV_happinessBonusWater
+	akWorkshopRef.WSFW_AV_happinessBonusBed = WSFW_AV_happinessBonusBed
+	akWorkshopRef.WSFW_AV_happinessBonusShelter = WSFW_AV_happinessBonusShelter
+	akWorkshopRef.WSFW_AV_happinessBonusSafety = WSFW_AV_happinessBonusSafety
+	akWorkshopRef.WSFW_AV_minHappinessChangePerUpdate = WSFW_AV_minHappinessChangePerUpdate
+	akWorkshopRef.WSFW_AV_happinessChangeMult = WSFW_AV_happinessChangeMult
+	akWorkshopRef.WSFW_AV_happinessBonusChangePerUpdate = WSFW_AV_happinessBonusChangePerUpdate
+	akWorkshopRef.WSFW_AV_maxStoredFoodBase = WSFW_AV_maxStoredFoodBase
+	akWorkshopRef.WSFW_AV_maxStoredFoodPerPopulation = WSFW_AV_maxStoredFoodPerPopulation
+	akWorkshopRef.WSFW_AV_maxStoredWaterBase = WSFW_AV_maxStoredWaterBase
+	akWorkshopRef.WSFW_AV_maxStoredWaterPerPopulation = WSFW_AV_maxStoredWaterPerPopulation
+	akWorkshopRef.WSFW_AV_maxStoredScavengeBase = WSFW_AV_maxStoredScavengeBase
+	akWorkshopRef.WSFW_AV_maxStoredScavengePerPopulation = WSFW_AV_maxStoredScavengePerPopulation
+	akWorkshopRef.WSFW_AV_brahminProductionBoost = WSFW_AV_brahminProductionBoost
+	akWorkshopRef.WSFW_AV_maxProductionPerBrahmin = WSFW_AV_maxProductionPerBrahmin
+	akWorkshopRef.WSFW_AV_maxBrahminFertilizerProduction = WSFW_AV_maxBrahminFertilizerProduction
+	akWorkshopRef.WSFW_AV_maxStoredFertilizerBase = WSFW_AV_maxStoredFertilizerBase
+	akWorkshopRef.WSFW_AV_minVendorIncomePopulation = WSFW_AV_minVendorIncomePopulation
+	akWorkshopRef.WSFW_AV_maxVendorIncome = WSFW_AV_maxVendorIncome
+	akWorkshopRef.WSFW_AV_vendorIncomePopulationMult = WSFW_AV_vendorIncomePopulationMult
+	akWorkshopRef.WSFW_AV_vendorIncomeBaseMult = WSFW_AV_vendorIncomeBaseMult
+	akWorkshopRef.WSFW_AV_iMaxSurplusNPCs = WSFW_AV_iMaxSurplusNPCs
+	akWorkshopRef.WSFW_AV_attractNPCDailyChance = WSFW_AV_attractNPCDailyChance
+	akWorkshopRef.WSFW_AV_iMaxBonusAttractChancePopulation = WSFW_AV_iMaxBonusAttractChancePopulation
+	akWorkshopRef.WSFW_AV_iBaseMaxNPCs = WSFW_AV_iBaseMaxNPCs
+	akWorkshopRef.WSFW_AV_attractNPCHappinessMult = WSFW_AV_attractNPCHappinessMult
+	akWorkshopRef.WSFW_AV_attackChanceBase = WSFW_AV_attackChanceBase
+	akWorkshopRef.WSFW_AV_attackChanceResourceMult = WSFW_AV_attackChanceResourceMult
+	akWorkshopRef.WSFW_AV_attackChanceSafetyMult = WSFW_AV_attackChanceSafetyMult
+	akWorkshopRef.WSFW_AV_attackChancePopulationMult = WSFW_AV_attackChancePopulationMult
+	akWorkshopRef.WSFW_AV_minDaysSinceLastAttack = WSFW_AV_minDaysSinceLastAttack
+	akWorkshopRef.WSFW_AV_damageDailyRepairBase = WSFW_AV_damageDailyRepairBase
+	akWorkshopRef.WSFW_AV_damageDailyPopulationMult = WSFW_AV_damageDailyPopulationMult
+	akWorkshopRef.WSFW_AV_ExtraNeeds_Food = ExtraNeeds_Food
+	akWorkshopRef.WSFW_AV_ExtraNeeds_Safety = ExtraNeeds_Safety
+	akWorkshopRef.WSFW_AV_ExtraNeeds_Water = ExtraNeeds_Water
 	
-	akWorkshopRef.WSWF_AV_MaxBrahmin = WSWF_AV_MaxBrahmin
-	akWorkshopRef.WSWF_AV_MaxSynths = WSWF_AV_MaxSynths
-	akWorkshopRef.WSWF_AV_recruitmentGuardChance = WSWF_AV_recruitmentGuardChance
-	akWorkshopRef.WSWF_AV_recruitmentBrahminChance = WSWF_AV_recruitmentBrahminChance
-	akWorkshopRef.WSWF_AV_recruitmentSynthChance = WSWF_AV_recruitmentSynthChance
-	akWorkshopRef.WSWF_AV_actorDeathHappinessModifier = WSWF_AV_actorDeathHappinessModifier
-	akWorkshopRef.WSWF_AV_maxAttackStrength = WSWF_AV_maxAttackStrength
-	akWorkshopRef.WSWF_AV_maxDefenseStrength = WSWF_AV_maxDefenseStrength
+	akWorkshopRef.WSFW_AV_MaxBrahmin = WSFW_AV_MaxBrahmin
+	akWorkshopRef.WSFW_AV_MaxSynths = WSFW_AV_MaxSynths
+	akWorkshopRef.WSFW_AV_recruitmentGuardChance = WSFW_AV_recruitmentGuardChance
+	akWorkshopRef.WSFW_AV_recruitmentBrahminChance = WSFW_AV_recruitmentBrahminChance
+	akWorkshopRef.WSFW_AV_recruitmentSynthChance = WSFW_AV_recruitmentSynthChance
+	akWorkshopRef.WSFW_AV_actorDeathHappinessModifier = WSFW_AV_actorDeathHappinessModifier
+	akWorkshopRef.WSFW_AV_maxAttackStrength = WSFW_AV_maxAttackStrength
+	akWorkshopRef.WSFW_AV_maxDefenseStrength = WSFW_AV_maxDefenseStrength
 	
 	
 	akWorkshopRef.Happiness = Happiness
@@ -616,6 +610,10 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	; Add workshop and location to our copy of the arrays
 	Workshops.Add(akWorkshopRef)
 	WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
+	
+	akWorkshopRef.bPropertiesConfigured = true
+	
+	ModTrace("[WSFW] Resource Manager: Finished configuring workshop vars. " + akWorkshopRef)
 EndFunction
 
 Function CheckForWorkshopChange(Bool abTimedDoubleCheck = false)
@@ -882,7 +880,7 @@ Function StartConsumptionTimer()
 	StartTimerGameTime(fConsumptionLoopTime, ConsumptionLoopTimerID)
 EndFunction
 
-; TODO WSWF - Add support for toggling resource consumption/production to be enabled/disabled when the player doesn't own the settlement, currently it happens no matter what - which is probably more interesting, but may as well allow control
+; TODO WSFW - Add support for toggling resource consumption/production to be enabled/disabled when the player doesn't own the settlement, currently it happens no matter what - which is probably more interesting, but may as well allow control
 Function ConsumeAllWorkshopResources()
 	if(bConsumptionUnderwayBlock)
 		return
@@ -903,7 +901,7 @@ Function ConsumeAllWorkshopResources()
 		i += 1
 	endWhile
 	
-	Debug.Trace("WSWF: Resource consumption for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	Debug.Trace("WSFW: Resource consumption for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
 	
 	bConsumptionUnderwayBlock = false
 EndFunction

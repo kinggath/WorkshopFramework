@@ -37,8 +37,8 @@ Group Controllers
 	Int Property iWorkshopParentInitializedStage = 20 Auto Const
 	WorkshopFramework:WorkshopResourceManager Property ResourceManager Auto Const Mandatory
 	GlobalVariable Property WorkshopCurrentWorkshopID Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_RobotsCountTowardsMaxPopulation Auto Const Mandatory
-	GlobalVariable Property WSWF_Setting_RecruitSettlersOnFirstBeaconActivation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_RobotsCountTowardsMaxPopulation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_RecruitSettlersOnFirstBeaconActivation Auto Const Mandatory
 EndGroup
 
 
@@ -188,7 +188,7 @@ Function HandleQuestInit()
 	RegisterForCustomEvent(WorkshopParent, "WorkshopActorUnassigned")
 	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanAssign")
 	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanUnassign")
-	; Custom WSWF events from WorkshopParent
+	; Custom WSFW events from WorkshopParent
 	RegisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToBed")
 	RegisterForCustomEvent(WorkshopParent, "WorkshopRemoveActor")
 	RegisterForCustomEvent(WorkshopParent, "AssignmentRulesOverriden")
@@ -272,7 +272,7 @@ Function RecruitAllWorkshopNPCs()
 		i += 1
 	endWhile
 	
-	Debug.Trace("WSWF: NPC recruitment for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	Debug.Trace("WSFW: NPC recruitment for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
 	bRecruitmentUnderwayBlock = false
 EndFunction
 
@@ -307,7 +307,7 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 	
 	int iCheckPopulation = iTotalPopulation
 	
-	if(WSWF_Setting_RobotsCountTowardsMaxPopulation.GetValue() == 0)
+	if(WSFW_Setting_RobotsCountTowardsMaxPopulation.GetValue() == 0)
 		iCheckPopulation = iLivingPopulation
 	endif
 	
@@ -341,7 +341,7 @@ EndFunction
 
 
 Function CreateInitialSettlers(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
-	if( ! akWorkshopRef || WSWF_Setting_RecruitSettlersOnFirstBeaconActivation.GetValue() == 0)
+	if( ! akWorkshopRef || WSFW_Setting_RecruitSettlersOnFirstBeaconActivation.GetValue() == 0)
 		return
 	endif
 	
