@@ -108,11 +108,11 @@ ObjectReference myDamageHelperRef
 bool Property bRadioOn = true auto hidden		; for now only used on temp radio object
 
 ;
-; WSWF New Editor Properties
+; WSFW New Editor Properties
 ;
 
 
-Group WSWFSettings
+Group WSFWSettings
 	LeveledItem Property ProductionItem Auto Const 
 	{ IMPORTANT! Be sure to set ProductionManager property as well if using this. LeveledItem to produce in the workshop each day }
 
@@ -122,23 +122,23 @@ Group WSWFSettings
 	Keyword Property WorkshopContainerType Auto Const
 	{ [Optional] If set, this will be linked to the workshop as a special sub-container for redirecting certain resources. See documentation for valid keywords. }
 
-	; WSWF Change - Making this a property that can be defaulted in the CK and also changed dynamically at runtime
+	; WSFW Change - Making this a property that can be defaulted in the CK and also changed dynamically at runtime
 	Float Property fDefaultFloraResetHarvestDays = 1.0 Auto Const
 	{ Number of days required before the player can harvest this again - only applies to Flora type }
 EndGroup
 
-Float WSWF_fFloraResetHarvestDays = 0.0
+Float WSFW_fFloraResetHarvestDays = 0.0
 float Property floraResetHarvestDays
 	Float Function Get()
-		if(WSWF_fFloraResetHarvestDays != 0.0)
-			return WSWF_fFloraResetHarvestDays
+		if(WSFW_fFloraResetHarvestDays != 0.0)
+			return WSFW_fFloraResetHarvestDays
 		else
 			return fDefaultFloraResetHarvestDays
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_fFloraResetHarvestDays = aValue
+		WSFW_fFloraResetHarvestDays = aValue
 	EndFunction
 EndProperty
 
@@ -404,7 +404,7 @@ function AssignActor(WorkshopNPCScript newActor = None)
 		endif
 	endif
 	
-	; WSWF
+	; WSFW
 	UpdateProduction()
 	
 	AssignActorCustom(newActor)
@@ -518,7 +518,7 @@ function HandleDestruction()
 		myIdleMarkerRef.DisableNoWait()
 	endif
 
-	; WSWF
+	; WSFW
 	UpdateProduction()
 endFunction
 
@@ -571,6 +571,11 @@ Event OnDestructionStageChanged(int aiOldStage, int aiCurrentStage)
 			WorkshopParent.UFO4P_AddObjectToObjectArray (self)
 		endif
 
+		;UFO4P 2.0.5 Bug #24775: added check:
+		;Reset the actor value that controls the harvest time. Otherwise, this crop will regrow faster than a newly built one.
+		if GetBaseObject() as Flora
+			SetValue(WorkshopParent.WorkshopFloraHarvestTime, Utility.GetCurrentGameTime())
+		endif
 	endif
 EndEvent
 
@@ -602,7 +607,7 @@ function HandlePowerStateChange(bool bPowerOn = true)
 	WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
 	WorkshopParent.SendPowerStateChangedEvent(self, workshopRef)
 	
-	; WSWF
+	; WSFW
 	UpdateProduction()
 endFunction
 
@@ -668,53 +673,61 @@ endFunction
 ; otherwise FALSE
 bool function ModifyResourceDamage(ActorValue akActorValue, float aiDamageMod)
 	WorkshopParent.wsTrace(self + "	ModifyResourceDamage: " + akActorValue + " " + aiDamageMod)
+	;/
+	----------------------------------------------------------------------------------------------------------
+		UFO4P 2.0.5 Bug #24637:
+		Some of the operations of this function could be substantially simplified. To keep the code legible
+		the function has been rewritten. Comments on edits prior to UFO4P 2.0.5 have been left out.
+	----------------------------------------------------------------------------------------------------------
+	/;
+
+	if aiDamageMod == 0.0
+		;no damage means that the object's status won't change
+		return false
+	endif
+
 	float totalDamage = 0
-	float baseValue = GetBaseValue(akActorValue)
+	float baseValue = GetBaseValue (akActorValue)
 	bool returnVal = false
 
 	if baseValue > 0
-		if aiDamageMod < 0
-			; negative damage = repair
+		if aiDamageMod < 0 
+			; negative aiDamageMod = repair
 			if bAllowAutoRepair
 				WorkshopParent.wsTrace(self + "		restoring " + (aiDamageMod * -1) + " to " + akActorValue)
 				RestoreValue(akActorValue, aiDamageMod * -1)
-				returnVal = true ; actually repaired
+				returnVal = true
 			endif
 		else
-			; positive damage = damage...
-			float currentDamage = (baseValue - GetValue(akActorValue))
-			; total damage can't exceed base value, so make sure it doesn't
-			WorkshopParent.wsTrace(self + "		currentDamage=" + currentDamage + ", baseValue=" + baseValue)
-
-			if (currentDamage + aiDamageMod) > baseValue
-				; reduce incoming damage
-				aiDamageMod = aiDamageMod - ((currentDamage + aiDamageMod) - baseValue)
-				WorkshopParent.wsTrace(self + "		final aiDamageMod=" + aiDamageMod)
-			endif
+			; positive aiDamageMod = damage
+			float currentValue = GetValue (akActorValue)
+			WorkshopParent.wsTrace(self + "		currentDamage = " + (baseValue - currentValue) + ", baseValue = " + baseValue)
+			; total damage can't exceed base value, so make sure it doesn't:
+			aiDamageMod = Math.Min (aiDamageMod, currentValue)
+			WorkshopParent.wsTrace(self + "		final aiDamageMod = " + aiDamageMod)
 			DamageValue(akActorValue, aiDamageMod)
-			returnVal = true ; actually damaged
+			returnVal = true
 		endif
-
-		; check total damage
-		totalDamage = totalDamage + (baseValue - GetValue(akActorValue))
-		WorkshopParent.wsTrace(self + "		totalDamage=" + totalDamage)
+		; update total damage:
+		totalDamage = baseValue - GetValue(akActorValue)
 	endif
+	
+	WorkshopParent.wsTrace(self + "		totalDamage = " + totalDamage)
 
 	; if there is any damage, destroy me
-	bool bDestroyed = (totalDamage > 0)
-
-	if bDestroyed
+	if totalDamage > 0
 		if IsDestroyed() == false
 			; state change
 			SetDestroyed(true)
 			DamageObject(9999.0)
-			HandleDestruction()
+			;UFO4P 2.0.5 Bug #24642: no need to call HandleDestruction() here:
+			;SetDestroyed will trigger an OnDestructionStageChanged event and that event calls HabdleDestruction() anyway
 		endif
 		WorkshopParent.wsTrace(self + "		DESTROYED")
 	else
 		WorkshopParent.wsTrace(self + "		UNDESTROYED")
 		Repair()
-		
+
 		int i = 0
 		while i < myFurnitureMarkerRefs.Length
 			myFurnitureMarkerRefs[i].SetDestroyed(false)
@@ -725,11 +738,9 @@ bool function ModifyResourceDamage(ActorValue akActorValue, float aiDamageMod)
 			myDamageHelperRef.ClearDestruction()
 		endif
 	
-		;UFO4P 2.0.3 Bug #23211: Added these lines to handle the pre-placed gardening markers at Graygarden:	
 		if myIdleMarkerRef
 			myIdleMarkerRef.Enable()
 		endif
-
 	endif
 
 	return returnVal
@@ -852,10 +863,9 @@ function HandleCreation(bool bNewlyBuilt = true)
 		; if flora, mark initially as harvested
 		if GetBaseObject() as Flora
 			SetHarvested(true)
-		endif
-		
-		; WSWF Change for special production
-		
+			;UFO4P 2.0.5 Bug #24775: also initialize the related actor value:
+			SetValue (WorkshopParent.WorkshopFloraHarvestTime, Utility.GetCurrentGameTime())
+		endif		
 	endif
 
 	; if unowned, give player ownership
@@ -865,7 +875,7 @@ function HandleCreation(bool bNewlyBuilt = true)
 		;WorkshopParent.wsTrace(self + " HandleCreation: unowned, assigning PlayerFaction ownership: " + GetFactionOwner())
 	endif	
 
-	; WSWF
+	; WSFW
 	UpdateProduction()
 endFunction
 
@@ -887,7 +897,7 @@ function HandleDeletion()
 		myIdleMarkerRef = none
 	endif
 
-	; WSWF
+	; WSFW
 	UpdateProduction()
 endFunction
 
@@ -897,17 +907,18 @@ function HandleWorkshopReset()
 	float harvestTime = GetValue(WorkshopParent.WorkshopFloraHarvestTime)
 	if GetBaseObject() as Flora
 		;WorkshopParent.wsTrace(self + " HandleWorkshopReset: last harvest time=" + harvestTime +", IsActorAssigned=" + IsActorAssigned() + ", current time=" + utility.GetCurrentGameTime())
-		if IsActorAssigned() && utility.GetCurrentGameTime() > (harvestTime + floraResetHarvestDays)
+		;UFO4P 2.0.5 Bug #24775: also check for destroyed crops. Otherwise, they may be regrown immediately after the repair:
+		if !IsDestroyed() && IsActorAssigned() && utility.GetCurrentGameTime() > (harvestTime + floraResetHarvestDays)
 			SetHarvested(false)
 		endif
 	endif
 	
-	; WSWF
+	; WSFW
 	UpdateProduction()
 endFunction
 
 
-; WSWF - Override Repair to ensure production is updated
+; WSFW - Override Repair to ensure production is updated
 Function Repair()
 	Parent.Repair()
 	
@@ -1021,7 +1032,7 @@ ObjectReference function UFO4P_GetMyDamageHelperRef()
 endFunction
 
 
-; WSWF Special Function for ProductionItem
+; WSFW Special Function for ProductionItem
 Bool bIsRegisteredForProduction = false
 Function UpdateProduction()
 	if( ! ProductionItem || ! ProductionManager)
@@ -1057,7 +1068,7 @@ Function UpdateProduction()
 	endif
 EndFunction
 
-; WSWF - Check all 4 scav resource types
+; WSFW - Check all 4 scav resource types
 Bool Function IsScavengeResource()
 	if(HasResourceValue(ProductionManager.Scavenge_General) || HasResourceValue(ProductionManager.Scavenge_BuildingMaterials) || HasResourceValue(ProductionManager.Scavenge_Parts) || HasResourceValue(ProductionManager.Scavenge_Rare))
 		return true

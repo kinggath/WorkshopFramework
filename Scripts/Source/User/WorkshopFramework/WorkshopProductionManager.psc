@@ -468,7 +468,7 @@ Function ProduceAllWorkshopResources()
 		i += 1
 	endWhile
 	
-	Debug.Trace("WSWF: Resource production for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	Debug.Trace("WSFW: Resource production for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
 	bProductionUnderwayBlock = false
 EndFunction
 

@@ -1,7 +1,7 @@
 Scriptname WorkshopScript extends ObjectReference Conditional
 {script for Workshop reference}
 
-; WSWF
+; WSFW
 import WorkshopFramework:Library:UtilityFunctions
 
 ;import WorkShopObjectScript
@@ -129,122 +129,121 @@ Group WorkshopRadioData
 endGroup
 
 ; -------------------------------
-; WSWF - New Properties
+; WSFW - New Properties
 ; -------------------------------
 
-Group WSWF_Globals
-	GlobalVariable Property WSWF_Setting_minProductivity Auto Hidden
-	GlobalVariable Property WSWF_Setting_productivityHappinessMult  Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxHappinessNoFood  Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxHappinessNoWater  Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxHappinessNoShelter  Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusFood  Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusWater  Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusBed Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusShelter Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusSafety Auto Hidden
-	GlobalVariable Property WSWF_Setting_minHappinessChangePerUpdate Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessChangeMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_minHappinessThreshold Auto Hidden
-	GlobalVariable Property WSWF_Setting_minHappinessWarningThreshold Auto Hidden
-	GlobalVariable Property WSWF_Setting_minHappinessClearWarningThreshold Auto Hidden
-	GlobalVariable Property WSWF_Setting_happinessBonusChangePerUpdate Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredFoodBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredFoodPerPopulation Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredWaterBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredWaterPerPopulation Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredScavengeBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredScavengePerPopulation Auto Hidden
-	GlobalVariable Property WSWF_Setting_brahminProductionBoost Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxProductionPerBrahmin Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxBrahminFertilizerProduction Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxStoredFertilizerBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_minVendorIncomePopulation Auto Hidden
-	GlobalVariable Property WSWF_Setting_maxVendorIncome Auto Hidden
-	GlobalVariable Property WSWF_Setting_vendorIncomePopulationMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_vendorIncomeBaseMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_iMaxSurplusNPCs Auto Hidden
-	GlobalVariable Property WSWF_Setting_attractNPCDailyChance Auto Hidden
-	GlobalVariable Property WSWF_Setting_iMaxBonusAttractChancePopulation Auto Hidden
-	GlobalVariable Property WSWF_Setting_iBaseMaxNPCs Auto Hidden
-	GlobalVariable Property WSWF_Setting_attractNPCHappinessMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_attackChanceBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_attackChanceResourceMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_attackChanceSafetyMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_attackChancePopulationMult Auto Hidden
-	GlobalVariable Property WSWF_Setting_minDaysSinceLastAttack Auto Hidden
-	GlobalVariable Property WSWF_Setting_damageDailyRepairBase Auto Hidden
-	GlobalVariable Property WSWF_Setting_damageDailyPopulationMult Auto Hidden
+Group WSFW_Globals
+	GlobalVariable Property WSFW_Setting_minProductivity Auto Hidden
+	GlobalVariable Property WSFW_Setting_productivityHappinessMult  Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxHappinessNoFood  Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxHappinessNoWater  Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxHappinessNoShelter  Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusFood  Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusWater  Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusBed Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusShelter Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusSafety Auto Hidden
+	GlobalVariable Property WSFW_Setting_minHappinessChangePerUpdate Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessChangeMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_minHappinessThreshold Auto Hidden
+	GlobalVariable Property WSFW_Setting_minHappinessWarningThreshold Auto Hidden
+	GlobalVariable Property WSFW_Setting_minHappinessClearWarningThreshold Auto Hidden
+	GlobalVariable Property WSFW_Setting_happinessBonusChangePerUpdate Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredFoodBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredFoodPerPopulation Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredWaterBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredWaterPerPopulation Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredScavengeBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredScavengePerPopulation Auto Hidden
+	GlobalVariable Property WSFW_Setting_brahminProductionBoost Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxProductionPerBrahmin Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxBrahminFertilizerProduction Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxStoredFertilizerBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_minVendorIncomePopulation Auto Hidden
+	GlobalVariable Property WSFW_Setting_maxVendorIncome Auto Hidden
+	GlobalVariable Property WSFW_Setting_vendorIncomePopulationMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_vendorIncomeBaseMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_iMaxSurplusNPCs Auto Hidden
+	GlobalVariable Property WSFW_Setting_attractNPCDailyChance Auto Hidden
+	GlobalVariable Property WSFW_Setting_iMaxBonusAttractChancePopulation Auto Hidden
+	GlobalVariable Property WSFW_Setting_iBaseMaxNPCs Auto Hidden
+	GlobalVariable Property WSFW_Setting_attractNPCHappinessMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_attackChanceBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_attackChanceResourceMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_attackChanceSafetyMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_attackChancePopulationMult Auto Hidden
+	GlobalVariable Property WSFW_Setting_minDaysSinceLastAttack Auto Hidden
+	GlobalVariable Property WSFW_Setting_damageDailyRepairBase Auto Hidden
+	GlobalVariable Property WSFW_Setting_damageDailyPopulationMult Auto Hidden
 	
-	GlobalVariable Property WSWF_Setting_iBaseMaxBrahmin Auto Hidden	
-	GlobalVariable Property WSWF_Setting_iBaseMaxSynths Auto Hidden	
+	GlobalVariable Property WSFW_Setting_iBaseMaxBrahmin Auto Hidden	
+	GlobalVariable Property WSFW_Setting_iBaseMaxSynths Auto Hidden	
 	
-	GlobalVariable Property WSWF_Setting_recruitmentGuardChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_recruitmentBrahminChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_recruitmentSynthChance Auto Hidden	
-	GlobalVariable Property WSWF_Setting_actorDeathHappinessModifier Auto Hidden	
-	GlobalVariable Property WSWF_Setting_maxAttackStrength Auto Hidden	
-	GlobalVariable Property WSWF_Setting_maxDefenseStrength Auto Hidden	
+	GlobalVariable Property WSFW_Setting_recruitmentGuardChance Auto Hidden	
+	GlobalVariable Property WSFW_Setting_recruitmentBrahminChance Auto Hidden	
+	GlobalVariable Property WSFW_Setting_recruitmentSynthChance Auto Hidden	
+	GlobalVariable Property WSFW_Setting_actorDeathHappinessModifier Auto Hidden	
+	GlobalVariable Property WSFW_Setting_maxAttackStrength Auto Hidden	
+	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Hidden	
 	
-	GlobalVariable Property WSWF_Setting_AdjustMaxNPCsByCharisma Auto Hidden
+	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Hidden
+	
+	GlobalVariable Property CurrentWorkshopID Auto Hidden
 EndGroup
 
-Group WSWF_AVs
-	ActorValue Property WSWF_AV_minProductivity Auto Hidden
-	ActorValue Property WSWF_AV_productivityHappinessMult  Auto Hidden
-	ActorValue Property WSWF_AV_maxHappinessNoFood  Auto Hidden
-	ActorValue Property WSWF_AV_maxHappinessNoWater  Auto Hidden
-	ActorValue Property WSWF_AV_maxHappinessNoShelter  Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusFood  Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusWater  Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusBed Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusShelter Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusSafety Auto Hidden
-	ActorValue Property WSWF_AV_minHappinessChangePerUpdate Auto Hidden
-	ActorValue Property WSWF_AV_happinessChangeMult Auto Hidden
-	ActorValue Property WSWF_AV_minHappinessThreshold Auto Hidden
-	ActorValue Property WSWF_AV_minHappinessWarningThreshold Auto Hidden
-	ActorValue Property WSWF_AV_minHappinessClearWarningThreshold Auto Hidden
-	ActorValue Property WSWF_AV_happinessBonusChangePerUpdate Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredFoodBase Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredFoodPerPopulation Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredWaterBase Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredWaterPerPopulation Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredScavengeBase Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredScavengePerPopulation Auto Hidden
-	ActorValue Property WSWF_AV_brahminProductionBoost Auto Hidden
-	ActorValue Property WSWF_AV_maxProductionPerBrahmin Auto Hidden
-	ActorValue Property WSWF_AV_maxBrahminFertilizerProduction Auto Hidden
-	ActorValue Property WSWF_AV_maxStoredFertilizerBase Auto Hidden
-	ActorValue Property WSWF_AV_minVendorIncomePopulation Auto Hidden
-	ActorValue Property WSWF_AV_maxVendorIncome Auto Hidden
-	ActorValue Property WSWF_AV_vendorIncomePopulationMult Auto Hidden
-	ActorValue Property WSWF_AV_vendorIncomeBaseMult Auto Hidden
-	ActorValue Property WSWF_AV_iMaxSurplusNPCs Auto Hidden
-	ActorValue Property WSWF_AV_attractNPCDailyChance Auto Hidden
-	ActorValue Property WSWF_AV_iMaxBonusAttractChancePopulation Auto Hidden
-	ActorValue Property WSWF_AV_iBaseMaxNPCs Auto Hidden
-	ActorValue Property WSWF_AV_attractNPCHappinessMult Auto Hidden
-	ActorValue Property WSWF_AV_attackChanceBase Auto Hidden
-	ActorValue Property WSWF_AV_attackChanceResourceMult Auto Hidden
-	ActorValue Property WSWF_AV_attackChanceSafetyMult Auto Hidden
-	ActorValue Property WSWF_AV_attackChancePopulationMult Auto Hidden
-	ActorValue Property WSWF_AV_minDaysSinceLastAttack Auto Hidden
-	ActorValue Property WSWF_AV_damageDailyRepairBase Auto Hidden
-	ActorValue Property WSWF_AV_damageDailyPopulationMult Auto Hidden
+Group WSFW_AVs
+	ActorValue Property WSFW_AV_minProductivity Auto Hidden
+	ActorValue Property WSFW_AV_productivityHappinessMult  Auto Hidden
+	ActorValue Property WSFW_AV_maxHappinessNoFood  Auto Hidden
+	ActorValue Property WSFW_AV_maxHappinessNoWater  Auto Hidden
+	ActorValue Property WSFW_AV_maxHappinessNoShelter  Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusFood  Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusWater  Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusBed Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusShelter Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusSafety Auto Hidden
+	ActorValue Property WSFW_AV_minHappinessChangePerUpdate Auto Hidden
+	ActorValue Property WSFW_AV_happinessChangeMult Auto Hidden
+	ActorValue Property WSFW_AV_happinessBonusChangePerUpdate Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredFoodBase Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredFoodPerPopulation Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredWaterBase Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredWaterPerPopulation Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredScavengeBase Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredScavengePerPopulation Auto Hidden
+	ActorValue Property WSFW_AV_brahminProductionBoost Auto Hidden
+	ActorValue Property WSFW_AV_maxProductionPerBrahmin Auto Hidden
+	ActorValue Property WSFW_AV_maxBrahminFertilizerProduction Auto Hidden
+	ActorValue Property WSFW_AV_maxStoredFertilizerBase Auto Hidden
+	ActorValue Property WSFW_AV_minVendorIncomePopulation Auto Hidden
+	ActorValue Property WSFW_AV_maxVendorIncome Auto Hidden
+	ActorValue Property WSFW_AV_vendorIncomePopulationMult Auto Hidden
+	ActorValue Property WSFW_AV_vendorIncomeBaseMult Auto Hidden
+	ActorValue Property WSFW_AV_iMaxSurplusNPCs Auto Hidden
+	ActorValue Property WSFW_AV_attractNPCDailyChance Auto Hidden
+	ActorValue Property WSFW_AV_iMaxBonusAttractChancePopulation Auto Hidden
+	ActorValue Property WSFW_AV_iBaseMaxNPCs Auto Hidden
+	ActorValue Property WSFW_AV_attractNPCHappinessMult Auto Hidden
+	ActorValue Property WSFW_AV_attackChanceBase Auto Hidden
+	ActorValue Property WSFW_AV_attackChanceResourceMult Auto Hidden
+	ActorValue Property WSFW_AV_attackChanceSafetyMult Auto Hidden
+	ActorValue Property WSFW_AV_attackChancePopulationMult Auto Hidden
+	ActorValue Property WSFW_AV_minDaysSinceLastAttack Auto Hidden
+	ActorValue Property WSFW_AV_damageDailyRepairBase Auto Hidden
+	ActorValue Property WSFW_AV_damageDailyPopulationMult Auto Hidden
 	
-	ActorValue Property WSWF_AV_ExtraNeeds_Food Auto Hidden
-	ActorValue Property WSWF_AV_ExtraNeeds_Safety Auto Hidden
-	ActorValue Property WSWF_AV_ExtraNeeds_Water Auto Hidden
+	ActorValue Property WSFW_AV_ExtraNeeds_Food Auto Hidden
+	ActorValue Property WSFW_AV_ExtraNeeds_Safety Auto Hidden
+	ActorValue Property WSFW_AV_ExtraNeeds_Water Auto Hidden
 	
-	ActorValue Property WSWF_AV_MaxBrahmin Auto Hidden
-	ActorValue Property WSWF_AV_MaxSynths Auto Hidden	
-	ActorValue Property WSWF_AV_recruitmentGuardChance Auto Hidden	
-	ActorValue Property WSWF_AV_recruitmentBrahminChance Auto Hidden	
-	ActorValue Property WSWF_AV_recruitmentSynthChance Auto Hidden	
-	ActorValue Property WSWF_AV_actorDeathHappinessModifier Auto Hidden	
-	ActorValue Property WSWF_AV_maxAttackStrength Auto Hidden	
-	ActorValue Property WSWF_AV_maxDefenseStrength Auto Hidden	
+	ActorValue Property WSFW_AV_MaxBrahmin Auto Hidden
+	ActorValue Property WSFW_AV_MaxSynths Auto Hidden	
+	ActorValue Property WSFW_AV_recruitmentGuardChance Auto Hidden	
+	ActorValue Property WSFW_AV_recruitmentBrahminChance Auto Hidden	
+	ActorValue Property WSFW_AV_recruitmentSynthChance Auto Hidden	
+	ActorValue Property WSFW_AV_actorDeathHappinessModifier Auto Hidden	
+	ActorValue Property WSFW_AV_maxAttackStrength Auto Hidden	
+	ActorValue Property WSFW_AV_maxDefenseStrength Auto Hidden	
 
 	; Replacing calls to WorkshopParent ratings vars
 	ActorValue Property Happiness Auto Hidden
@@ -280,936 +279,930 @@ Group WSWF_AVs
 	Keyword Property ObjectTypeFood Auto Hidden
 	Keyword Property WorkshopLinkContainer Auto Hidden
 	Faction Property FarmDiscountFaction Auto Hidden
-	GlobalVariable Property CurrentWorkshopID Auto Hidden
 EndGroup
 
 ;******************
 ; moved from workshopparent			
-; WSWF: Note - This was all added here by BGS to avoid having to constantly query WorkshopParent for the numbers
+; WSFW: Note - This was all added here by BGS to avoid having to constantly query WorkshopParent for the numbers
 
 ; productivity formula stuff
 Bool Property bUseGlobalminProductivity = true Auto Hidden
-Float WSWF_minProductivity = 0.25
+Float WSFW_minProductivity = 0.25
 float Property minProductivity
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_minProductivity)
+		Float AppliedValue = GetValue(WSFW_AV_minProductivity)
 		
 		if(bUseGlobalminProductivity)
-			return AppliedValue + WSWF_Setting_minProductivity.GetValue()
+			return AppliedValue + WSFW_Setting_minProductivity.GetValue()
 		else
-			return AppliedValue + WSWF_minProductivity
+			return AppliedValue + WSFW_minProductivity
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_minProductivity = aValue
+		WSFW_minProductivity = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalproductivityHappinessMult = true Auto Hidden
-Float WSWF_productivityHappinessMult = 0.75
+Float WSFW_productivityHappinessMult = 0.75
 float Property productivityHappinessMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_productivityHappinessMult)
+		Float AppliedValue = GetValue(WSFW_AV_productivityHappinessMult)
 		
 		if(bUseGlobalproductivityHappinessMult)
-			return AppliedValue + WSWF_Setting_productivityHappinessMult.GetValue()
+			return AppliedValue + WSFW_Setting_productivityHappinessMult.GetValue()
 		else
-			return AppliedValue + WSWF_productivityHappinessMult
+			return AppliedValue + WSFW_productivityHappinessMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_productivityHappinessMult = aValue
+		WSFW_productivityHappinessMult = aValue
 	EndFunction
 EndProperty
 
 ; happiness formula stuff
 Bool Property bUseGlobalmaxHappinessNoFood = true Auto Hidden
-Float WSWF_maxHappinessNoFood = 30.0
+Float WSFW_maxHappinessNoFood = 30.0
 float Property maxHappinessNoFood
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxHappinessNoFood)
+		Float AppliedValue = GetValue(WSFW_AV_maxHappinessNoFood)
 		
 		if(bUseGlobalmaxHappinessNoFood)
-			return AppliedValue + WSWF_Setting_maxHappinessNoFood.GetValue()
+			return AppliedValue + WSFW_Setting_maxHappinessNoFood.GetValue()
 		else
-			return AppliedValue + WSWF_maxHappinessNoFood
+			return AppliedValue + WSFW_maxHappinessNoFood
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_maxHappinessNoFood = aValue
+		WSFW_maxHappinessNoFood = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalmaxHappinessNoWater = true Auto Hidden
-Float WSWF_maxHappinessNoWater = 30.0
+Float WSFW_maxHappinessNoWater = 30.0
 float Property maxHappinessNoWater
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxHappinessNoWater)
+		Float AppliedValue = GetValue(WSFW_AV_maxHappinessNoWater)
 		
 		if(bUseGlobalmaxHappinessNoWater)
-			return AppliedValue + WSWF_Setting_maxHappinessNoWater.GetValue()
+			return AppliedValue + WSFW_Setting_maxHappinessNoWater.GetValue()
 		else
-			return AppliedValue + WSWF_maxHappinessNoWater
+			return AppliedValue + WSFW_maxHappinessNoWater
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_maxHappinessNoWater = aValue
+		WSFW_maxHappinessNoWater = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalmaxHappinessNoShelter = true Auto Hidden
-Float WSWF_maxHappinessNoShelter = 60.0
+Float WSFW_maxHappinessNoShelter = 60.0
 float Property maxHappinessNoShelter
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxHappinessNoShelter)
+		Float AppliedValue = GetValue(WSFW_AV_maxHappinessNoShelter)
 		
 		if(bUseGlobalmaxHappinessNoShelter)
-			return AppliedValue + WSWF_Setting_maxHappinessNoShelter.GetValue()
+			return AppliedValue + WSFW_Setting_maxHappinessNoShelter.GetValue()
 		else
-			return AppliedValue + WSWF_maxHappinessNoShelter
+			return AppliedValue + WSFW_maxHappinessNoShelter
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_maxHappinessNoShelter = aValue
+		WSFW_maxHappinessNoShelter = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessBonusFood = true Auto Hidden
-Float WSWF_happinessBonusFood = 20.0
+Float WSFW_happinessBonusFood = 20.0
 float Property happinessBonusFood
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessBonusFood)
+		Float AppliedValue = GetValue(WSFW_AV_happinessBonusFood)
 		
 		if(bUseGlobalhappinessBonusFood)
-			return AppliedValue + WSWF_Setting_happinessBonusFood.GetValue()
+			return AppliedValue + WSFW_Setting_happinessBonusFood.GetValue()
 		else
-			return AppliedValue + WSWF_happinessBonusFood
+			return AppliedValue + WSFW_happinessBonusFood
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessBonusFood = aValue
+		WSFW_happinessBonusFood = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessBonusWater = true Auto Hidden
-Float WSWF_happinessBonusWater = 20.0
+Float WSFW_happinessBonusWater = 20.0
 float Property happinessBonusWater
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessBonusWater)
+		Float AppliedValue = GetValue(WSFW_AV_happinessBonusWater)
 		
 		if(bUseGlobalhappinessBonusWater)
-			return AppliedValue + WSWF_Setting_happinessBonusWater.GetValue()
+			return AppliedValue + WSFW_Setting_happinessBonusWater.GetValue()
 		else
-			return AppliedValue + WSWF_happinessBonusWater
+			return AppliedValue + WSFW_happinessBonusWater
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessBonusWater = aValue
+		WSFW_happinessBonusWater = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessBonusBed = true Auto Hidden
-Float WSWF_happinessBonusBed = 10.0
+Float WSFW_happinessBonusBed = 10.0
 float Property happinessBonusBed
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessBonusBed)
+		Float AppliedValue = GetValue(WSFW_AV_happinessBonusBed)
 		
 		if(bUseGlobalhappinessBonusBed)
-			return AppliedValue + WSWF_Setting_happinessBonusBed.GetValue()
+			return AppliedValue + WSFW_Setting_happinessBonusBed.GetValue()
 		else
-			return AppliedValue + WSWF_happinessBonusBed
+			return AppliedValue + WSFW_happinessBonusBed
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessBonusBed = aValue
+		WSFW_happinessBonusBed = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessBonusShelter = true Auto Hidden
-Float WSWF_happinessBonusShelter = 10.0
+Float WSFW_happinessBonusShelter = 10.0
 float Property happinessBonusShelter
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessBonusShelter)
+		Float AppliedValue = GetValue(WSFW_AV_happinessBonusShelter)
 		
 		if(bUseGlobalhappinessBonusShelter)
-			return AppliedValue + WSWF_Setting_happinessBonusShelter.GetValue()
+			return AppliedValue + WSFW_Setting_happinessBonusShelter.GetValue()
 		else
-			return AppliedValue + WSWF_happinessBonusShelter
+			return AppliedValue + WSFW_happinessBonusShelter
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessBonusShelter = aValue
+		WSFW_happinessBonusShelter = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessBonusSafety = true Auto Hidden
-Float WSWF_happinessBonusSafety = 20.0
+Float WSFW_happinessBonusSafety = 20.0
 float Property happinessBonusSafety
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessBonusSafety)
+		Float AppliedValue = GetValue(WSFW_AV_happinessBonusSafety)
 		
 		if(bUseGlobalhappinessBonusSafety)
-			return AppliedValue + WSWF_Setting_happinessBonusSafety.GetValue()
+			return AppliedValue + WSFW_Setting_happinessBonusSafety.GetValue()
 		else
-			return AppliedValue + WSWF_happinessBonusSafety
+			return AppliedValue + WSFW_happinessBonusSafety
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessBonusSafety = aValue
+		WSFW_happinessBonusSafety = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalminHappinessChangePerUpdate = true Auto Hidden
-Int WSWF_minHappinessChangePerUpdate = 1 ; what's the min happiness can change in one update?
+Int WSFW_minHappinessChangePerUpdate = 1 ; what's the min happiness can change in one update?
 Int Property minHappinessChangePerUpdate
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_minHappinessChangePerUpdate))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_minHappinessChangePerUpdate))
 		
 		if(bUseGlobalminHappinessChangePerUpdate)
-			return AppliedValue + WSWF_Setting_minHappinessChangePerUpdate.GetValueInt()
+			return AppliedValue + WSFW_Setting_minHappinessChangePerUpdate.GetValueInt()
 		else
-			return AppliedValue + WSWF_minHappinessChangePerUpdate
+			return AppliedValue + WSFW_minHappinessChangePerUpdate
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_minHappinessChangePerUpdate = aValue
+		WSFW_minHappinessChangePerUpdate = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalhappinessChangeMult = true Auto Hidden
-Float WSWF_happinessChangeMult = 0.20 ; multiplier on happiness delta
+Float WSFW_happinessChangeMult = 0.20 ; multiplier on happiness delta
 float Property happinessChangeMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_happinessChangeMult)
+		Float AppliedValue = GetValue(WSFW_AV_happinessChangeMult)
 		
 		if(bUseGlobalhappinessChangeMult)
-			return AppliedValue + WSWF_Setting_happinessChangeMult.GetValue()
+			return AppliedValue + WSFW_Setting_happinessChangeMult.GetValue()
 		else
-			return AppliedValue + WSWF_happinessChangeMult
+			return AppliedValue + WSFW_happinessChangeMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_happinessChangeMult = aValue
+		WSFW_happinessChangeMult = aValue
 	EndFunction
 EndProperty		
 		
 Bool Property bUseGlobalminHappinessThreshold = true Auto Hidden
-Int WSWF_minHappinessThreshold = 10 ; if happiness drops <= to this value, player ownership is cleared
+Int WSFW_minHappinessThreshold = 10 ; if happiness drops <= to this value, player ownership is cleared
 Int Property minHappinessThreshold
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_minHappinessThreshold))
-		
 		if(bUseGlobalminHappinessThreshold)
-			return AppliedValue + WSWF_Setting_minHappinessThreshold.GetValueInt()
+			return WSFW_Setting_minHappinessThreshold.GetValueInt()
 		else
-			return AppliedValue + WSWF_minHappinessThreshold
+			return WSFW_minHappinessThreshold
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_minHappinessThreshold = aValue
+		WSFW_minHappinessThreshold = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalminHappinessWarningThreshold = true Auto Hidden
-Int WSWF_minHappinessWarningThreshold = 15 ; if happiness drops <= to this value, player ownership is cleared
+Int WSFW_minHappinessWarningThreshold = 15 ; if happiness drops <= to this value, player ownership is cleared
 Int Property minHappinessWarningThreshold
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_minHappinessWarningThreshold))
-		
 		if(bUseGlobalminHappinessWarningThreshold)
-			return AppliedValue + WSWF_Setting_minHappinessWarningThreshold.GetValueInt()
+			return WSFW_Setting_minHappinessWarningThreshold.GetValueInt()
 		else
-			return AppliedValue + WSWF_minHappinessWarningThreshold
+			return WSFW_minHappinessWarningThreshold
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_minHappinessWarningThreshold = aValue
+		WSFW_minHappinessWarningThreshold = aValue
 	EndFunction
 EndProperty
 				
 Bool Property bUseGlobalminHappinessClearWarningThreshold = true Auto Hidden
-Int WSWF_minHappinessClearWarningThreshold = 20 ; if happiness >= this value, clear happiness warning
+Int WSFW_minHappinessClearWarningThreshold = 20 ; if happiness >= this value, clear happiness warning
 Int Property minHappinessClearWarningThreshold
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_minHappinessClearWarningThreshold))
-		
 		if(bUseGlobalminHappinessClearWarningThreshold)
-			return AppliedValue + WSWF_Setting_minHappinessClearWarningThreshold.GetValueInt()
+			return WSFW_Setting_minHappinessClearWarningThreshold.GetValueInt()
 		else
-			return AppliedValue + WSWF_minHappinessClearWarningThreshold
+			return WSFW_minHappinessClearWarningThreshold
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_minHappinessClearWarningThreshold = aValue
+		WSFW_minHappinessClearWarningThreshold = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalhappinessBonusChangePerUpdate = true Auto Hidden
-Int WSWF_happinessBonusChangePerUpdate = 2 ; happiness bonus trends back to 0 (from positive or negative)
+Int WSFW_happinessBonusChangePerUpdate = 2 ; happiness bonus trends back to 0 (from positive or negative)
 Int Property happinessBonusChangePerUpdate
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_happinessBonusChangePerUpdate))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_happinessBonusChangePerUpdate))
 		
 		if(bUseGlobalhappinessBonusChangePerUpdate)
-			return AppliedValue + WSWF_Setting_happinessBonusChangePerUpdate.GetValueInt()
+			return AppliedValue + WSFW_Setting_happinessBonusChangePerUpdate.GetValueInt()
 		else
-			return AppliedValue + WSWF_happinessBonusChangePerUpdate
+			return AppliedValue + WSFW_happinessBonusChangePerUpdate
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_happinessBonusChangePerUpdate = aValue
+		WSFW_happinessBonusChangePerUpdate = aValue
 	EndFunction
 EndProperty
 	
 
 ; production
 Bool Property bUseGlobalmaxStoredFoodBase = true Auto Hidden
-Int WSWF_maxStoredFoodBase = 10 ; stop producing when we reach this amount stored
+Int WSFW_maxStoredFoodBase = 10 ; stop producing when we reach this amount stored
 Int Property maxStoredFoodBase
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredFoodBase))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredFoodBase))
 		
 		if(bUseGlobalmaxStoredFoodBase)
-			return AppliedValue + WSWF_Setting_maxStoredFoodBase.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredFoodBase.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredFoodBase
+			return AppliedValue + WSFW_maxStoredFoodBase
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredFoodBase = aValue
+		WSFW_maxStoredFoodBase = aValue
 	EndFunction
 EndProperty
 				
 Bool Property bUseGlobalmaxStoredFoodPerPopulation = true Auto Hidden
-Int WSWF_maxStoredFoodPerPopulation = 1 ; increase max for each population
+Int WSFW_maxStoredFoodPerPopulation = 1 ; increase max for each population
 Int Property maxStoredFoodPerPopulation
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredFoodPerPopulation))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredFoodPerPopulation))
 		
 		if(bUseGlobalmaxStoredFoodPerPopulation)
-			return AppliedValue + WSWF_Setting_maxStoredFoodPerPopulation.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredFoodPerPopulation.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredFoodPerPopulation
+			return AppliedValue + WSFW_maxStoredFoodPerPopulation
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredFoodPerPopulation = aValue
+		WSFW_maxStoredFoodPerPopulation = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalmaxStoredWaterBase = true Auto Hidden
-Int WSWF_maxStoredWaterBase = 5 ; stop producing when we reach this amount stored
+Int WSFW_maxStoredWaterBase = 5 ; stop producing when we reach this amount stored
 Int Property maxStoredWaterBase
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredWaterBase))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredWaterBase))
 		
 		if(bUseGlobalmaxStoredWaterBase)
-			return AppliedValue + WSWF_Setting_maxStoredWaterBase.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredWaterBase.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredWaterBase
+			return AppliedValue + WSFW_maxStoredWaterBase
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredWaterBase = aValue
+		WSFW_maxStoredWaterBase = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalmaxStoredWaterPerPopulation = true Auto Hidden
-Float WSWF_maxStoredWaterPerPopulation = 0.25 ; increase max for each population
+Float WSFW_maxStoredWaterPerPopulation = 0.25 ; increase max for each population
 float Property maxStoredWaterPerPopulation
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxStoredWaterPerPopulation)
+		Float AppliedValue = GetValue(WSFW_AV_maxStoredWaterPerPopulation)
 		
 		if(bUseGlobalmaxStoredWaterPerPopulation)
-			return AppliedValue + WSWF_Setting_maxStoredWaterPerPopulation.GetValue()
+			return AppliedValue + WSFW_Setting_maxStoredWaterPerPopulation.GetValue()
 		else
-			return AppliedValue + WSWF_maxStoredWaterPerPopulation
+			return AppliedValue + WSFW_maxStoredWaterPerPopulation
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_maxStoredWaterPerPopulation = aValue
+		WSFW_maxStoredWaterPerPopulation = aValue
 	EndFunction
 EndProperty	
 				
 Bool Property bUseGlobalmaxStoredScavengeBase = true Auto Hidden
-Int WSWF_maxStoredScavengeBase = 100 ; stop producing when we reach this amount stored
+Int WSFW_maxStoredScavengeBase = 100 ; stop producing when we reach this amount stored
 Int Property maxStoredScavengeBase
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredScavengeBase))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredScavengeBase))
 		
 		if(bUseGlobalmaxStoredScavengeBase)
-			return AppliedValue + WSWF_Setting_maxStoredScavengeBase.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredScavengeBase.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredScavengeBase
+			return AppliedValue + WSFW_maxStoredScavengeBase
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredScavengeBase = aValue
+		WSFW_maxStoredScavengeBase = aValue
 	EndFunction
 EndProperty
 
 Bool Property bUseGlobalmaxStoredScavengePerPopulation = true Auto Hidden
-Int WSWF_maxStoredScavengePerPopulation = 5 ; increase max for each population
+Int WSFW_maxStoredScavengePerPopulation = 5 ; increase max for each population
 Int Property maxStoredScavengePerPopulation
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredScavengePerPopulation))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredScavengePerPopulation))
 		
 		if(bUseGlobalmaxStoredScavengePerPopulation)
-			return AppliedValue + WSWF_Setting_maxStoredScavengePerPopulation.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredScavengePerPopulation.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredScavengePerPopulation
+			return AppliedValue + WSFW_maxStoredScavengePerPopulation
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredScavengePerPopulation = aValue
+		WSFW_maxStoredScavengePerPopulation = aValue
 	EndFunction
 EndProperty		
 	
 Bool Property bUseGlobalbrahminProductionBoost = true Auto Hidden
-Float WSWF_brahminProductionBoost = 0.5 ; what percent increase per brahmin
+Float WSFW_brahminProductionBoost = 0.5 ; what percent increase per brahmin
 float Property brahminProductionBoost
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_brahminProductionBoost)
+		Float AppliedValue = GetValue(WSFW_AV_brahminProductionBoost)
 		
 		if(bUseGlobalbrahminProductionBoost)
-			return AppliedValue + WSWF_Setting_brahminProductionBoost.GetValue()
+			return AppliedValue + WSFW_Setting_brahminProductionBoost.GetValue()
 		else
-			return AppliedValue + WSWF_brahminProductionBoost
+			return AppliedValue + WSFW_brahminProductionBoost
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_brahminProductionBoost = aValue
+		WSFW_brahminProductionBoost = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalmaxProductionPerBrahmin = true Auto Hidden
-Int WSWF_maxProductionPerBrahmin = 10 ; each brahmin can only boost this much food (so max 10 * 0.5 = 5)
+Int WSFW_maxProductionPerBrahmin = 10 ; each brahmin can only boost this much food (so max 10 * 0.5 = 5)
 Int Property maxProductionPerBrahmin
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxProductionPerBrahmin))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxProductionPerBrahmin))
 		
 		if(bUseGlobalmaxProductionPerBrahmin)
-			return AppliedValue + WSWF_Setting_maxProductionPerBrahmin.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxProductionPerBrahmin.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxProductionPerBrahmin
+			return AppliedValue + WSFW_maxProductionPerBrahmin
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxProductionPerBrahmin = aValue
+		WSFW_maxProductionPerBrahmin = aValue
 	EndFunction
 EndProperty		
 				
 Bool Property bUseGlobalmaxBrahminFertilizerProduction = true Auto Hidden
-Int WSWF_maxBrahminFertilizerProduction = 3 ; max fertilizer production per settlement per day
+Int WSFW_maxBrahminFertilizerProduction = 3 ; max fertilizer production per settlement per day
 Int Property maxBrahminFertilizerProduction
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxBrahminFertilizerProduction))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxBrahminFertilizerProduction))
 		
 		if(bUseGlobalmaxBrahminFertilizerProduction)
-			return AppliedValue + WSWF_Setting_maxBrahminFertilizerProduction.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxBrahminFertilizerProduction.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxBrahminFertilizerProduction
+			return AppliedValue + WSFW_maxBrahminFertilizerProduction
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxBrahminFertilizerProduction = aValue
+		WSFW_maxBrahminFertilizerProduction = aValue
 	EndFunction
 EndProperty					
 
 Bool Property bUseGlobalmaxStoredFertilizerBase = true Auto Hidden
-Int WSWF_maxStoredFertilizerBase = 10 ; stop producing when we reach this amount stored
+Int WSFW_maxStoredFertilizerBase = 10 ; stop producing when we reach this amount stored
 Int Property maxStoredFertilizerBase
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_maxStoredFertilizerBase))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_maxStoredFertilizerBase))
 		
 		if(bUseGlobalmaxStoredFertilizerBase)
-			return AppliedValue + WSWF_Setting_maxStoredFertilizerBase.GetValueInt()
+			return AppliedValue + WSFW_Setting_maxStoredFertilizerBase.GetValueInt()
 		else
-			return AppliedValue + WSWF_maxStoredFertilizerBase
+			return AppliedValue + WSFW_maxStoredFertilizerBase
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxStoredFertilizerBase = aValue
+		WSFW_maxStoredFertilizerBase = aValue
 	EndFunction
 EndProperty					
 
 ; vendor income
 Bool Property bUseGlobalminVendorIncomePopulation = true Auto Hidden
-Int WSWF_minVendorIncomePopulation = 5 ; need at least this population to get any vendor income
+Int WSFW_minVendorIncomePopulation = 5 ; need at least this population to get any vendor income
 Int Property minVendorIncomePopulation
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_minVendorIncomePopulation))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_minVendorIncomePopulation))
 		
 		if(bUseGlobalminVendorIncomePopulation)
-			return AppliedValue + WSWF_Setting_minVendorIncomePopulation.GetValueInt()
+			return AppliedValue + WSFW_Setting_minVendorIncomePopulation.GetValueInt()
 		else
-			return AppliedValue + WSWF_minVendorIncomePopulation
+			return AppliedValue + WSFW_minVendorIncomePopulation
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_minVendorIncomePopulation = aValue
+		WSFW_minVendorIncomePopulation = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalmaxVendorIncome = true Auto Hidden
-Float WSWF_maxVendorIncome = 50.0 ; max daily vendor income from any settlement
+Float WSFW_maxVendorIncome = 50.0 ; max daily vendor income from any settlement
 float Property maxVendorIncome
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxVendorIncome)
+		Float AppliedValue = GetValue(WSFW_AV_maxVendorIncome)
 		
 		if(bUseGlobalmaxVendorIncome)
-			return AppliedValue + WSWF_Setting_maxVendorIncome.GetValue()
+			return AppliedValue + WSFW_Setting_maxVendorIncome.GetValue()
 		else
-			return AppliedValue + WSWF_maxVendorIncome
+			return AppliedValue + WSFW_maxVendorIncome
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_maxVendorIncome = aValue
+		WSFW_maxVendorIncome = aValue
 	EndFunction
 EndProperty	
 				
 Bool Property bUseGlobalvendorIncomePopulationMult = true Auto Hidden
-Float WSWF_vendorIncomePopulationMult = 0.03 ; multiplier on population, added to vendor income
+Float WSFW_vendorIncomePopulationMult = 0.03 ; multiplier on population, added to vendor income
 float Property vendorIncomePopulationMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_vendorIncomePopulationMult)
+		Float AppliedValue = GetValue(WSFW_AV_vendorIncomePopulationMult)
 		
 		if(bUseGlobalvendorIncomePopulationMult)
-			return AppliedValue + WSWF_Setting_vendorIncomePopulationMult.GetValue()
+			return AppliedValue + WSFW_Setting_vendorIncomePopulationMult.GetValue()
 		else
-			return AppliedValue + WSWF_vendorIncomePopulationMult
+			return AppliedValue + WSFW_vendorIncomePopulationMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_vendorIncomePopulationMult = aValue
+		WSFW_vendorIncomePopulationMult = aValue
 	EndFunction
 EndProperty						
 
 Bool Property bUseGlobalvendorIncomeBaseMult = true Auto Hidden
-Float WSWF_vendorIncomeBaseMult = 2.0 ; multiplier on base vendor income
+Float WSFW_vendorIncomeBaseMult = 2.0 ; multiplier on base vendor income
 float Property vendorIncomeBaseMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_vendorIncomeBaseMult)
+		Float AppliedValue = GetValue(WSFW_AV_vendorIncomeBaseMult)
 		
 		if(bUseGlobalvendorIncomeBaseMult)
-			return AppliedValue + WSWF_Setting_vendorIncomeBaseMult.GetValue()
+			return AppliedValue + WSFW_Setting_vendorIncomeBaseMult.GetValue()
 		else
-			return AppliedValue + WSWF_vendorIncomeBaseMult
+			return AppliedValue + WSFW_vendorIncomeBaseMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_vendorIncomeBaseMult = aValue
+		WSFW_vendorIncomeBaseMult = aValue
 	EndFunction
 EndProperty		
 				
 
 ; radio/attracting NPC stuff
 Bool Property bUseGlobaliMaxSurplusNPCs = true Auto Hidden
-Int WSWF_iMaxSurplusNPCs = 5 ; for now, max number of unassigned NPCs - if you have this many or more, no new NPCs will arrive.
+Int WSFW_iMaxSurplusNPCs = 5 ; for now, max number of unassigned NPCs - if you have this many or more, no new NPCs will arrive.
 Int Property iMaxSurplusNPCs
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_iMaxSurplusNPCs))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_iMaxSurplusNPCs))
 		
 		if(bUseGlobaliMaxSurplusNPCs)
-			return AppliedValue + WSWF_Setting_iMaxSurplusNPCs.GetValueInt()
+			return AppliedValue + WSFW_Setting_iMaxSurplusNPCs.GetValueInt()
 		else
-			return AppliedValue + WSWF_iMaxSurplusNPCs
+			return AppliedValue + WSFW_iMaxSurplusNPCs
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_iMaxSurplusNPCs = aValue
+		WSFW_iMaxSurplusNPCs = aValue
 	EndFunction
 EndProperty	
 			
 Bool Property bUseGlobalattractNPCDailyChance = true Auto Hidden
-Float WSWF_attractNPCDailyChance = 0.1 ; for now, roll <= to this to attract an NPC each day, modified by happiness
+Float WSFW_attractNPCDailyChance = 0.1 ; for now, roll <= to this to attract an NPC each day, modified by happiness
 float Property attractNPCDailyChance
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attractNPCDailyChance)
+		Float AppliedValue = GetValue(WSFW_AV_attractNPCDailyChance)
 		
 		if(bUseGlobalattractNPCDailyChance)
-			return AppliedValue + WSWF_Setting_attractNPCDailyChance.GetValue()
+			return AppliedValue + WSFW_Setting_attractNPCDailyChance.GetValue()
 		else
-			return AppliedValue + WSWF_attractNPCDailyChance
+			return AppliedValue + WSFW_attractNPCDailyChance
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attractNPCDailyChance = aValue
+		WSFW_attractNPCDailyChance = aValue
 	EndFunction
 EndProperty			
  	
 Bool Property bUseGlobaliMaxBonusAttractChancePopulation = true Auto Hidden
-Int WSWF_iMaxBonusAttractChancePopulation = 5 ; for now, there's a bonus attract chance until the total population reaches this value more, no new NPCs will arrive.
+Int WSFW_iMaxBonusAttractChancePopulation = 5 ; for now, there's a bonus attract chance until the total population reaches this value more, no new NPCs will arrive.
 Int Property iMaxBonusAttractChancePopulation
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_iMaxBonusAttractChancePopulation))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_iMaxBonusAttractChancePopulation))
 		
 		if(bUseGlobaliMaxBonusAttractChancePopulation)
-			return AppliedValue + WSWF_Setting_iMaxBonusAttractChancePopulation.GetValueInt()
+			return AppliedValue + WSFW_Setting_iMaxBonusAttractChancePopulation.GetValueInt()
 		else
-			return AppliedValue + WSWF_iMaxBonusAttractChancePopulation
+			return AppliedValue + WSFW_iMaxBonusAttractChancePopulation
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_iMaxBonusAttractChancePopulation = aValue
+		WSFW_iMaxBonusAttractChancePopulation = aValue
 	EndFunction
 EndProperty		
 
 Bool Property bUseGlobaliBaseMaxNPCs = true Auto Hidden
-Int WSWF_iBaseMaxNPCs = 10 ; base total NPCs that can be at a player's town - this is used in GetMaxWorkshopNPCs formula
+Int WSFW_iBaseMaxNPCs = 10 ; base total NPCs that can be at a player's town - this is used in GetMaxWorkshopNPCs formula
 Int Property iBaseMaxNPCs
 	Int Function Get()
-		Int AppliedValue = Math.Ceiling(GetValue(WSWF_AV_iBaseMaxNPCs))
+		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_iBaseMaxNPCs))
 		
 		if(bUseGlobaliBaseMaxNPCs)
-			return AppliedValue + WSWF_Setting_iBaseMaxNPCs.GetValueInt()
+			return AppliedValue + WSFW_Setting_iBaseMaxNPCs.GetValueInt()
 		else
-			return AppliedValue + WSWF_iBaseMaxNPCs
+			return AppliedValue + WSFW_iBaseMaxNPCs
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_iBaseMaxNPCs = aValue
+		WSFW_iBaseMaxNPCs = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalattractNPCHappinessMult = true Auto Hidden
-Float WSWF_attractNPCHappinessMult = 0.5 ; multiplier on happiness to attraction chance
+Float WSFW_attractNPCHappinessMult = 0.5 ; multiplier on happiness to attraction chance
 float Property attractNPCHappinessMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attractNPCHappinessMult)
+		Float AppliedValue = GetValue(WSFW_AV_attractNPCHappinessMult)
 		
 		if(bUseGlobalattractNPCHappinessMult)
-			return AppliedValue + WSWF_Setting_attractNPCHappinessMult.GetValue()
+			return AppliedValue + WSFW_Setting_attractNPCHappinessMult.GetValue()
 		else
-			return AppliedValue + WSWF_attractNPCHappinessMult
+			return AppliedValue + WSFW_attractNPCHappinessMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attractNPCHappinessMult = aValue
+		WSFW_attractNPCHappinessMult = aValue
 	EndFunction
 EndProperty			
 		
 
 ; attack chance formula
 Bool Property bUseGlobalattackChanceBase = true Auto Hidden
-Float WSWF_attackChanceBase = 0.02
+Float WSFW_attackChanceBase = 0.02
 float Property attackChanceBase
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attackChanceBase)
+		Float AppliedValue = GetValue(WSFW_AV_attackChanceBase)
 		
 		if(bUseGlobalattackChanceBase)
-			return AppliedValue + WSWF_Setting_attackChanceBase.GetValue()
+			return AppliedValue + WSFW_Setting_attackChanceBase.GetValue()
 		else
-			return AppliedValue + WSWF_attackChanceBase
+			return AppliedValue + WSFW_attackChanceBase
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attackChanceBase = aValue
+		WSFW_attackChanceBase = aValue
 	EndFunction
 EndProperty		
 
 Bool Property bUseGlobalattackChanceResourceMult = true Auto Hidden
-Float WSWF_attackChanceResourceMult = 0.001
+Float WSFW_attackChanceResourceMult = 0.001
 float Property attackChanceResourceMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attackChanceResourceMult)
+		Float AppliedValue = GetValue(WSFW_AV_attackChanceResourceMult)
 		
 		if(bUseGlobalattackChanceResourceMult)
-			return AppliedValue + WSWF_Setting_attackChanceResourceMult.GetValue()
+			return AppliedValue + WSFW_Setting_attackChanceResourceMult.GetValue()
 		else
-			return AppliedValue + WSWF_attackChanceResourceMult
+			return AppliedValue + WSFW_attackChanceResourceMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attackChanceResourceMult = aValue
+		WSFW_attackChanceResourceMult = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalattackChanceSafetyMult = true Auto Hidden
-Float WSWF_attackChanceSafetyMult = 0.01
+Float WSFW_attackChanceSafetyMult = 0.01
 float Property attackChanceSafetyMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attackChanceSafetyMult)
+		Float AppliedValue = GetValue(WSFW_AV_attackChanceSafetyMult)
 		
 		if(bUseGlobalattackChanceSafetyMult)
-			return AppliedValue + WSWF_Setting_attackChanceSafetyMult.GetValue()
+			return AppliedValue + WSFW_Setting_attackChanceSafetyMult.GetValue()
 		else
-			return AppliedValue + WSWF_attackChanceSafetyMult
+			return AppliedValue + WSFW_attackChanceSafetyMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attackChanceSafetyMult = aValue
+		WSFW_attackChanceSafetyMult = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalattackChancePopulationMult = true Auto Hidden
-Float WSWF_attackChancePopulationMult = 0.005
+Float WSFW_attackChancePopulationMult = 0.005
 float Property attackChancePopulationMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_attackChancePopulationMult)
+		Float AppliedValue = GetValue(WSFW_AV_attackChancePopulationMult)
 		
 		if(bUseGlobalattackChancePopulationMult)
-			return AppliedValue + WSWF_Setting_attackChancePopulationMult.GetValue()
+			return AppliedValue + WSFW_Setting_attackChancePopulationMult.GetValue()
 		else
-			return AppliedValue + WSWF_attackChancePopulationMult
+			return AppliedValue + WSFW_attackChancePopulationMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_attackChancePopulationMult = aValue
+		WSFW_attackChancePopulationMult = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobalminDaysSinceLastAttack = true Auto Hidden
-Float WSWF_minDaysSinceLastAttack = 7.0 ;	minimum days before another attack can be rolled for
+Float WSFW_minDaysSinceLastAttack = 7.0 ;	minimum days before another attack can be rolled for
 float Property minDaysSinceLastAttack
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_minDaysSinceLastAttack)
+		Float AppliedValue = GetValue(WSFW_AV_minDaysSinceLastAttack)
 		
 		if(bUseGlobalminDaysSinceLastAttack)
-			return AppliedValue + WSWF_Setting_minDaysSinceLastAttack.GetValue()
+			return AppliedValue + WSFW_Setting_minDaysSinceLastAttack.GetValue()
 		else
-			return AppliedValue + WSWF_minDaysSinceLastAttack
+			return AppliedValue + WSFW_minDaysSinceLastAttack
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_minDaysSinceLastAttack = aValue
+		WSFW_minDaysSinceLastAttack = aValue
 	EndFunction
 EndProperty	
 		
 
 ; damage
 Bool Property bUseGlobaldamageDailyRepairBase = true Auto Hidden
-Float WSWF_damageDailyRepairBase = 5.0 ; amount of damage repaired per day (overall)
+Float WSFW_damageDailyRepairBase = 5.0 ; amount of damage repaired per day (overall)
 float Property damageDailyRepairBase
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_damageDailyRepairBase)
+		Float AppliedValue = GetValue(WSFW_AV_damageDailyRepairBase)
 		
 		if(bUseGlobaldamageDailyRepairBase)
-			return AppliedValue + WSWF_Setting_damageDailyRepairBase.GetValue()
+			return AppliedValue + WSFW_Setting_damageDailyRepairBase.GetValue()
 		else
-			return AppliedValue + WSWF_damageDailyRepairBase
+			return AppliedValue + WSFW_damageDailyRepairBase
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_damageDailyRepairBase = aValue
+		WSFW_damageDailyRepairBase = aValue
 	EndFunction
 EndProperty	
 
 Bool Property bUseGlobaldamageDailyPopulationMult = true Auto Hidden
-Float WSWF_damageDailyPopulationMult = 0.20 ;	multiplier on population for repair:  repair = population * damageDailyPopulationMult * damageDailyPopulationMult
+Float WSFW_damageDailyPopulationMult = 0.20 ;	multiplier on population for repair:  repair = population * damageDailyPopulationMult * damageDailyPopulationMult
 float Property damageDailyPopulationMult
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_damageDailyPopulationMult)
+		Float AppliedValue = GetValue(WSFW_AV_damageDailyPopulationMult)
 		
 		if(bUseGlobaldamageDailyPopulationMult)
-			return AppliedValue + WSWF_Setting_damageDailyPopulationMult.GetValue()
+			return AppliedValue + WSFW_Setting_damageDailyPopulationMult.GetValue()
 		else
-			return AppliedValue + WSWF_damageDailyPopulationMult
+			return AppliedValue + WSFW_damageDailyPopulationMult
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_damageDailyPopulationMult = aValue
+		WSFW_damageDailyPopulationMult = aValue
 	EndFunction
 EndProperty	
 			
 			
 			
-; WSWF - Entirely new modifiers with global and local controls
+; WSFW - Entirely new modifiers with global and local controls
 Bool Property bUseGlobaliBaseMaxBrahmin = true Auto Hidden
-Int WSWF_iBaseMaxBrahmin = 1
+Int WSFW_iBaseMaxBrahmin = 1
 Int Property iBaseMaxBrahmin
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_MaxBrahmin)
+		Float AppliedValue = GetValue(WSFW_AV_MaxBrahmin)
 		
 		if(bUseGlobaliBaseMaxBrahmin)
-			return (AppliedValue + WSWF_Setting_iBaseMaxBrahmin.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_iBaseMaxBrahmin.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_iBaseMaxBrahmin) as Int
+			return (AppliedValue + WSFW_iBaseMaxBrahmin) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_iBaseMaxBrahmin = aValue
+		WSFW_iBaseMaxBrahmin = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobaliBaseMaxSynths = true Auto Hidden
-Int WSWF_iBaseMaxSynths = 1
+Int WSFW_iBaseMaxSynths = 1
 Int Property iBaseMaxSynths
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_MaxSynths)
+		Float AppliedValue = GetValue(WSFW_AV_MaxSynths)
 		
 		if(bUseGlobaliBaseMaxSynths)
-			return (AppliedValue + WSWF_Setting_iBaseMaxSynths.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_iBaseMaxSynths.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_iBaseMaxSynths) as Int
+			return (AppliedValue + WSFW_iBaseMaxSynths) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_iBaseMaxSynths = aValue
+		WSFW_iBaseMaxSynths = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalrecruitmentGuardChance = true Auto Hidden
-Int WSWF_recruitmentGuardChance = 20 ; % chance of getting a "guard" NPC
+Int WSFW_recruitmentGuardChance = 20 ; % chance of getting a "guard" NPC
 Int Property recruitmentGuardChance
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_recruitmentGuardChance)
+		Float AppliedValue = GetValue(WSFW_AV_recruitmentGuardChance)
 		
 		if(bUseGlobalrecruitmentGuardChance)
-			return (AppliedValue + WSWF_Setting_recruitmentGuardChance.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_recruitmentGuardChance.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_recruitmentGuardChance) as Int
+			return (AppliedValue + WSFW_recruitmentGuardChance) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_recruitmentGuardChance = aValue
+		WSFW_recruitmentGuardChance = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalrecruitmentBrahminChance = true Auto Hidden
-Int WSWF_recruitmentBrahminChance = 20 ; % chance of getting a brahmin with a "farmer" settler
+Int WSFW_recruitmentBrahminChance = 20 ; % chance of getting a brahmin with a "farmer" settler
 Int Property recruitmentBrahminChance
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_recruitmentBrahminChance)
+		Float AppliedValue = GetValue(WSFW_AV_recruitmentBrahminChance)
 		
 		if(bUseGlobalrecruitmentBrahminChance)
-			return (AppliedValue + WSWF_Setting_recruitmentBrahminChance.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_recruitmentBrahminChance.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_recruitmentBrahminChance) as Int
+			return (AppliedValue + WSFW_recruitmentBrahminChance) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_recruitmentBrahminChance = aValue
+		WSFW_recruitmentBrahminChance = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalrecruitmentSynthChance = true Auto Hidden
-Int WSWF_recruitmentSynthChance = 10 ; % chance of a settler being a Synth
+Int WSFW_recruitmentSynthChance = 10 ; % chance of a settler being a Synth
 Int Property recruitmentSynthChance
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_recruitmentSynthChance)
+		Float AppliedValue = GetValue(WSFW_AV_recruitmentSynthChance)
 		
 		if(bUseGlobalrecruitmentSynthChance)
-			return (AppliedValue + WSWF_Setting_recruitmentSynthChance.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_recruitmentSynthChance.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_recruitmentSynthChance) as Int
+			return (AppliedValue + WSFW_recruitmentSynthChance) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_recruitmentSynthChance = aValue
+		WSFW_recruitmentSynthChance = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalactorDeathHappinessModifier = true Auto Hidden
-Float WSWF_actorDeathHappinessModifier = -20.0 ; happiness modifier when an actor dies
+Float WSFW_actorDeathHappinessModifier = -20.0 ; happiness modifier when an actor dies
 Float Property actorDeathHappinessModifier
 	Float Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_actorDeathHappinessModifier)
+		Float AppliedValue = GetValue(WSFW_AV_actorDeathHappinessModifier)
 		
 		if(bUseGlobalactorDeathHappinessModifier)
-			return AppliedValue + WSWF_Setting_actorDeathHappinessModifier.GetValue()
+			return AppliedValue + WSFW_Setting_actorDeathHappinessModifier.GetValue()
 		else
-			return AppliedValue + WSWF_actorDeathHappinessModifier
+			return AppliedValue + WSFW_actorDeathHappinessModifier
 		endif
 	EndFunction
 	
 	Function Set(Float aValue)
-		WSWF_actorDeathHappinessModifier = aValue
+		WSFW_actorDeathHappinessModifier = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalmaxAttackStrength = true Auto Hidden
-Int WSWF_maxAttackStrength = 100
+Int WSFW_maxAttackStrength = 100
 Int Property maxAttackStrength
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxAttackStrength)
+		Float AppliedValue = GetValue(WSFW_AV_maxAttackStrength)
 		
 		if(bUseGlobalmaxAttackStrength)
-			return (AppliedValue + WSWF_Setting_maxAttackStrength.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_maxAttackStrength.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_maxAttackStrength) as Int
+			return (AppliedValue + WSFW_maxAttackStrength) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxAttackStrength = aValue
+		WSFW_maxAttackStrength = aValue
 	EndFunction
 EndProperty
 
 
 Bool Property bUseGlobalmaxDefenseStrength = true Auto Hidden
-Int WSWF_maxDefenseStrength = 100
+Int WSFW_maxDefenseStrength = 100
 Int Property maxDefenseStrength
 	Int Function Get()
-		Float AppliedValue = GetValue(WSWF_AV_maxDefenseStrength)
+		Float AppliedValue = GetValue(WSFW_AV_maxDefenseStrength)
 		
 		if(bUseGlobalmaxDefenseStrength)
-			return (AppliedValue + WSWF_Setting_maxDefenseStrength.GetValue()) as Int
+			return (AppliedValue + WSFW_Setting_maxDefenseStrength.GetValue()) as Int
 		else
-			return (AppliedValue + WSWF_maxDefenseStrength) as Int
+			return (AppliedValue + WSFW_maxDefenseStrength) as Int
 		endif
 	EndFunction
 	
 	Function Set(Int aValue)
-		WSWF_maxDefenseStrength = aValue
+		WSFW_maxDefenseStrength = aValue
 	EndFunction
 EndProperty
 
-int VendorTopLevel = 2 ; WSWF - Copied from WorkshopParent
+int VendorTopLevel = 2 ; WSFW - Copied from WorkshopParent
 
+Bool Property bPropertiesConfigured = false Auto Hidden ; Flag from WSFW ResourceManager after it has configured all AVs, etc.
 
 ; timer IDs
 int buildWorkObjectTimerID = 0 const
@@ -1233,7 +1226,7 @@ Float UFO4P_TimeOfLastWorkshopExitUpdateStarted = 0.0
 ;TimerIDs to handle calls of the DailyUpdate function with bRealUpdate = false
 int UFO4P_DailyUpdateTimerID = 98
 int UFO4P_DailyUpdateResetHappinessTimerID = 99
-int WSWF_RetryRealDailyUpdateTimerID = 100
+int WSFW_RetryRealDailyUpdateTimerID = 100
 
 ;-----------------------------------------------------------
 ;	Added by UFO4P 1.0.5. for Bug #21039:
@@ -1269,6 +1262,13 @@ bool UFO4P_CheckFactionOwnershipClearedOnBeds = true
 
 bool Property UFO4P_InWorkshopMode = false auto hidden
 ;Tells whether the player is currently in workshop mode at this workshop.
+
+
+;---------------------------------------------------------------
+;	Added by UFO4P 2.0.5 for Bug #25129:
+;---------------------------------------------------------------
+
+bool property UFO4P_HandleUnassignedActors = false auto hidden
 
 
 ; utility function to return vendor container array
@@ -1325,6 +1325,8 @@ ObjectReference[] function InitializeVendorChests(int vendorType)
 endFunction
 
 Event OnInit()
+	; WSFW Note: Be sure to use workshopparent versions of properties here as our copies wouldn't have been updated at this stage.
+	
     ; initialize building budget actor values if necessary
 	if MaxTriangles > 0
 		SetValue(WorkshopParent.WorkshopMaxTriangles, MaxTriangles)
@@ -1345,7 +1347,7 @@ Event OnInit()
 	UFO4P_CheckFactionOwnershipClearedOnBeds = false
 
 	; happiness target (don't want to set a default value)
-	SetValue(HappinessTarget, WorkshopParent.startingHappinessTarget)
+	SetValue(WorkshopParent.WorkshopRatings[WorkshopParent.WorkshopRatingHappinessTarget].resourceValue, WorkshopParent.startingHappinessTarget)
 EndEvent
 
 Event OnLoad()
@@ -1445,7 +1447,7 @@ Event OnWorkshopMode(bool aStart)
 			WorkshopParent.SetCurrentWorkshop(self)
 		endif
 		
-		; WSWF Event Edit - Adding aStart to the end of event arguments 
+		; WSFW Event Edit - Adding aStart to the end of event arguments 
 		;Var[] kargs = new Var[2]
 		;kargs[0] = NONE
 		;kargs[1] = self
@@ -1512,7 +1514,7 @@ Event OnTimer(int aiTimerID)
 		;UFO4P 2.0.1 Bug #22234: set bResetHappiness to 'true' to tell the DailyUpdate function to call ResetHappinessPUBLIC before it stops running:
 		bResetHappiness = true
 		DailyUpdate(bRealUpdate = false)
-	elseif(aiTimerID == WSWF_RetryRealDailyUpdateTimerID)
+	elseif(aiTimerID == WSFW_RetryRealDailyUpdateTimerID)
 		TryRealDailyUpdate()
 	endif
 EndEvent
@@ -1533,10 +1535,10 @@ endEvent
 
 
 Function TryRealDailyUpdate()
-	if(WorkshopParent.IsEditLocked() || WorkshopParent.DailyUpdateInProgress)
+	if(WorkshopParent.IsEditLocked() || WorkshopParent.DailyUpdateInProgress || ! bPropertiesConfigured)
 		Debug.Trace("Starting timer to retry daily update." + Self)
 		; run another timer - system is too busy
-		StartTimer(Utility.RandomInt(5, 10), WSWF_RetryRealDailyUpdateTimerID)
+		StartTimer(Utility.RandomInt(5, 10), WSFW_RetryRealDailyUpdateTimerID)
 	else
 		DailyUpdate()
 	endif	
@@ -1709,8 +1711,8 @@ Event WorkshopParentScript.WorkshopDailyUpdate(WorkshopParentScript akSender, Va
 	
 	;StartTimerGameTime(waitTime, dailyUpdateTimerID)
 	
-	; WSWF - Now that we've separated out most of the daily update functionality to other quests, the portion the workshops handle is very small and can just use a normal quick time for thread safety
-	StartTimer(workshopID, WSWF_RetryRealDailyUpdateTimerID) ; We'll use the workshopID as our number of seconds to wait so that they each fire one after the other a second apart
+	; WSFW - Now that we've separated out most of the daily update functionality to other quests, the portion the workshops handle is very small and can just use a normal quick time for thread safety
+	StartTimer(workshopID, WSFW_RetryRealDailyUpdateTimerID) ; We'll use the workshopID as our number of seconds to wait so that they each fire one after the other a second apart
 EndEvent
 
 ; return max NPCs for this workshop
@@ -1718,7 +1720,7 @@ int function GetMaxWorkshopNPCs()
 	; base + player's charisma
 	int iMaxNPCs = iBaseMaxNPCs
 	
-	if(WSWF_Setting_AdjustMaxNPCsByCharisma.GetValue() == 1)
+	if(WSFW_Setting_AdjustMaxNPCsByCharisma.GetValue() == 1)
 		iMaxNPCs += (Game.GetPlayer().GetValue(Game.GetCharismaAV()) as int)
 	endif
 	
@@ -1853,7 +1855,7 @@ function DailyUpdate(bool bRealUpdate = true)
 
 	; REAL UPDATE ONLY:
 	if bRealUpdate
-		; WSWF - Surplus handled by our WorkshopProductionManager script now 
+		; WSFW - Surplus handled by our WorkshopProductionManager script now 
 		; DailyUpdateSurplusResources(ratings, updateData, containerRef)
 
 		RepairDamage()
@@ -1893,7 +1895,7 @@ function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[
 	; increment last visit counter each day
 	DaysSinceLastVisit += 1
 
-	; WSWF - Handled by our NPCManager quest
+	; WSFW - Handled by our NPCManager quest
 	return
 	
 	; attract new NPCs
@@ -1937,13 +1939,13 @@ function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[
 	endif
 endFunction
 
-; WSWF - Cleared out traces and UFO4P notes to make this quicker to skim through. Also removed all checks that are not necessary any longer given the fact that actual production/consumption is handled by different management scripts
+; WSFW - Cleared out traces and UFO4P notes to make this quicker to skim through. Also removed all checks that are not necessary any longer given the fact that actual production/consumption is handled by different management scripts
 function DailyUpdateProduceResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef, bool bRealUpdate)
 	; get base food production
 	updateData.foodProduction = GetValue(Food) as int
 	
-	; safety check: WSWF - Adding additional needs AV here
-	Float fSafetyNeeded = updateData.totalPopulation + GetValue(WSWF_AV_ExtraNeeds_Safety)
+	; safety check: WSFW - Adding additional needs AV here
+	Float fSafetyNeeded = updateData.totalPopulation + GetValue(WSFW_AV_ExtraNeeds_Safety)
 	int iMissingSafety = math.max(0, fSafetyNeeded - updateData.safety) as int
 	WorkshopParent.SetResourceData(MissingSafety, self, iMissingSafety)
 
@@ -1973,15 +1975,15 @@ function DailyUpdateProduceResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 	updateData.availableFood = containerRef.GetItemCount(ObjectTypeFood) + updateData.foodProduction
 	updateData.availableWater = containerRef.GetItemCount(ObjectTypeWater) + updateData.waterProduction
 
-	; how much food & water is needed? (robots don't need either) ; WSWF - Added extra food and water needs
-	int neededFood = (Self.GetValue(WSWF_AV_ExtraNeeds_Food) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableFood 
-	int neededWater = (Self.GetValue(WSWF_AV_ExtraNeeds_Water) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableWater
+	; how much food & water is needed? (robots don't need either) ; WSFW - Added extra food and water needs
+	int neededFood = (Self.GetValue(WSFW_AV_ExtraNeeds_Food) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableFood 
+	int neededWater = (Self.GetValue(WSFW_AV_ExtraNeeds_Water) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableWater
 
 	; add in food and water from linked workshops if needed
 	if neededFood > 0 || neededWater > 0
 		WorkshopParent.TransferResourcesFromLinkedWorkshops(self, neededFood, neededWater)
 		
-		; WSWF - Moved these secondary GetItemCount calls inside the if, as they aren't always needed
+		; WSFW - Moved these secondary GetItemCount calls inside the if, as they aren't always needed
 		; now, get again (now including any transfers from linked workshops)
 		updateData.availableFood = containerRef.GetItemCount(ObjectTypeFood) + updateData.foodProduction
 		updateData.availableWater = containerRef.GetItemCount(ObjectTypeWater) + updateData.waterProduction
@@ -2002,7 +2004,7 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 	bool ActorWater
 
 	
-	;WSWF - Removed UFO4P Notes to make skimming through code easier	
+	;WSFW - Removed UFO4P Notes to make skimming through code easier	
 	;UFO4P: new code starts here:
 	;----------------------------
 	
@@ -2115,7 +2117,7 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 	int iMissingBeds = Math.Max (0, Actors_Human - updateData.availableBeds) As Int
 	SetAndRestoreActorValue(self, MissingBeds, iMissingBeds)
 	
-	;/ WSWF - Actual Food/Water consumption is now handled by our WorkshopResourceManager script
+	;/ WSFW - Actual Food/Water consumption is now handled by our WorkshopResourceManager script
 		; Removed bRealUpdate consumption code
 	/;
 
@@ -2203,7 +2205,7 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 endFunction
 
 function DailyUpdateSurplusResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef)
-	; WSWF - This is now handled by our WorkshopProductionManager script
+	; WSFW - This is now handled by our WorkshopProductionManager script
 	return
 endFunction
 ; ***********************************************
@@ -2404,7 +2406,7 @@ function CheckForAttack(bool bForceAttack = false)
 endFunction
 
 
-; WSWF - Copy from WorkshopParent, which will use local version of maxAttackStrength 
+; WSFW - Copy from WorkshopParent, which will use local version of maxAttackStrength 
 int function CalculateAttackStrength(int foodRating, int waterRating)
 	; attack strength: based on "juiciness" of target
 	int attackStrength = math.min(foodRating + waterRating, maxAttackStrength) as int
@@ -2417,7 +2419,7 @@ int function CalculateAttackStrength(int foodRating, int waterRating)
 endFunction
 
 
-; WSWF - Copy from WorkShopParent, which will use local version of maxDefenseStrength
+; WSFW - Copy from WorkShopParent, which will use local version of maxDefenseStrength
 int function CalculateDefenseStrength(int aiSafety, int totalPopulation)
 	int defenseStrength = math.min(aiSafety + totalPopulation, maxDefenseStrength) as int
 	
@@ -2445,7 +2447,7 @@ endFunction
 ; holds the rules for how happiness can go up based on the actor's various ratings (food, water, shelter, etc.)
 
 ;
-; WSWF - Undid the UFO4P Change to this function as it assumed that the maxHappinessNoFood/maxHappinessNoWater are always less than maxHappinessNoShelter - which isn't necessarily true now that we've converted them to controllable properties
+; WSFW - Undid the UFO4P Change to this function as it assumed that the maxHappinessNoFood/maxHappinessNoWater are always less than maxHappinessNoShelter - which isn't necessarily true now that we've converted them to controllable properties
 ;
 
 float function CheckActorHappiness(float currentHappiness, bool bFood, bool bWater, bool bBed, bool bShelter)

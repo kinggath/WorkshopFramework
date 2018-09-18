@@ -6,7 +6,7 @@ ReferenceAlias Property Alias_WorkshopAttackMarker Auto Const
 
 workshopparentscript Property WorkshopParent Auto Const
 
-Group WSWF
+Group WSFW
 	WorkshopFramework:NPCManager Property NPCManager Auto Const
 EndGroup
 
@@ -22,7 +22,7 @@ Event OnTimerGameTime(int aiTimerID)
 	WorkshopScript workshopRef = Alias_Workshop.GetRef() as WorkshopScript
 	NPCManager.CreateInitialSettlers(workshopRef, Alias_WorkshopAttackMarker.GetRef())
 	
-		;/ WSWF - Rerouting this code to NPCManager
+		;/ WSFW - Rerouting this code to NPCManager
 			; how many new settlers?
 			int recruitRoll = utility.randomint(1, 100)
 			int recruitCount = 1
