@@ -885,7 +885,7 @@ Int WSFW_iBaseMaxNPCs = 10 ; base total NPCs that can be at a player's town - th
 Int Property iBaseMaxNPCs
 	Int Function Get()
 		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_iBaseMaxNPCs))
-		
+		Debug.Trace("iBaseMaxNPCs Check:: AV: " + WSFW_AV_iBaseMaxNPCs + " = " + AppliedValue + ", Global: " + WSFW_Setting_iBaseMaxNPCs + " = " + WSFW_Setting_iBaseMaxNPCs.GetValueInt() )
 		if(bUseGlobaliBaseMaxNPCs)
 			return AppliedValue + WSFW_Setting_iBaseMaxNPCs.GetValueInt()
 		else
@@ -2506,8 +2506,8 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	
 	;UFO4P 2.0.4 Bug #24122: replaced the previous line with the following line:
 	;While in workshop mode, the player's current location is 'none' (entering/leaving workshop mode triggers a location change event). Thus,
-	;the location check alone is not reliable and may result in the rexource calculation never running at all if the player spends extended
-	;peropds of time in workshop mode.
+	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
+	;periods of time in workshop mode.
 	if bOnlyIfLocationLoaded == false || Game.GetPlayer().GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
 	
 		RecalculateResources()

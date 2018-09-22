@@ -248,3 +248,19 @@ Bool Function IsPlayerInWorkshopMode() global
 		return false
 	endif
 EndFunction
+
+
+; -----------------------------------
+; IsF4SERunning
+; -----------------------------------
+
+Bool Function IsF4SERunning() global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		return None
+	endif
+	
+	return API.F4SEManager.IsF4SERunning
+EndFunction
