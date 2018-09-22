@@ -257,13 +257,13 @@ WorkshopNPCScript function GetAssignedActor()
 	if !assignedActor
 		; check for base actor ownership
 		ActorBase baseActor = GetActorOwner()
-;		;WorkshopParent.wsTrace(" baseActor=" + baseActor)
+		WorkshopParent.wsTrace(" baseActor=" + baseActor)
 		if baseActor && baseActor.IsUnique()
 			; if this has Actor ownership, use GetUniqueActor when available to get the actor ref
 			assignedActor = baseActor.GetUniqueActor() as WorkshopNPCScript
 		endif
 	endif
-;	;WorkshopParent.wsTrace(" GetAssignedActor: " + assignedActor)
+	WorkshopParent.wsTrace(" GetAssignedActor: " + assignedActor)
 	return assignedActor
 endFunction
 

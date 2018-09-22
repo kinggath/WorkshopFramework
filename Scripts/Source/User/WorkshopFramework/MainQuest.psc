@@ -42,6 +42,7 @@ Group FormLists
 EndGroup
 
 Group Keywords
+	Keyword Property LocationTypeWorkshop Auto Const
 	Keyword Property LocationTypeSettlement Auto Const
 EndGroup
 
@@ -67,28 +68,46 @@ Event OnTimer(Int aiTimerID)
 	
 	if(aiTimerID == LocationChangeTimerID)
 		Location kNewLoc = LatestLocation.GetLocation()
-		if(kNewLoc.HasKeyword(LocationTypeSettlement))
+		if(kNewLoc.HasKeyword(LocationTypeWorkshop))
 			Var[] kArgs
 			
 			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
+			if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
+				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+			endif
+			
+			
 			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
-			if( ! lastWorkshop && currentWorkshop) ; This should only happen once, after which there will always be a lastWorkshop stored in the alias
+			Bool bCurrentWorkshopRefFound = true
+			if( ! currentWorkshop)
+				bCurrentWorkshopRefFound = false
+			endif
+			
+			Bool bLastWorkshopRefFound = true
+			if( ! lastWorkshop)
+				bLastWorkshopRefFound = false
+			endif			
+			
+			if( ! bLastWorkshopRefFound && bCurrentWorkshopRefFound) ; This should only happen once, after which there will always be a lastWorkshop stored in the alias
 				LastWorkshopAlias.ForceRefTo(currentWorkshop)
 			endif
 
-			if(lastWorkshop)
+			if(bLastWorkshopRefFound)
 				Bool bLastWorkshopLoaded = lastWorkshop.GetCurrentLocation().IsLoaded()
 				kArgs = new Var[2]
 				kArgs[0] = lastWorkshop
 				kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
 				
-				if(lastWorkshop != currentWorkshop && (currentWorkshop || ! bLastSettlementUnloaded))
+				if(lastWorkshop != currentWorkshop && (bCurrentWorkshopRefFound || ! bLastSettlementUnloaded))
 					; Workshop changed or they are no longer in a settlement
-					if(currentWorkshop)
+					if(bCurrentWorkshopRefFound)
+						; Changed settlement - update our lastWorkshop record to store the currentWorkshop
 						LastWorkshopAlias.ForceRefTo(currentWorkshop)
 					endif
 					
 					if( ! bLastWorkshopLoaded)
+						; Our previous settlement is no longer loaded in memory
 						bLastSettlementUnloaded = true
 					endif				
 					
@@ -98,16 +117,39 @@ Event OnTimer(Int aiTimerID)
 				endif	
 			endif
 			
-			if(currentWorkshop && (lastWorkshop != currentWorkshop || bLastSettlementUnloaded))
+			if(bCurrentWorkshopRefFound && (lastWorkshop != currentWorkshop || bLastSettlementUnloaded))
 				; Workshop changed or they are no longer in a settlement
 				
-				kArgs = new Var[2]
+				kArgs = new Var[3]
 				kArgs[0] = currentWorkshop
-				kArgs[1] = bLastSettlementUnloaded
+				kArgs[1] = lastWorkshop
+				kArgs[2] = bLastSettlementUnloaded ; If lastWorkshop == currentWorkshop && bLastSettlementUnloaded - it means the player traveled far enough to unload the last settlement, but never visited a new one in between
 				
 				SendCustomEvent("PlayerEnteredSettlement", kArgs)
 				
-				bLastSettlementUnloaded = false
+				bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
+			endif
+		endif
+	endif
+EndEvent
+
+
+Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
+    if(asMenuName== "WorkshopMenu")
+		if(abOpening)
+			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
+			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
+			
+			if(lastWorkshop != currentWorkshop)
+				 ; If this happens, there is likely some serious script lag happening - but since LastWorkshopAlias is used throughout our code, we don't ever want it to be incorrect, so use this opportunity to correct it
+				 if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+					; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
+					currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+				endif
+				
+				if(currentWorkshop)
+					LastWorkshopAlias.ForceRefTo(currentWorkshop)
+				endif
 			endif
 		endif
 	endif
@@ -127,6 +169,8 @@ EndFunction
 
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
+	
+	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 EndFunction
 
 ; ---------------------------------------------
@@ -150,6 +194,6 @@ Function HandleLocationChange(Location akNewLoc)
 	
 	if( ! akNewLoc.IsSameLocation(lastParentLocation) || ! akNewLoc.IsSameLocation(lastParentLocation, LocationTypeSettlement))
 		LatestLocation.ForceLocationTo(akNewLoc)
-		StartTimer(fLocationChangeDelay, LocationChangeTimerID)	
+		StartTimer(1.0, LocationChangeTimerID)	
 	endif	
 EndFunction

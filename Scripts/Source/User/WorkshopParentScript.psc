@@ -756,7 +756,7 @@ EndProperty
 
 Bool Property AutoAssignFood
 	Bool Function Get()
-		return (WSFW_Setting_AutoAssignFood.GetValue() == 1)
+		return (WSFW_Setting_AutoAssignFood.GetValue() == 1.0)
 	EndFunction
 	
 	Function Set(Bool aValue)
@@ -770,7 +770,7 @@ EndProperty
 
 Bool Property AutoAssignDefense
 	Bool Function Get()
-		return (WSFW_Setting_AutoAssignDefense.GetValue() == 1)
+		return (WSFW_Setting_AutoAssignDefense.GetValue() == 1.0)
 	EndFunction
 	
 	Function Set(Bool aValue)
@@ -782,27 +782,29 @@ Bool Property AutoAssignDefense
 	EndFunction
 EndProperty	
 
-Int Property MaxFoodWorkPerSettler
-	Int Function Get()
-		return WSFW_Setting_MaxFoodWorkPerSettler.GetValueInt()
+Float Property MaxFoodWorkPerSettler
+	Float Function Get()
+		return WSFW_Setting_MaxFoodWorkPerSettler.GetValue()
 	EndFunction
 	
-	Function Set(Int aValue)
+	Function Set(Float aValue)
 		WSFW_Setting_MaxFoodWorkPerSettler.SetValue(aValue)
 	EndFunction
 EndProperty	
 
 
-Int Property MaxDefenseWorkPerSettler
-	Int Function Get()
-		return WSFW_Setting_MaxDefenseWorkPerSettler.GetValueInt()
+Float Property MaxDefenseWorkPerSettler
+	Float Function Get()
+		return WSFW_Setting_MaxDefenseWorkPerSettler.GetValue()
 	EndFunction
 	
-	Function Set(Int aValue)
+	Function Set(Float aValue)
 		WSFW_Setting_MaxDefenseWorkPerSettler.SetValue(aValue)
 	EndFunction
 EndProperty
 
+
+; TODO WSWF - add globals for the new vars below
 Float WSFW_fAttackDamageToTheftRatio_Food = 1.0
 Float Property AttackDamageToTheftRatio_Food
 	Float Function Get()
@@ -2756,7 +2758,8 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 		;If workshop is currently loaded, also save all new actors that are not robots in the UFO4P_ActorsWithoutBeds array.
 		;Otherwise, the new version of the TryToAssignBeds function won't find them.
 		if assignedActor.GetBaseValue (WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue) == 0 && newWorkshopID == currentWorkshopID
-			UFO4P_ActorsWithoutBeds.Add (assignedActor)
+			; WSWF - Likely the UFO4P patch would have added this change as well, but hasn't done so yet
+			UFO4P_AddToActorsWithoutBedsArray(assignedActor)
 		endif
 		
 	endif
@@ -2764,14 +2767,14 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	if bResetMode
 		wsTrace("	AddActorToWorkshop: clearing multiResourceProduction")
 		assignedActor.multiResourceProduction = 0.0
-		;In reset mode, fill workers assigned to food or safety in worker arrays, so we won't have to loop through the actors array again kater on:
+		;In reset mode, fill workers assigned to food or safety in worker arrays, so we won't have to loop through the actors array again later on:
 		ActorValue multiResourceValue = assignedActor.assignedMultiResource
 		if multiResourceValue
 			UFO4P_AddActorToWorkerArray (assignedActor, GetResourceIndex (multiResourceValue))
 		endif
 	endif
 
-	;Eveb if not in reset mode, this should not run if the workshop is not loaded:
+	;Even if not in reset mode, this should not run if the workshop is not loaded:
 	if !bResetMode && newWorkshopID == currentWorkshopID 
 		wsTrace("	AddActorToWorkshop: step 5 - try to assign a bed, maybe")
 		TryToAssignBeds (workshopRef)
@@ -2780,9 +2783,11 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	assignedActor.EvaluatePackage()
 
 	if !workshopRef.RecalculateWorkshopResources()
-		wsTrace(" 	RecalculateWorkshopResources returned false - add population manually")
-		;UFO4P 2.0.5 Bug #24643: ModifyResourceData instead of ModifyResourceData:
-		ModifyResourceData (WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, 1)
+		; WSWF - Added if(assignedActor.bCountsForPopulation) to ensure it isn't increased when sending those NPCs
+		if(assignedActor.bCountsForPopulation)
+			wsTrace(" 	RecalculateWorkshopResources returned false - add population manually")
+			ModifyResourceData (WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, 1)
+		endif
 	endif
 
 	if !bResetMode && bResetHappiness
@@ -3243,7 +3248,8 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 					;If a bed is removed from the workshop, add the previous owner to the UFO4P_ActorsWithoutBeds array, so he can get a new one assigned.
 					;Note: if this  function is called by UnassignActrr_Private, bRemoveObject is never true, so there is no risk here to add an actor to
 					;the array who is subsequently removed from the workshop.
-					UFO4P_ActorsWithoutBeds.Add (assignedActor)
+					; WSWF - Likely the UFO4P patch would have added this change as well, but hasn't done so yet
+					UFO4P_AddToActorsWithoutBedsArray (assignedActor)
 				elseif !bRemoveObject
 					if bIsBed
 						UFO4P_AddUnassignedBedToArray (theObject)
@@ -3709,123 +3715,17 @@ endFunction
 ; try to assign all objects of the specified resource types
 function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resourceValue)
 	; WSFW - Override based on autoassign settings
-	if((resourceValue == WorkshopRatings[WorkshopRatingSafety].resourceValue &&  ! AutoAssignDefense) || (resourceValue == WorkshopRatings[WorkshopRatingFood].resourceValue && ! AutoAssignFood))
+	if((resourceValue == WorkshopRatings[WorkshopRatingSafety].resourceValue && ! AutoAssignDefense) || (resourceValue == WorkshopRatings[WorkshopRatingFood].resourceValue && ! AutoAssignFood))
+		wsTrace("[WSWF Override] Auto assign disabled for this resource type.")
 		return
 	endif
-	
 	
 	;/
-	;UFO4P 2.0.2 Bug #23016:
-	;Also return if the workshop this function is supposed to run on is not loaded. Otherwise, the WorkshopActors array will be empty even if there are
-	;actors at this workshop (this also makes sure that the message below only prints zero actors on the log if there really are no actors).
-	if !resourceValue || UFO4P_IsWorkshopLoaded (workshopRef) == false
-		return
-	endif
-
-	ObjectReference[] WorkshopActors = GetWorkshopActors(workshopRef)
-	wsTrace("		Total actors: " + WorkshopActors.length)
-
-	; if no actors, exit
-	if WorkshopActors.Length == 0
-		return
-	endif
-
-	int resourceIndex = GetResourceIndex(resourceValue)
-
-	; first, make array of workers who are assigned to this resource type
-	WorkshopNPCScript[] workers = new WorkShopNPCScript[WorkshopActors.Length]
-	int maxWorkerIndex = -1
-	
-	; go through actor list, find workers
-	int actorIndex = 0
-	while actorIndex < WorkshopActors.Length
-		WorkshopNPCScript theActor = WorkshopActors[actorIndex] as WorkshopNPCScript
-		;UFO4P 2.0.3 Bug #23271: moved sanity check for 'theActor' before the trace becuase the trace runs assignedMultiResource on it and this will fail
-		;with an error if theActor = none:
-		if theActor
-			wsTrace("		actor " + theActor + " assigned to " + resourceValue + "? " + (theActor.assignedMultiResource == resourceValue) )
-			;if theActor && theActor.assignedMultiResource == resourceValue && theActor.multiResourceProduction < WorkshopRatings[resourceIndex].maxProductionPerNPC
-			;UFO4P 2.0.3 Bug #23271: replaced the previous line with the following line (removed check for 'theActor' as this is now done before the trace):
-			if theActor.assignedMultiResource == resourceValue && theActor.multiResourceProduction < WorkshopRatings[resourceIndex].maxProductionPerNPC
-				maxWorkerIndex += 1
-				workers[maxWorkerIndex] = theActor
-			endif
-		endif
-		actorIndex += 1
-	endWhile
-
-	;UFO4P: Modified wording of trace since the value displayed here is NOT the number of actors assigned to the respective resource:
-	wsTrace("		Found " + (maxWorkerIndex + 1) + " actors to assign to " + resourceValue)
-
-	; shortcut - if no workers, we're done
-	if maxWorkerIndex < 0	
-		return
-	endif
-
-	; we now have an array of workers - loop through object list until we can't assign any more workers (or run out of farms)
-	int objectIndex = 0
-	bool availableworkers = true 	; this gets set to false if we ever loop through the actor list and find no workers left with available production slots
-	int currentWorkerIndex = 0
-
-	; get resources of specified type, undamaged only (no point in auto-assigning damaged objects)
-	ObjectReference[] ResourceObjects = GetResourceObjects(workshopRef, resourceValue, 2)
-	wsTrace("		Found " + ResourceObjects.Length + " undamaged " + resourceValue + " objects")
-
-	while (objectIndex < ResourceObjects.Length) && availableworkers
-		WorkshopObjectScript workshopObject = ResourceObjects[objectIndex] as WorkshopObjectScript
-		; this produces the resource - is it owned?
-
-		;UFO4P: Added sanity check and trace to spot items with missing scripts:
-		if workshopObject == none
-			wsTrace("		WorkshopObject " + ResourceObjects[objectIndex] + " has no WorkshopObjectScript")
-		elseIf workshopObject.RequiresActor() && !workshopObject.IsActorAssigned()
-			float resourceRating = workshopObject.GetResourceRating(resourceValue)
-			; loop through actors looking for available workers
-			bool assignedResource = false
-			; save starting index so we only loop once
-			int startingIndex = currentWorkerIndex
-			bool exitLoop = false
-			while !assignedResource && !exitLoop
-				; get the next Worker
-				WorkshopNPCScript theActor = workers[currentWorkerIndex]
-				float resourceTotal = theActor.multiResourceProduction
-				wsTrace("   	found Worker " + currentWorkerIndex + ": " + theActor + " at " + resourceTotal + " production")
-				if (resourceTotal + resourceRating <= WorkshopRatings[resourceIndex].maxProductionPerNPC)
-					wsTrace("   	found available Worker, resource rating=" + resourceRating + " - assign")
-					assignedResource = true
-					; I can produce this, so assign me to it
-					; NOTE: resetMode = TRUE (so it skips calling this function again); addActorCheck = FALSE (since we already know this actor is assigned to this workshop)
-					AssignActorToObject(theActor, workshopObject, bResetMode = true, bAddActorCheck = false) 
-					; add to total
-					resourceTotal += resourceRating
-					; save out new resource total on me
-					theActor.multiResourceProduction = resourceTotal
-				endif
-				; get next Worker index
-				currentWorkerIndex = GetNextIndex(currentWorkerIndex, maxWorkerIndex)
-				; if we're back to start, exit Worker loop
-				if currentWorkerIndex == startingIndex
-					exitLoop = true
-				endif
-			endWhile
-
-			; if we didn't assign anything, AND the foodRating was 1 (minimum), then no workers left - we can stop looking
-			if !assignedResource && resourceRating == 1
-				wsTrace("	No more workers with spare production - stop looking")
-				availableWorkers = false
-			endif
-		endif
-
-		objectIndex += 1
-	endwhile
-
 	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 
 		Performance optimizations required substantial modifications to this function. In order to maintain legibility, the code has been
-		rewritten. Any comments on modifications prior to UFO4P 2.0.4 (except for official patch notes) have been left out (they are still
-		preserved in the commented out code above though). A summary of the modifications is included in the comment on the ResetWorkshop
-		function.
+		rewritten. 
 	;-----------------------------------------------------------------------------------------------------------------------------------------
 	/;
 
@@ -3944,7 +3844,8 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 
 		; make sure the helper array is up to date (i.e. won't contain any invalid objects):
 		UFO4P_SaveObjectArray (ResourceObjects, resourceIndex)
-
+	else
+		wsTrace("No resource type sent to assign. ResourceValue: " + resourceValue)
 	endif
 
 endFunction
@@ -4311,11 +4212,11 @@ endFunction
 ; called by ResetWorkshop
 ; also called when activating workshop
 function SetCurrentWorkshop(WorkshopScript workshopRef)
-
 	CurrentWorkshop.ForceRefTo(workshopRef)
 	currentWorkshopID = workshopRef.GetWorkshopID()
 	WorkshopCurrentWorkshopID.SetValue(currentWorkshopID)
 
+	
 	;UFO4P 2.0.4 Bug #24122: added trace:
 	wsTrace("---------------------------------------------------------------------------------")
 	wsTrace ("	SetCurrentWorkshop: new value = " + currentWorkshopID)
@@ -4518,7 +4419,8 @@ function ResetWorkshop(WorkshopScript workshopRef)
 				;the actor array, we'll run a single loop through the beds array to remove all actors that are registered as bed owners. This
 				;makes sure that this array is up to date when we start adding the work objects.
 				if actorRef.GetBaseValue (WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue) == 0
-					UFO4P_ActorsWithoutBeds.Add (actorRef)
+					; WSWF - Likely the UFO4P patch would have added this change as well, but hasn't done so yet
+					UFO4P_AddToActorsWithoutBedsArray (actorRef)
 				endif
 
 				if CaravanActorAliases.Find(actorRef) < 0

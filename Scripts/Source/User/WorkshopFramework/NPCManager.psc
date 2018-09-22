@@ -197,7 +197,7 @@ Function HandleQuestInit()
 	FirstSettlersRecruitmentChances = new Float[0]
 	int i = 0
 	while(i < DefaultFirstSettlersRecruitmentChances.Length)
-		FirstSettlersRecruitmentChances.Add(i)
+		FirstSettlersRecruitmentChances.Add(DefaultFirstSettlersRecruitmentChances[i])
 		
 		i += 1
 	endWhile
@@ -258,6 +258,8 @@ Function RecruitAllWorkshopNPCs()
 	
 	bRecruitmentUnderwayBlock = true
 	
+	ModTrace("[WSFW NPCManager]: Daily recruitment - START")
+	
 	Float fStartTime = Utility.GetCurrentRealtime()
 	
 	int i = 0
@@ -287,6 +289,8 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 		return
 	endif	
 	
+	ModTrace("[WSFW NPCManager]: Daily recruitment check for settlement " + akWorkshopRef)
+	
 	; attract new NPCs
 	; if I have a radio station
 	int iRadioRating = akWorkshopRef.GetValue(WorkshopRadioRating) as int
@@ -311,6 +315,22 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 		iCheckPopulation = iLivingPopulation
 	endif
 	
+	if(iRadioRating <= 0)
+		ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " lacks a recruitment beacon.")
+	endif
+	
+	if(akWorkshopRef.HasKeyword(WorkshopType02))
+		ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " is a raider settlement.")
+	endif
+	
+	if(iUnassignedPopulation > iMaxSurplusNPCs)
+		ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " has " + iUnassignedPopulation + " unassigned settlers, which is over the max unassigned settlers allows (which is " + iMaxSurplusNPCs + ").")
+	endif
+	
+	if(iCheckPopulation >= iMaxWorkshopNPCs)
+		ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " has " + iCheckPopulation + " settlers, which is at or over the max settlers allowed (which is " + iMaxWorkshopNPCs + ").")
+	endif
+	
 	if(iRadioRating > 0 && akWorkshopRef.HasKeyword(WorkshopType02) == false && iUnassignedPopulation < iMaxSurplusNPCs && iCheckPopulation < iMaxWorkshopNPCs)
 		
 		float fAttractChance = fDailyChance + fCurrentHappiness/100 * fAttractNPCHappinessMult
@@ -323,6 +343,7 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 		float fDieRoll = utility.RandomFloat()
 		
 		if(fDieRoll <= fAttractChance)
+			ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " won the die roll, creating settler...")
 			WorkshopNPCScript newWorkshopActor = CreateSettler(akWorkshopRef)
 			
 			if(newWorkshopActor && newWorkshopActor.GetValue(WorkshopGuardPreference) == 0)
@@ -335,6 +356,8 @@ Function RecruitWorkshopNPCs(WorkshopScript akWorkshopRef)
 					endif
 				endif
 			endif
+		else
+			ModTrace("[WSFW NPCManager]: " + akWorkshopRef + " rolled a " + (fDieRoll*100) + " versus a chance of " + (fAttractChance*100) + ".")
 		endif
 	endif
 EndFunction
@@ -342,10 +365,13 @@ EndFunction
 
 Function CreateInitialSettlers(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
 	if( ! akWorkshopRef || WSFW_Setting_RecruitSettlersOnFirstBeaconActivation.GetValue() == 0)
+		ModTrace("[WSFW NPCManager]: Skipping creating of initial settlers because either the workshop ref is missing, or initial recruitment is disable.")
+		
 		return
 	endif
 	
 	int recruitRoll = utility.randomint(1, 100)
+	ModTrace("[WSFW NPCManager]: Recruit chances: " + FirstSettlersRecruitmentChances + ", Recruit Roll: " + recruitRoll)
 	int iRecruitCount = 0
 	int i = 0
 	while(i < FirstSettlersRecruitmentChances.Length)

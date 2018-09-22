@@ -46,15 +46,15 @@ Group Controllers
 EndGroup
 
 Group FormLists
-	FormList Property GameLoadedQuests Auto Const
+	FormList Property GameLoadedQuests Auto Const Mandatory
 	{ Blank formlist for registered quests }
 	
-	Formlist Property LocationChangedQuests Auto Const
+	Formlist Property LocationChangedQuests Auto Const Mandatory
 	{ Blank formlist for registered quests }
 EndGroup
 
 Group Aliases	
-	LocationAlias Property LatestLocation Auto Const
+	LocationAlias Property LatestLocation Auto Const Mandatory
 	{ Alias to store the store the last player visited location }
 EndGroup
 
