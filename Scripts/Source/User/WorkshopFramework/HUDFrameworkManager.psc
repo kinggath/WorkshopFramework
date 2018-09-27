@@ -61,7 +61,6 @@ String[] RegisteredWidgets
 
 Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
-	
 	PrepareHUDFramework()
 	
 	if(HudInstance == None || RegisteredWidgets == None)
@@ -420,4 +419,16 @@ EndFunction
 
 Function NudgeWidgetScale(String asWidgetName, Float afAmount = 0.1)
 	ModWidgetScale(asWidgetName, afAmount, afAmount)
+EndFunction
+
+
+Function ShowHUDWidgetsInWorkshopMode()
+	Var[] Args = new Var[5]
+	Args[0] = "HUDFramework"
+	Args[1] = "SwitchToPA"
+	Args[2] = "1"
+	Args[3] = true
+	Args[4] = false
+	
+	HudInstance.CallFunction("SendMessageString", Args)
 EndFunction

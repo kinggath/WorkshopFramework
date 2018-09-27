@@ -69,3 +69,9 @@ Struct InjectableItemMap
 	FormList AdditionalEntries
 	FormList RemovedDefaultEntries
 EndStruct
+
+
+Struct WorkshopTargetContainer
+	Keyword TargetContainerKeyword
+	Int iWorkshopID
+EndStruct

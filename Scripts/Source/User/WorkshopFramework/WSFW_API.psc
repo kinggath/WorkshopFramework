@@ -37,7 +37,7 @@ WorkshopFramework:WSFW_APIQuest Function GetAPI() global
 	return API
 EndFunction
 
-
+; TODO - Add version of CreateSettlementObject that doesn't use the thread manager and just returns the result
 ; ------------------------------
 ; CreateSettlementObject
 ;
@@ -64,7 +64,7 @@ Int Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorksh
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return -1
 	endif
 	
@@ -106,12 +106,13 @@ Int Function CreateBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopScript 
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return -1
 	endif
 	
 	Bool bRequestEvents = false
 	if(akRegisterMeForEvent)
+		Debug.Trace("[WSFW] Registering for ObjectBatchCreated events.")
 		akRegisterMeForEvent.RegisterForCustomEvent(API.PlaceObjectManager, "ObjectBatchCreated")
 		bRequestEvents = true
 	endif
@@ -144,7 +145,7 @@ Float Function GetWorkshopValue(ObjectReference akWorkshopRef, ActorValue aValue
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return 0.0
 	endif
 	
@@ -163,7 +164,7 @@ WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return None
 	endif
 	
@@ -214,7 +215,7 @@ WorkshopNPCScript Function SpawnWorkshopNPC(WorkshopScript akWorkshopRef, Bool a
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return None
 	endif
 	
@@ -236,7 +237,7 @@ Bool Function IsPlayerInWorkshopMode() global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return None
 	endif
 	
@@ -258,7 +259,7 @@ Bool Function IsF4SERunning() global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
-		Debug.Trace("[WorkshopFramework] Failed to get API.")
+		Debug.Trace("[WSFW] Failed to get API.")
 		return None
 	endif
 	

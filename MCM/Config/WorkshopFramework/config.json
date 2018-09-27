@@ -1,0 +1,151 @@
+{
+  "modName": "WorkshopFramework",         
+  "displayName": "Workshop Framework",    
+  "minMcmVersion": 1.10,                
+  "pluginRequirements": [],     
+  "content": [
+	{
+		"text": "<p align='center'><font size='24'>Workshop Framework</font></p>",
+		"html": true,
+		"type": "text"
+    },
+    {
+      "text": "About",
+      "type": "section"
+    },
+    {
+		"text": "<p>Workshop Framework provides new options to control settlement gameplay, massive speed and stability improvements, as well as a framework for other mods to alter features about the settlement system without having to overwrite vanilla files.</p><br>",
+		"type": "text",
+		"html": true
+    }
+  ],                   
+  "pages": [
+  {                         
+    "pageDisplayName": "Options",   
+    "content": [
+		 {
+			"text": "<p>All default options are designed to match how the vanilla game plays.</p><br>",
+			"type": "text",
+			"html": true
+		},
+		{
+		  "text": "Functionality Options",
+		  "type": "section"
+		},
+		{ 
+		  "id": "AdjustMaxNPCsByCharisma:Options",
+		  "text": "Adjust Max NPCs By Charisma",
+		  "type": "switcher",
+		  "help": "[Default: ON] Your Charisma score increases the maximum number of settlers that can be recruited to a settlement.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|A98D"
+		  }	  
+		},
+		{ 
+		  "id": "LinkedSettlementConsumption:Options",
+		  "text": "Linked Settlement Consumption",
+		  "type": "switcher",
+		  "help": "[Default: ON] Each day, food and water are consumed by your settlers. This option allows them to consume from linked settlements if they are short to help keep happiness up.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|35D6"
+		  }	  
+		},
+		{ 
+		  "id": "RecruitSettlersImmediately:Options",
+		  "text": "Recruit Settlers Immediately",
+		  "type": "switcher",
+		  "help": "[Default: ON] When a beacon is built and powered for the first time, a small number of new settlers will arrive immediately.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|9A5A"
+		  }	  
+		},
+		{ 
+		  "id": "RobotsCountTowardsMaxPopulation:Options",
+		  "text": "Robots Count Towards Max Population",
+		  "type": "switcher",
+		  "help": "[Default: ON] Robots are counted as part of your max population (if OFF, they will still be included in the HUD count).",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|91E4"
+		  }	  
+		},
+		{ 
+		  "id": "RobotHappinessLevel:Options",
+		  "text": "Default Robot Happiness Level",
+		  "type": "slider",
+		  "help": "[Default: 50] Robots are automatically granted this level of happiness. (Set to 80 to have them treated exactly the same as non-robot settlers)",
+		  "valueOptions": {
+			"min": 0,
+			"max": 100,
+			"step": 5,
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|35D8"
+		  }	  
+		},
+		{
+		  "text": "Assignment Options",
+		  "type": "section"
+		},
+		{ 
+		  "id": "AutoAssignBeds:Options",
+		  "text": "Auto Assign Beds",
+		  "type": "switcher",
+		  "help": "[Default: ON] The game will attempt to auto-assign beds to settlers.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92A9"
+		  }	  
+		},
+		{ 
+		  "id": "AutoAssignDefenses:Options",
+		  "text": "Auto Assign Defenses",
+		  "type": "switcher",
+		  "help": "[Default: ON] The game will attempt to auto-assign guard posts to settlers.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92AA"
+		  }	  
+		},
+		{ 
+		  "id": "AutoAssignFood:Options",
+		  "text": "Auto Assign Food",
+		  "type": "switcher",
+		  "help": "[Default: ON] The game will attempt to auto-assign crops to settlers.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92AB"
+		  }	  
+		},
+		{ 
+		  "id": "MaxDefenseWork:Options",
+		  "text": "Max Defense Work Per Settler",
+		  "type": "slider",
+		  "help": "[Default: 6] The max amount of defense work a single settler can be assigned to.",
+		  "valueOptions": {
+			"min": 1,
+			"max": 30,
+			"step": 1,
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92B6"
+		  }	  
+		},
+		{ 
+		  "id": "MaxFoodWork:Options",
+		  "text": "Max Food Work Per Settler",
+		  "type": "slider",
+		  "help": "[Default: 6] The max amount of food work a single settler can be assigned to.",
+		  "valueOptions": {
+			"min": 1,
+			"max": 30,
+			"step": 1,
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92B7"
+		  }	  
+		}
+	]
+  }	
+  ]
+}

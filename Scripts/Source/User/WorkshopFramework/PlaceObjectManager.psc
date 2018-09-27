@@ -98,14 +98,23 @@ ObjectWatch[] QueuedBatches
 ; ---------------------------------------------
 
 Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework:Library:ThreadRunner akThreadRunner, Var[] akargs)
-	; akargs[0] = sCustomCallCallbackID, akargs[1] = iCallbackID, akargs[2] = Result from called function
+	; akargs[0] = sCustomCallCallbackID, akargs[1] = iCallbackID, akargs[2] = ThreadRef
 	String sCustomCallCallbackID = akargs[0] as String
 	if(sCustomCallCallbackID == sThreadID_ObjectCreated)
-		ObjectReference asObjectRef = akargs[2] as ObjectReference
-		if(asObjectRef)
-			CreatedObjects.AddRef(asObjectRef)
+		WorkshopFramework:ObjectRefs:Thread_PlaceObject kThreadRef = akargs[2] as WorkshopFramework:ObjectRefs:Thread_PlaceObject
+		if(kThreadRef)
+			ObjectReference kCreatedRef = kThreadRef.kResult
 			
-			UpdateMonitors(asObjectRef)
+			if(kCreatedRef)
+				CreatedObjects.AddRef(kCreatedRef)
+				
+				ModTrace("[WSFW] PlaceObjectManager - CreatedRef " + kCreatedRef + "returned from thread, updating monitors.")
+				
+				UpdateMonitors(kCreatedRef)
+			endif
+			
+			; Clean up thread now that we have the result
+			kThreadRef.SelfDestruct()
 		endif
 	endif
 EndEvent
@@ -144,7 +153,7 @@ Int Function CreateBatchObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshop
 	
 	if(abCallbackEventNeeded)
 		ObjectWatch NewBatch = new ObjectWatch
-		NewBatch.iAwaitingObjectCount = (PlaceMe.Length * 4)
+		NewBatch.iAwaitingObjectCount = PlaceMe.Length
 		NewBatch.iSeenObjectCount = 0
 		if(aSetAV)
 			NewBatch.WithAV = GetActorValueSetForm(aSetAV)
@@ -160,6 +169,8 @@ Int Function CreateBatchObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshop
 			aSetAV.AVForm = BatchTagAV
 			aSetAV.fValue = iBatchID as Float
 		endif
+		
+		ModTrace("[WSFW] PlaceObjectManager: CreateBatchObjects setting up batch monitor " + NewBatch + ".")
 		
 		MonitorBatch(NewBatch)
 	endif
@@ -180,7 +191,7 @@ Int Function CreateBatchObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshop
 			
 	int i = 0
 	int index = 0
-	while(i < (PlaceMe.Length * 4))
+	while(i < PlaceMe.Length)
 		; Create new version of WorldObject
 		WorldObject newObject = PlaceMe[index]
 		
@@ -221,73 +232,26 @@ EndFunction
 
 
 Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = None, ActorValueSet aSetAV = None, Int aiFormlistIndex = -1, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Bool abCallbackEventNeeded = true)
-	; Send all creation request to the thread manager
+	; Send creation request to the thread manager
 	Form FormToPlace = GetWorldObjectForm(aPlaceMe, aiFormlistIndex)
 		
 	if(FormToPlace)
-		Var[] kArgs = new Var[0]
-		
-		kArgs.Add(FormToPlace)
-		
-		if(akPositionRelativeTo)
-			; Calculate position
-			Float[] fPosition = new Float[3]
-			Float[] fAngle = new Float[3]
-			Float[] fPosOffset = new Float[3]
-			Float[] fAngleOffset = new Float[3]
-			Float[] fNew3dData = new Float[6]
-					
-			fPosition[0] = akPositionRelativeTo.X
-			fPosition[1] = akPositionRelativeTo.Y
-			fPosition[2] = akPositionRelativeTo.Z
-			fAngle[0] = akPositionRelativeTo.GetAngleX()
-			fAngle[1] = akPositionRelativeTo.GetAngleY()
-			fAngle[2] = akPositionRelativeTo.GetAngleZ()
-	
-			fPosOffset[0] = aPlaceMe.fPosX
-			fPosOffset[1] = aPlaceMe.fPosY
-			fPosOffset[2] = aPlaceMe.fPosZ
-			fAngleOffset[0] = aPlaceMe.fAngleX
-			fAngleOffset[1] = aPlaceMe.fAngleY
-			fAngleOffset[2] = aPlaceMe.fAngleZ
-			
-			fNew3dData = GetCoordinatesRelativeToBase(fPosition, fAngle, fPosOffset, fAngleOffset)
-			
-			kArgs.Add(fNew3dData[0])
-			kArgs.Add(fNew3dData[1])
-			kArgs.Add(fNew3dData[2])
-			kArgs.Add(fNew3dData[3])
-			kArgs.Add(fNew3dData[4])
-			kArgs.Add(fNew3dData[5])
-		else
-			kArgs.Add(aPlaceMe.fPosX)
-			kArgs.Add(aPlaceMe.fPosY)
-			kArgs.Add(aPlaceMe.fPosZ)
-			kArgs.Add(aPlaceMe.fAngleX)
-			kArgs.Add(aPlaceMe.fAngleY)
-			kArgs.Add(aPlaceMe.fAngleZ)
-		endif
-		
-		kArgs.Add(aPlaceMe.fScale)
-		if(aSetAV)
-			kArgs.Add(GetActorValueSetForm(aSetAV))
-			kArgs.Add(aSetAV.fValue)
-		else
-			kArgs.Add(None)
-			kArgs.Add(0.0)
-		endif
-		
-		kArgs.Add(aPlaceMe.bForceStatic)
-		kArgs.Add(abStartEnabled)
-		
 		String sCustomCallbackID = sThreadID_ObjectCreated
 		if( ! abCallbackEventNeeded)
 			sCustomCallbackID = ""
+		else
+			ModTrace("[WSFW] PlaceObjectManager: Creating thread - requesting callback event.")
 		endif
 		
 		WorkshopFramework:ObjectRefs:Thread_PlaceObject kThread = ThreadManager.CreateThread(PlaceObjectThread) as WorkshopFramework:ObjectRefs:Thread_PlaceObject
 		
 		if(kThread)
+			if(aSetAV)
+				kThread.AddTagAVSet(GetActorValueSetForm(aSetAV), aSetAV.fValue)
+			endif
+			
+			kThread.bStartEnabled = abStartEnabled
+			kThread.bForceStatic = aPlaceMe.bForceStatic
 			kThread.kSpawnAt = PlayerRef
 			kThread.SpawnMe = FormToPlace
 			kThread.fPosX = aPlaceMe.fPosX
@@ -299,7 +263,7 @@ Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = N
 			kThread.fScale = aPlaceMe.fScale
 			kThread.kWorkshopRef = akWorkshopRef
 			
-			int iCallBackID = ThreadManager.QueueThread(kThread)
+			int iCallBackID = ThreadManager.QueueThread(kThread, sCustomCallbackID)
 			
 			return iCallBackID
 		endif
@@ -414,8 +378,11 @@ Function UpdateMonitors(ObjectReference akPlacedRef)
 		akPlacedRef.Enable(false)
 	endif
 	
+	
 	int i = 0
 	while(i < QueuedBatches.Length)
+		ModTrace("[WSFW] UpdateMonitors, testing " + akPlacedRef + " with batch value: " + akPlacedRef.GetValue(QueuedBatches[i].WithAV) + " against monitor: " + QueuedBatches[i])
+		
 		if(QueuedBatches[i].WithAV && akPlacedRef.GetValue(QueuedBatches[i].WithAV) == QueuedBatches[i].WithAVValue)
 			QueuedBatches[i].iSeenObjectCount += 1
 			

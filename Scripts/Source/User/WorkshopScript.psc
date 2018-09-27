@@ -187,7 +187,7 @@ Group WSFW_Globals
 	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Hidden	
 	
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Hidden
-	
+	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Hidden
 	GlobalVariable Property CurrentWorkshopID Auto Hidden
 EndGroup
 
@@ -245,6 +245,7 @@ Group WSFW_AVs
 	ActorValue Property WSFW_AV_maxAttackStrength Auto Hidden	
 	ActorValue Property WSFW_AV_maxDefenseStrength Auto Hidden	
 
+	ActorValue Property WSFW_AV_RobotHappinessLevel Auto Hidden
 	; Replacing calls to WorkshopParent ratings vars
 	ActorValue Property Happiness Auto Hidden
 	ActorValue Property BonusHappiness Auto Hidden
@@ -255,8 +256,10 @@ Group WSFW_AVs
 	ActorValue Property Food Auto Hidden
 	ActorValue Property DamageFood Auto Hidden
 	ActorValue Property FoodActual Auto Hidden
+	ActorValue Property MissingFood Auto Hidden
 	ActorValue Property Power Auto Hidden
 	ActorValue Property Water Auto Hidden
+	ActorValue Property MissingWater Auto Hidden
 	ActorValue Property Safety Auto Hidden
 	ActorValue Property DamageSafety Auto Hidden
 	ActorValue Property MissingSafety Auto Hidden
@@ -885,7 +888,7 @@ Int WSFW_iBaseMaxNPCs = 10 ; base total NPCs that can be at a player's town - th
 Int Property iBaseMaxNPCs
 	Int Function Get()
 		Int AppliedValue = Math.Ceiling(GetValue(WSFW_AV_iBaseMaxNPCs))
-		Debug.Trace("iBaseMaxNPCs Check:: AV: " + WSFW_AV_iBaseMaxNPCs + " = " + AppliedValue + ", Global: " + WSFW_Setting_iBaseMaxNPCs + " = " + WSFW_Setting_iBaseMaxNPCs.GetValueInt() )
+		
 		if(bUseGlobaliBaseMaxNPCs)
 			return AppliedValue + WSFW_Setting_iBaseMaxNPCs.GetValueInt()
 		else
@@ -1199,6 +1202,28 @@ Int Property maxDefenseStrength
 		WSFW_maxDefenseStrength = aValue
 	EndFunction
 EndProperty
+
+
+Bool Property bUseGlobalRobotHappinessLevel = true Auto Hidden
+Int WSFW_RobotHappinessLevel = 50
+Int Property RobotHappinessLevel
+	Int Function Get()
+		Float AppliedValue = GetValue(WSFW_AV_RobotHappinessLevel)
+		
+		if(bUseGlobalmaxDefenseStrength)
+			return (AppliedValue + WSFW_Setting_RobotHappinessLevel.GetValue()) as Int
+		else
+			return (AppliedValue + WSFW_RobotHappinessLevel) as Int
+		endif
+	EndFunction
+	
+	Function Set(Int aValue)
+		WSFW_RobotHappinessLevel = aValue
+	EndFunction
+EndProperty
+
+
+Bool Property bAllowLinkedConsumption = true Auto Hidden ; WSFW - Allow flagging a particular workshop to not share its workshop contents for consumption by other settlements
 
 int VendorTopLevel = 2 ; WSFW - Copied from WorkshopParent
 
@@ -1521,22 +1546,22 @@ EndEvent
 
 Event OnTimerGameTime(int aiTimerID)
 	if aiTimerID == dailyUpdateTimerID
-		;UFO4P 2.0. Bug #21895: Added check for the UFO4P_AttackRunning bool on WorkshopParentScript. This will delay any resets while an attack is physically
-		;running (workshop script activity will be particularly high in that case, so this will draw some work load from the engine):
-		if WorkshopParent.IsEditLocked() || WorkshopParent.DailyUpdateInProgress || WorkshopParent.UFO4P_AttackRunning
-			float waitTime = utility.RandomFloat(minDailyUpdateWaitHours, maxDailyUpdateWaitHours)
-			; run another timer - system is too busy
-			StartTimerGameTime(waitTime, dailyUpdateTimerID)
-		else
-			DailyUpdate()
-		endif	
+		; WSWF - This is no longer used. Since we've converted the daily update process to be handled by multiple managers, they operate much faster and no longer require spreading throughout the game day
 	endif
 endEvent
 
 
 Function TryRealDailyUpdate()
-	if(WorkshopParent.IsEditLocked() || WorkshopParent.DailyUpdateInProgress || ! bPropertiesConfigured)
-		Debug.Trace("Starting timer to retry daily update." + Self)
+	if(WorkshopParent.DailyUpdateInProgress || ! bPropertiesConfigured)
+		String sMessage = "Starting timer to retry daily update."
+		
+		if( ! bPropertiesConfigured)
+			sMessage += " Awaiting properties to be configured from WSFWResourceManager."
+		else
+			sMessage += " WorkshopParent.DailyUpdateInProgress = " + WorkshopParent.DailyUpdateInProgress
+		endif
+		
+		Debug.Trace(Self + sMessage)
 		; run another timer - system is too busy
 		StartTimer(Utility.RandomInt(5, 10), WSFW_RetryRealDailyUpdateTimerID)
 	else
@@ -1799,42 +1824,25 @@ function DailyUpdate(bool bRealUpdate = true)
 	;bDailyUpdateInProgress = true
 	WorkshopParent.DailyUpdateInProgress = true
 
-	;UFO4P 1.0.2 Bug #20295: Moved this block of code up here: There's no need to proceed with the function if we have to bail out anyway.
-	ObjectReference containerRef = GetContainer()
-	if !containerRef
-		;UFO4P 1.0.2 Bug #20295: Added the following line. Otherwise the lock is never actually released.
-		;Ironically, this was not a problem when the lock was broken as there was always a chance for it to get eventually released.
-		WorkshopParent.DailyUpdateInProgress = false
-		;bDailyUpdateInProgress = false
-		return
+	if(bRealUpdate)
+		Debug.Trace(">>>>>>>>>>>>>>>>>>>> DailyUpdate Started for " + Self)
 	endif
+	
+	; WSFW - Removed containerRef short, as the container is no longer needed here anyway
 
 	; create local pointer to WorkshopRatings array to speed things up
 	WorkshopDataScript:WorkshopRatingKeyword[] ratings = WorkshopParent.WorkshopRatings
-	DailyUpdateData updateData = new DailyUpdateData
 
-	; NOTE: GetBaseValue for these because we don't care if they can "produce" - actors that are wounded don't "produce" their population resource values
-	updateData.totalPopulation = GetBaseValue(Population) as int
-	updateData.robotPopulation = GetBaseValue(PopulationRobots) as int
-	updateData.brahminPopulation = GetBaseValue(PopulationBrahmin) as int
-	updateData.unassignedPopulation = GetBaseValue(PopulationUnassigned) as int
-
-	updateData.vendorIncome = GetValue(VendorIncome) * vendorIncomeBaseMult
-	updateData.currentHappiness = GetValue(Happiness)
-
-	updateData.damageMult = 1 - GetValue(DamageCurrent)/100.0
-	updateData.productivity = GetProductivityMultiplier(ratings)
-	updateData.availableBeds = GetBaseValue(Beds) as int
-	updateData.shelteredBeds = GetValue(Beds) as int
-	updateData.bonusHappiness = GetValue(BonusHappiness) as int
-	updateData.happinessModifier = GetValue(HappinessModifier) as int
-	updateData.safety = GetValue(Safety) as int
-	updateData.safetyDamage = GetValue(DamageSafety) as int
-	updateData.totalHappiness = 0.0	; sum of all happiness of each actor in town
-
+	; WSFW - Removed updateData struct use as all of the code using it is now in WSFW_DailyUpdate_AdjustResourceValues
+	
 	; REAL UPDATE ONLY
 	if bRealUpdate
-		DailyUpdateAttractNewSettlers(ratings, updateData)
+		; WSFW - New settlers handled by our NPCManager
+		; DailyUpdateAttractNewSettlers(ratings, updateData)
+		
+		; WSFW - Pulled this from DailyUpdateAttractNewSettlers
+		; increment last visit counter each day
+		DaysSinceLastVisit += 1
 	EndIf
 
 	; if this is current workshop, update actors (in case some have been wounded since last update)
@@ -1848,10 +1856,13 @@ function DailyUpdate(bool bRealUpdate = true)
 		endWhile
 	endif
 
-	DailyUpdateProduceResources(ratings, updateData, containerRef, bRealUpdate)
-
-	DailyUpdateConsumeResources(ratings, updateData, containerRef, bRealUpdate)
-
+	; WSFW - The "physical" act of actually adding and removing workshop inventory is handled by our Production manager - leaving only the resource value updates to be handled.
+	; WSFW - While it's likely more efficient in the grand scheme of things to be doing all three of these at once and cascading the updateData down between them, thus avoiding the excess calls, in practice this one giant function ends up becoming so slow that adding anymore functionality to it would become impractical.
+	; WSFW - By breaking up a lot of the work into different managers, we are actually able to speed things up, since we're essentially multi-threading this process, and can avoid polling for the values we don't need for each individual portion of the functionality - leaving only a small number of actual duplicated GetValue calls.
+	;DailyUpdateProduceResources(ratings, updateData, containerRef, bRealUpdate)
+	;DailyUpdateConsumeResources(ratings, updateData, containerRef, bRealUpdate)
+	WSFW_DailyUpdate_AdjustResourceValues(ratings, bRealUpdate)
+	
 
 	; REAL UPDATE ONLY:
 	if bRealUpdate
@@ -1866,13 +1877,6 @@ function DailyUpdate(bool bRealUpdate = true)
 		CheckForAttack()
 	endif
 
-	; update trade caravan list
-	if updateData.totalPopulation >= WorkshopParent.TradeCaravanMinimumPopulation && GetValue(Caravan) > 0
-		WorkshopParent.TradeCaravanWorkshops.AddRef(self)
-	else
-		WorkshopParent.TradeCaravanWorkshops.RemoveRef(self)
-	EndIf
-
 	;UFO4P 1.0.3 Bug #20775: If the timer to call this function was started by WorkshopParentScript (only then, bResetHappiness is true), call the
 	;ResetHappinessPUBLIC function on WorkshopParentScript when everything else is done
 	if bResetHappiness
@@ -1884,131 +1888,120 @@ function DailyUpdate(bool bRealUpdate = true)
 	; clear update lock
 	; bDailyUpdateInProgress = false
 	WorkshopParent.DailyUpdateInProgress = false
-
+	
+	if(bRealUpdate)
+		Debug.Trace("<<<<<<<<< DailyUpdate Finished for " + Self)
+	endif
 endFunction
 
 
 ; **********************************************************************************************
 ; DAILY UPDATE HELPER FUNCTIONS - to reduce memory footprint of DailyUpdate process
 ; **********************************************************************************************
-function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData)
-	; increment last visit counter each day
-	DaysSinceLastVisit += 1
+; WSFW - New function to handle the resource updating on the workshop during a daily update
+Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRatingKeyword[] ratings, bool bRealUpdate)
+	; Instead of using DailyUpdateData, we're only going to grab the values we actually need here
+	Int iTotalPopulation = GetBaseValue(Population) as int
+	Int iRobotPopulation = GetBaseValue(PopulationRobots) as int
+	Int iLivingPopulation = iTotalPopulation - iRobotPopulation	
+	Int iBrahminPopulation = GetBaseValue(PopulationBrahmin) as int
+	Float fDamageMult = 1 - GetValue(DamageCurrent)/100.0
+	Float fProductivity = GetProductivityMultiplier(ratings)
+	Int iAvailableBeds = GetBaseValue(Beds) as int
+	Int iSheltedBeds = GetValue(Beds) as int
+	Int iSafety = GetValue(Safety) as int
+	Int iSafetyDamage = GetValue(DamageSafety) as int
 
-	; WSFW - Handled by our NPCManager quest
-	return
+	; To be calculated ahead
+	Int iSafetyPerNPC = 0
 	
-	; attract new NPCs
-	; if I have a radio station
-	int radioRating = GetValue(Radio) as int
-	if radioRating > 0 && HasKeyword(WorkshopType02) == false && updateData.unassignedPopulation < iMaxSurplusNPCs && updateData.totalPopulation < GetMaxWorkshopNPCs()
-		float attractChance = attractNPCDailyChance + updateData.currentHappiness/100 * attractNPCHappinessMult
-		if updateData.totalPopulation < iMaxBonusAttractChancePopulation
-			attractChance += (iMaxBonusAttractChancePopulation - updateData.totalPopulation) * attractNPCDailyChance
-		endif
-		; roll to see if a new NPC arrives
-		float dieRoll = utility.RandomFloat()
-		
-		if dieRoll <= attractChance
-			;WorkshopNPCScript newWorkshopActor = WorkshopParent.CreateActor(self)
-			
-			;UFO4P 1.0.5 Bug #21002 (Regression of UFO4P 1.0.3 Bug #20581): Since all edits from UFO4P 1.0.3 to the CreateActor PUBLIC function on WorkshopParent
-			;Script had to be removed (see general notes around line 280 for more information), there still remained the problem of this function calling a non-
-			;public function on WorkshopParentScript (i.e. bug #20581 still required an appropriate solution). Therefore, the new CreateActor_DailyUpdate function
-			;was created on WorkshopParentScript as a safe (public) entry point, to handle calls from this function exclusively:
-			WorkshopNPCScript newWorkshopActor = WorkshopParent.CreateActor_DailyUpdate(self)
-			updateData.totalPopulation += 1
-
-			if newWorkshopActor.GetValue(WorkshopGuardPreference) == 0
-				; see if also generate a brahmin
-				; for now just roll if no brahmin here yet
-				if GetValue(PopulationBrahmin) == 0.0 && AllowBrahminRecruitment
-					int brahminRoll = utility.RandomInt()
-					
-					if brahminRoll <= recruitmentBrahminChance
-						;actor newBrahmin = WorkshopParent.CreateActor(self, true)
-						
-						;UFO4P 1.0.5 Bug #21002 (Regression of UFO4P 1.0.3 Bug #20581): Call CreateActor_DailyUpdate here (see explanations above):
-						actor newBrahmin = WorkshopParent.CreateActor_DailyUpdate(self, bBrahmin = true)
-						; NOTE: don't increment total population - brahmin aren't counted as population
-					endif
-				endif
-			endif
-
-		endif
-	endif
-endFunction
-
-; WSFW - Cleared out traces and UFO4P notes to make this quicker to skim through. Also removed all checks that are not necessary any longer given the fact that actual production/consumption is handled by different management scripts
-function DailyUpdateProduceResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef, bool bRealUpdate)
-	; get base food production
-	updateData.foodProduction = GetValue(Food) as int
+	
+	; ----------------------------
+	; Update Safety
+	; ----------------------------
 	
 	; safety check: WSFW - Adding additional needs AV here
-	Float fSafetyNeeded = updateData.totalPopulation + GetValue(WSFW_AV_ExtraNeeds_Safety)
-	int iMissingSafety = math.max(0, fSafetyNeeded - updateData.safety) as int
-	WorkshopParent.SetResourceData(MissingSafety, self, iMissingSafety)
+	Float fSafetyNeeded = iTotalPopulation + GetValue(WSFW_AV_ExtraNeeds_Safety)
+	int iMissingSafety = Math.Max(0, fSafetyNeeded - iSafety) as int
+	SetAndRestoreActorValue(self, MissingSafety, iMissingSafety)
 
-	; subtract damage from food
-	updateData.foodProduction = math.max(0, updateData.foodProduction - (GetValue(DamageFood) as int)) as int
-	
-	; each brahmin can assist with 10 food production
-	if updateData.brahminPopulation > 0
-		int brahminMaxFoodBoost = math.min(updateData.brahminPopulation * maxProductionPerBrahmin, updateData.foodProduction) as int
-		int brahminFoodProduction = math.Ceiling(brahminMaxFoodBoost * brahminProductionBoost)
-		updateData.foodProduction = updateData.foodProduction + brahminFoodProduction
-	endif
-	
-	SetAndRestoreActorValue(self, FoodActual, updateData.foodProduction)
-		
 	; reduce safety by current damage (food and water already got that treatment in the Production phase)
-	updateData.safety = math.Max(updateData.safety -  updateData.safetyDamage, 0) as int
-	updateData.safetyPerNPC = 0
-	if updateData.totalPopulation > 0
-		updateData.safetyperNPC = math.ceiling(updateData.safety/updateData.totalPopulation)
+	iSafety = Math.Max(iSafety - iSafetyDamage, 0) as int
+	
+	if(iTotalPopulation > 0)
+		iSafetyPerNPC = Math.Ceiling(iSafety/iTotalPopulation)
 	endif
-
-	updateData.availableFood = containerRef.GetItemCount(ObjectTypeFood)
-	updateData.availableWater = containerRef.GetItemCount(ObjectTypeWater)
-
-	; get local food and water totals (including current production)
-	updateData.availableFood = containerRef.GetItemCount(ObjectTypeFood) + updateData.foodProduction
-	updateData.availableWater = containerRef.GetItemCount(ObjectTypeWater) + updateData.waterProduction
-
-	; how much food & water is needed? (robots don't need either) ; WSFW - Added extra food and water needs
-	int neededFood = (Self.GetValue(WSFW_AV_ExtraNeeds_Food) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableFood 
-	int neededWater = (Self.GetValue(WSFW_AV_ExtraNeeds_Water) as Int) + updateData.totalPopulation - updateData.robotPopulation - updateData.availableWater
-
-	; add in food and water from linked workshops if needed
-	if neededFood > 0 || neededWater > 0
-		WorkshopParent.TransferResourcesFromLinkedWorkshops(self, neededFood, neededWater)
+	
+	; ----------------------------
+	; Update FoodActual 
+	; ----------------------------
+	
+	; get base food production
+	Int iFoodProduction = GetValue(Food) as int
+	
+	; subtract damage from food
+	iFoodProduction = math.max(0, iFoodProduction - (GetValue(DamageFood) as int)) as int
+	
+	; each brahmin can assist with X food production
+	if(iBrahminPopulation > 0)
+		int iBrahminMaxFoodBoost = math.min(iBrahminPopulation * maxProductionPerBrahmin, iFoodProduction) as int
+		int iBrahminFoodProduction = math.Ceiling(iBrahminMaxFoodBoost * brahminProductionBoost)
+		iFoodProduction = iFoodProduction + iBrahminFoodProduction
+	endif
+	
+	SetAndRestoreActorValue(self, FoodActual, iFoodProduction)
 		
-		; WSFW - Moved these secondary GetItemCount calls inside the if, as they aren't always needed
-		; now, get again (now including any transfers from linked workshops)
-		updateData.availableFood = containerRef.GetItemCount(ObjectTypeFood) + updateData.foodProduction
-		updateData.availableWater = containerRef.GetItemCount(ObjectTypeWater) + updateData.waterProduction
-	endif
-endFunction
+	
+	; ----------------------------
+	; Update Beds
+	; ----------------------------
+	
+	int iMissingBeds = Math.Max(0, iLivingPopulation - iAvailableBeds) As Int
+	SetAndRestoreActorValue(self, MissingBeds, iMissingBeds)	
+	
+	
+	; ----------------------------
+	; Update Trade Caravans
+	; ----------------------------
+	
+	; update trade caravan list
+	if(iTotalPopulation >= WorkshopParent.TradeCaravanMinimumPopulation && GetValue(Caravan) > 0)
+		WorkshopParent.TradeCaravanWorkshops.AddRef(self)
+	else
+		WorkshopParent.TradeCaravanWorkshops.RemoveRef(self)
+	EndIf
+	
+	
+	; ----------------------------
+	;
+	; Can skip everything below if no population - this will essentially lock happiness until the next time settlers live there, which is fine
+	;
+	; ----------------------------
 
-function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef, bool bRealUpdate)
-	; don't need to do any of this if no population
-	if updateData.totalPopulation == 0
+	if(iTotalPopulation <= 0)
 		return
 	endif
+	
+	
+	; ----------------------------
+	; Update Happiness 
+	; ----------------------------
 
+	;WSFW - Below is based on the UFO4P optimized happiness calculation code
+	Float fTotalHappiness = 0.0	; sum of all happiness of each actor in town
+	Float fCurrentHappiness = GetValue(Happiness)
+	Float fBonusHappiness = GetValue(BonusHappiness) as int
+	Float fHappinessModifier = GetValue(HappinessModifier) as int
+	
+	Int iMissingFood = GetValue(MissingFood) as Int
+	Int iMissingWater = GetValue(MissingWater) as Int
+	
 	; variables used to track happiness for each actor
-	float ActorHappiness
-	bool ActorBed
-	bool ActorShelter
-	bool ActorFood
-	bool ActorWater
-
-	
-	;WSFW - Removed UFO4P Notes to make skimming through code easier	
-	;UFO4P: new code starts here:
-	;----------------------------
-	
-	int Actors_Human = updateData.totalPopulation - updateData.robotPopulation	
+	float fActorHappiness
+	bool bActorBed
+	bool bActorShelter
+	bool bActorFood
+	bool bActorWater
 
 	;helper array for all resource values that contribute to actor happiness
 	int[] ResourceCount = New int [5]
@@ -2021,34 +2014,34 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 	Int posWater = 2
 	Int posFood = 3
 
-	;Since updateData.shelteredBeds <= updateData.availableBeds, and both updateData.availableWater and updateData.availableFood are usually larger than the
+	;Since iSheltedBeds <= iAvailableBeds, and both AvailableWater and AvailableFood are usually larger than the
 	;latter, filling the array in the following order will save a couple of swaps when it is sorted below:
-	ResourceCount[0] = updateData.shelteredBeds
-	ResourceCount[1] = updateData.availableBeds
-	ResourceCount[2] = updateData.availableWater
-	ResourceCount[3] = updateData.availableFood
+	ResourceCount[0] = iSheltedBeds
+	ResourceCount[1] = iAvailableBeds
+	ResourceCount[2] = iLivingPopulation - iMissingWater
+	ResourceCount[3] = iLivingPopulation - iMissingFood
 	;This is a helper position for all actors who do not benefit from any rexource. Set this to the maximum possible value:
-	ResourceCount[4] = Actors_Human
+	ResourceCount[4] = iLivingPopulation
 
 	;Save the positions of the resource values in ResourceCount array in the ResourcePos array. After the arrays are sorted, ResourcePos [posShelter], ResourcePos
 	;[posBeds], etc. will return the positions at which updateData.shelteredBeds, updateData.availableBeds etc. have ended up in the ResourceCount array.
-	ResourcePos [posShelter] = 0
-	ResourcePos [posBeds] = 1
-	ResourcePos [posWater] = 2
-	ResourcePos [posFood] = 3
+	ResourcePos[posShelter] = 0
+	ResourcePos[posBeds] = 1
+	ResourcePos[posWater] = 2
+	ResourcePos[posFood] = 3
 
 	;sort arrays (disregard last position of the ResourceCount array):
 	int i = 3
-	While (i > 0)
+	While(i > 0)
 		int j = 0
-		While (j < i)
-			If ResourceCount [j] > ResourceCount [j + 1]
-				int swapInt = ResourceCount [j]
-				ResourceCount [j] = ResourceCount [j + 1]
-				ResourceCount [j + 1] = swapInt
-				swapInt = ResourcePos [j]
-				ResourcePos [j] = ResourcePos [j + 1]
-				ResourcePos [j + 1] = swapInt
+		While(j < i)
+			If(ResourceCount[j] > ResourceCount[j + 1])
+				int swapInt = ResourceCount[j]
+				ResourceCount[j] = ResourceCount[j + 1]
+				ResourceCount[j + 1] = swapInt
+				swapInt = ResourcePos[j]
+				ResourcePos[j] = ResourcePos[j + 1]
+				ResourcePos[j + 1] = swapInt
 			EndIf
 			j += 1
 		EndWhile
@@ -2057,151 +2050,164 @@ function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] 
 
 	;Calculate the numbers of actors to benefit from the individual resources (again, the last array position is disregarded).
 	i = 3
-	while i > 0
-		ResourceCount [i] = ResourceCount [i] - ResourceCount [i - 1]
+	while(i > 0)
+		ResourceCount[i] = ResourceCount[i] - ResourceCount[i - 1]
 		i -= 1
 	EndWhile
 	
-	ActorWater = True
-	ActorFood = True
-	ActorBed = True
-	ActorShelter = True
+	bActorWater = True
+	bActorFood = True
+	bActorBed = True
+	bActorShelter = True
 
-	;Calculate the maximum possible ActorHappiness. This value applies to all actors who benefit from all four resources. As the loop progresses, individual
+	;Calculate the maximum possible Happiness for an individual actor. This value applies to all actors who benefit from all four resources. As the loop progresses, individual
 	;boni will be subtracted from this value:
-	ActorHappiness = happinessBonusWater + happinessBonusFood + happinessBonusBed + happinessBonusShelter
+	fActorHappiness = happinessBonusWater + happinessBonusFood + happinessBonusBed + happinessBonusShelter
 	;The safety bonus applies either to all actors or to none:
-	If updateData.safetyperNPC > 0
-		ActorHappiness += happinessBonusSafety
+	If(iSafetyPerNPC > 0)
+		fActorHappiness += happinessBonusSafety
 	EndIf
 
-	Int ActorCount = Math.Min (ResourceCount [0], Actors_Human) As Int
-	Int RemainingActors = Actors_Human - ActorCount
+	Int iActorCount = Math.Min(ResourceCount[0], iLivingPopulation) As Int
+	Int iRemainingActors = iLivingPopulation - iActorCount
 
 	;For i = 0, none of the conditions checksd in the loop would return true and there is also no need to call the CheckActorHappiness function (because there
 	;are no happiness caps applying when no resources are missing). Therefore, we take the following value as start value and begin the loop with i = 1
-	updateData.totalHappiness = updateData.totalHappiness + (ActorCount * ActorHappiness)
-	i = 1	
-	while i < 5 && RemainingActors > 0
 
-		If ActorWater && ResourcePos [posWater] < i
-			ActorHappiness -= happinessBonusWater
-			ActorWater = False
+	fTotalHappiness += (iActorCount * fActorHappiness)
+	i = 1	
+	while(i < 5 && iRemainingActors > 0)
+		If(bActorWater && ResourcePos[posWater] < i)
+			fActorHappiness -= happinessBonusWater
+			bActorWater = False
 		EndIf
 				
-		If ActorFood && ResourcePos [posFood] < i
-			ActorHappiness -= happinessBonusFood
-			ActorFood = False
+		If(bActorFood && ResourcePos[posFood] < i)
+			fActorHappiness -= happinessBonusFood
+			bActorFood = False
 		EndIf
 
-		If ActorBed && ResourcePos [posBeds] < i
-			ActorHappiness -= happinessBonusBed
-			ActorBed = False
+		If(bActorBed && ResourcePos[posBeds] < i)
+			fActorHappiness -= happinessBonusBed
+			bActorBed = False
 		EndIf
 
-		If ActorShelter && ResourcePos [posShelter] < i
-			ActorHappiness -= happinessBonusShelter
-			ActorShelter = False
+		If(bActorShelter && ResourcePos[posShelter] < i)
+			fActorHappiness -= happinessBonusShelter
+			bActorShelter = False
 		EndIf		
 
-		ActorCount = Math.Min (ResourceCount [i], RemainingActors) As Int
-		RemainingActors -= ActorCount
+		iActorCount = Math.Min(ResourceCount[i], iRemainingActors) As Int
+		iRemainingActors -= iActorCount
 
-		Float CorrectedActorHappiness = CheckActorHappiness (ActorHappiness, ActorFood, ActorWater, ActorBed, ActorShelter)
-		updateData.totalHappiness = updateData.totalHappiness + ActorCount * CorrectedActorHappiness
+		; Get the max possible happiness the remaining settlers can have
+		Float fCorrectedActorHappiness = CheckActorHappiness(fActorHappiness, bActorFood, bActorWater, bActorBed, bActorShelter)
+		
+		fTotalHappiness += iActorCount * fCorrectedActorHappiness
+		
 		i += 1
-
 	EndWhile
 
-	updateData.totalHappiness = updateData.totalHappiness + ( 50 * updateData.robotPopulation)
-	int iMissingBeds = Math.Max (0, Actors_Human - updateData.availableBeds) As Int
-	SetAndRestoreActorValue(self, MissingBeds, iMissingBeds)
+	; Add in Robot happiness
+	fTotalHappiness += (RobotHappinessLevel * iRobotPopulation)
 	
-	;/ WSFW - Actual Food/Water consumption is now handled by our WorkshopResourceManager script
-		; Removed bRealUpdate consumption code
-	/;
-
+	
+	
 	; add "bonus happiness" and any happiness modifiers
-	updateData.totalHappiness = updateData.totalHappiness + updateData.bonusHappiness
+	fTotalHappiness += fBonusHappiness
+	
 	; calculate happiness
 	; add happiness modifier here - it isn't dependent on population
-	updateData.totalHappiness = math.max(updateData.totalHappiness/updateData.totalPopulation + updateData.happinessModifier, 0)
+	fTotalHappiness = math.max(fTotalHappiness/iTotalPopulation + fHappinessModifier, 0)
 	
 	; don't let happiness exceed 100
-	updateData.totalHappiness = math.min(updateData.totalHappiness, 100)
+	fTotalHappiness = math.min(fTotalHappiness, 100)
 
 	; for now, record this as a rating
-	SetAndRestoreActorValue(self, HappinessTarget, updateData.totalHappiness)
+	SetAndRestoreActorValue(self, HappinessTarget, fTotalHappiness)
 	
 	; REAL UPDATE ONLY:
-	if bRealUpdate
-		float deltaHappinessFloat = (updateData.totalHappiness - updateData.currentHappiness) * happinessChangeMult
+	if(bRealUpdate)
+		float fDeltaHappinessFloat = (fTotalHappiness - fCurrentHappiness) * happinessChangeMult
 	
-		int deltaHappiness
-		if deltaHappinessFloat < 0
-			deltaHappiness = math.floor(deltaHappinessFloat)	; how much does happiness want to change?
+		int iDeltaHappiness
+		if(fDeltaHappinessFloat < 0)
+			iDeltaHappiness = math.floor(fDeltaHappinessFloat)	; how much does happiness want to change?
 		else
-			deltaHappiness = math.ceiling(deltaHappinessFloat)	; how much does happiness want to change?
+			iDeltaHappiness = math.ceiling(fDeltaHappinessFloat)	; how much does happiness want to change?
 		endif
 
-		if deltaHappiness != 0 && math.abs(deltaHappiness) < minHappinessChangePerUpdate
+		if(iDeltaHappiness != 0 && math.abs(iDeltaHappiness) < minHappinessChangePerUpdate)
 			; increase delta to the min
-			deltaHappiness = minHappinessChangePerUpdate * (deltaHappiness/math.abs(deltaHappiness)) as int
+			iDeltaHappiness = minHappinessChangePerUpdate * (iDeltaHappiness/math.abs(iDeltaHappiness)) as int
 		endif
-		
-		;Debug.MessageBox("Preparing to update happiness: Target " + updateData.totalHappiness + ", Delta: " + deltaHappiness + ", happinessChangeMult: " + happinessChangeMult + ", MinChange: " + minHappinessChangePerUpdate)
 		
 		; update happiness rating on workshop's location
-		ModifyActorValue(self, Happiness, deltaHappiness)
+		ModifyActorValue(Self, Happiness, iDeltaHappiness)
 
 		; what is happiness now?
-		float finalHappiness = GetValue(Happiness)
+		float fFinalHappiness = GetValue(Happiness)
 		
 		; achievement
-		if finalHappiness >= WorkshopParent.HappinessAchievementValue
+		if(fFinalHappiness >= WorkshopParent.HappinessAchievementValue)
 			Game.AddAchievement(WorkshopParent.HappinessAchievementID)
 		endif
 
 		; if happiness is below threshold, no longer player-owned
-		if OwnedByPlayer && AllowUnownedFromLowHappiness
+		if(OwnedByPlayer && AllowUnownedFromLowHappiness)
 			; issue warning?
-			if finalHappiness <= minHappinessWarningThreshold && HappinessWarning == false
+			if(fFinalHappiness <= minHappinessWarningThreshold && HappinessWarning == false)
 				HappinessWarning = true
 				; always show warning first
 				WorkshopParent.DisplayMessage(WorkshopParent.WorkshopUnhappinessWarning, NONE, myLocation)
-			elseif finalHappiness <= minHappinessThreshold
+			elseif(fFinalHappiness <= minHappinessThreshold)
+				; Player loses control 
 				SetOwnedByPlayer(false)
 			endif
 
 			; clear warning if above threshold
-			if finalHappiness > minHappinessClearWarningThreshold && HappinessWarning == true
+			if(fFinalHappiness > minHappinessClearWarningThreshold && HappinessWarning == true)
 				HappinessWarning = false
 			endif
 		endif
 
 		; happiness modifier tends toward 0 over time
-		if updateData.happinessModifier != 0
-			float modifierSign = -1 * (updateData.happinessModifier/math.abs(updateData.happinessModifier))
-			int deltaHappinessModifier
-			float deltaHappinessModifierFloat = math.abs(updateData.happinessModifier) * modifierSign * happinessChangeMult
-			if deltaHappinessModifierFloat > 0
-				deltaHappinessModifier = math.floor(deltaHappinessModifierFloat)	; how much does happiness modifier want to change?
+		if(fHappinessModifier != 0)
+			float fModifierSign = -1 * (fHappinessModifier/math.abs(fHappinessModifier))
+			int iDeltaHappinessModifier
+			float fDeltaHappinessModifierFloat = math.abs(fHappinessModifier) * fModifierSign * happinessChangeMult
+			if(fDeltaHappinessModifierFloat > 0)
+				iDeltaHappinessModifier = math.floor(fDeltaHappinessModifierFloat)	; how much does happiness modifier want to change?
 			else
-				deltaHappinessModifier = math.ceiling(deltaHappinessModifierFloat)	; how much does happiness modifier want to change?
+				iDeltaHappinessModifier = math.ceiling(fDeltaHappinessModifierFloat)	; how much does happiness modifier want to change?
 			EndIf
 			
-			if math.abs(deltaHappinessModifier) < happinessBonusChangePerUpdate
-				deltaHappinessModifier = (modifierSign * happinessBonusChangePerUpdate) as int
+			if(math.abs(iDeltaHappinessModifier) < happinessBonusChangePerUpdate)
+				iDeltaHappinessModifier = (fModifierSign * happinessBonusChangePerUpdate) as int
 			endif
 
-			if deltaHappinessModifier > math.abs(updateData.happinessModifier)
+			if(iDeltaHappinessModifier > math.abs(fHappinessModifier))
 				WorkshopParent.SetHappinessModifier(self, 0)
 			else
-				WorkshopParent.ModifyHappinessModifier(self, deltaHappinessModifier)
+				WorkshopParent.ModifyHappinessModifier(Self, iDeltaHappinessModifier)
 			endif
 		endif
-
 	EndIf
+EndFunction
+
+function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData)
+	; WSFW - Handled by our NPCManager now
+	return
+endFunction
+
+function DailyUpdateProduceResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef, bool bRealUpdate)
+	; WSFW Handled by our WorkshopProductionManager and WSFW_DailyUpdate_AdjustResourceValues
+	return
+endFunction
+
+function DailyUpdateConsumeResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef, bool bRealUpdate)
+	; WSFW - This is now handled by our WorkshopProductionManager and WSFW_DailyUpdate_AdjustResourceValues
+	return
 endFunction
 
 function DailyUpdateSurplusResources(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData, ObjectReference containerRef)
