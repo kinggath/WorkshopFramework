@@ -24,7 +24,6 @@ import WorkshopFramework:WorkshopFunctions
 ; ---------------------------------------------
 int RecheckWithinSettlementTimerID = 100 Const
 int FixSettlerCountTimerID = 101 Const
-int ConsumptionLoopTimerID = 102 Const
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -41,30 +40,30 @@ Group ActorValue
 	Formlist Property WorkshopTrackedAVs Auto Const
 	{ Formlist holding all AVs we're going to test items for }
 	
-	ActorValue Property WorkshopResourceObject Auto Const
-	ActorValue Property HappinessBonus Auto Const
+	ActorValue Property WorkshopResourceObject Auto Const Mandatory
+	ActorValue Property HappinessBonus Auto Const Mandatory
 	ActorValue Property Happiness Auto Const Mandatory
 	{ Actual happiness AV, not the bonus AV }
-	ActorValue Property Food Auto Const
-	ActorValue Property Water Auto Const
-	ActorValue Property Safety Auto Const
-	ActorValue Property Scavenge Auto Const
-	ActorValue Property PowerGenerated Auto Const
-	ActorValue Property Income Auto Const
-	ActorValue Property Population Auto Const
-	ActorValue Property RobotPopulation Auto Const
+	ActorValue Property Food Auto Const Mandatory
+	ActorValue Property Water Auto Const Mandatory
+	ActorValue Property Safety Auto Const Mandatory
+	ActorValue Property Scavenge Auto Const Mandatory
+	ActorValue Property PowerGenerated Auto Const Mandatory
+	ActorValue Property Income Auto Const Mandatory
+	ActorValue Property Population Auto Const Mandatory
+	ActorValue Property RobotPopulation Auto Const Mandatory
 	
-	ActorValue Property MissingFood Auto Const
-	ActorValue Property MissingWater Auto Const
+	ActorValue Property MissingFood Auto Const Mandatory
+	ActorValue Property MissingWater Auto Const Mandatory
 	
-	ActorValue Property ExtraNeeds_Food Auto Const
-	ActorValue Property ExtraNeeds_Safety Auto Const
-	ActorValue Property ExtraNeeds_Water Auto Const
+	ActorValue Property ExtraNeeds_Food Auto Const Mandatory
+	ActorValue Property ExtraNeeds_Safety Auto Const Mandatory
+	ActorValue Property ExtraNeeds_Water Auto Const Mandatory
 	
-	ActorValue Property Negative_Food Auto Const
-	ActorValue Property Negative_Water Auto Const
-	ActorValue Property Negative_Safety Auto Const
-	ActorValue Property Negative_PowerGenerated Auto Const
+	ActorValue Property Negative_Food Auto Const Mandatory
+	ActorValue Property Negative_Water Auto Const Mandatory
+	ActorValue Property Negative_Safety Auto Const Mandatory
+	ActorValue Property Negative_PowerGenerated Auto Const Mandatory
 EndGroup
 
 Group Keywords
@@ -77,13 +76,12 @@ Group Keywords
 	Keyword Property ObjectTypeFood Auto Const Mandatory
 	Keyword Property ObjectTypeWater Auto Const Mandatory
 	Keyword Property WorkshopCaravanKeyword Auto Const Mandatory
+	Keyword Property TemporarilyMoved Auto Const Mandatory
 EndGroup
 
 Group Aliases
 	RefCollectionAlias Property LatestSettlementResources Auto Const Mandatory
 	ReferenceAlias Property LatestWorkshop Auto Const Mandatory
-	RefCollectionAlias Property WorkshopsAlias Auto Const Mandatory
-	{ RefCollection mirroring the WorkshopsCollection on WorkshopParent }
 EndGroup
 
 Group Assets
@@ -143,6 +141,7 @@ Group SettingsToCopyToWorkshops
 	GlobalVariable Property WSFW_Setting_maxAttackStrength Auto Mandatory	
 	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Mandatory	
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Mandatory
+	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Mandatory
 	
 	ActorValue Property WSFW_AV_minProductivity Auto Const Mandatory
 	ActorValue Property WSFW_AV_productivityHappinessMult Auto Const Mandatory
@@ -191,6 +190,7 @@ Group SettingsToCopyToWorkshops
 	ActorValue Property WSFW_AV_actorDeathHappinessModifier Auto Const Mandatory	
 	ActorValue Property WSFW_AV_maxAttackStrength Auto Const Mandatory	
 	ActorValue Property WSFW_AV_maxDefenseStrength Auto Const Mandatory	
+	ActorValue Property WSFW_AV_RobotHappinessLevel Auto Const Mandatory	
 	
 	ActorValue Property BonusHappiness Auto Const Mandatory
 	ActorValue Property HappinessTarget Auto Const Mandatory
@@ -228,14 +228,12 @@ EndGroup
 WorkshopScript[] Property Workshops Auto Hidden
 Location[] Property WorkshopLocations Auto Hidden 
 
-Float Property fConsumptionLoopTime = 24.0 Auto Hidden
-
 ; ---------------------------------------------
 ; Vars
 ; ---------------------------------------------
 
-Bool bConsumptionUnderwayBlock = false
 Bool bGatherRunningBlock = false
+
 
 ; ---------------------------------------------
 ; Events 
@@ -243,15 +241,6 @@ Bool bGatherRunningBlock = false
 
 Event Actor.OnLocationChange(Actor akActorRef, Location akOldLoc, Location akNewLoc)
 	HandleLocationChange(akNewLoc)
-EndEvent
-
-
-Event OnTimerGameTime(Int aiTimerID)
-	if(aiTimerID == ConsumptionLoopTimerID)
-		ConsumeAllWorkshopResources()
-		
-		StartConsumptionTimer()
-	endif
 EndEvent
 
 
@@ -278,15 +267,6 @@ Event OnTimer(Int aiTimerID)
 			
 			FixSettlerCount()
 		endif
-	endif
-EndEvent
-
-
-Event Quest.OnStageSet(Quest akSenderRef, Int aiStageID, Int aiItemID)
-	if(akSenderRef == WorkshopParent)
-		StartConsumptionTimer()
-	
-		UnregisterForRemoteEvent(akSenderRef, "OnStageSet")
 	endif
 EndEvent
 
@@ -395,6 +375,14 @@ Event WorkshopParentScript.WorkshopObjectRepaired(WorkshopParentScript akSenderR
 EndEvent
 
 
+Event Quest.OnStageSet(Quest akSenderRef, Int aiStageID, Int aiItemID)
+	if(akSenderRef == WorkshopParent)
+		SetupAllWorkshopProperties()
+	
+		UnregisterForRemoteEvent(akSenderRef, "OnStageSet")
+	endif
+EndEvent
+
 Event WorkshopParentScript.WorkshopInitializeLocation(WorkshopParentScript akSenderRef, Var[] akArgs)
 	WorkshopScript akWorkshopRef = akArgs[0] as WorkshopScript
 	
@@ -420,13 +408,23 @@ Function HandleQuestInit()
 	ThreadManager.RegisterForCallbackThreads(Self)
 	WorkshopParent.RegisterForWorkshopEvents(Self, bRegister = true)
 	
-	SetupAllWorkshopProperties()
-	
-	; Start Consumption Loop
 	if(WorkshopParent.GetStageDone(iWorkshopParentInitializedStage))
-		StartConsumptionTimer()
+		SetupAllWorkshopProperties()
 	else
 		RegisterForRemoteEvent(WorkshopParent, "OnStageSet")
+	endif
+EndFunction
+
+
+Function HandleGameLoaded()
+	Parent.HandleGameLoaded()
+	
+	if( ! Workshops)
+		Workshops = new WorkshopScript[0]
+	endif
+	
+	if( ! WorkshopLocations)
+		WorkshopLocations = new Location[0]
 	endif
 EndFunction
 
@@ -451,10 +449,10 @@ EndFunction
 
 Function SetupAllWorkshopProperties()
 	int i = 0
-	int iCount = WorkshopsAlias.GetCount()
+	WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
 	
-	while(i < iCount)
-		WorkshopScript thisWorkshop = WorkshopsAlias.GetAt(i) as WorkshopScript
+	while(i < WorkshopsArray.Length)
+		WorkshopScript thisWorkshop = WorkshopsArray[i]
 		
 		SetupNewWorkshopProperties(thisWorkshop)
 		
@@ -519,6 +517,8 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSFW_Setting_maxAttackStrength = WSFW_Setting_maxAttackStrength
 	akWorkshopRef.WSFW_Setting_maxDefenseStrength = WSFW_Setting_maxDefenseStrength
 	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_AdjustMaxNPCsByCharisma
+	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_RobotHappinessLevel
+	
 	akWorkshopRef.WSFW_AV_minProductivity = WSFW_AV_minProductivity
 	akWorkshopRef.WSFW_AV_productivityHappinessMult = WSFW_AV_productivityHappinessMult
 	akWorkshopRef.WSFW_AV_maxHappinessNoFood = WSFW_AV_maxHappinessNoFood
@@ -561,6 +561,8 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSFW_AV_ExtraNeeds_Food = ExtraNeeds_Food
 	akWorkshopRef.WSFW_AV_ExtraNeeds_Safety = ExtraNeeds_Safety
 	akWorkshopRef.WSFW_AV_ExtraNeeds_Water = ExtraNeeds_Water
+	akWorkshopRef.WSFW_AV_RobotHappinessLevel = WSFW_AV_RobotHappinessLevel
+	
 	
 	akWorkshopRef.WSFW_AV_MaxBrahmin = WSFW_AV_MaxBrahmin
 	akWorkshopRef.WSFW_AV_MaxSynths = WSFW_AV_MaxSynths
@@ -581,8 +583,10 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.Food = Food
 	akWorkshopRef.DamageFood = DamageFood
 	akWorkshopRef.FoodActual = FoodActual
+	akWorkshopRef.MissingFood = MissingFood
 	akWorkshopRef.Power = Power
 	akWorkshopRef.Water = Water
+	akWorkshopRef.MissingWater = MissingWater
 	akWorkshopRef.Safety = Safety
 	akWorkshopRef.DamageSafety = DamageSafety
 	akWorkshopRef.MissingSafety = MissingSafety
@@ -748,7 +752,7 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 	if(akObjectRef.IsDisabled())
 		if(abRemoved)
 			kHoldPosition = akObjectRef.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
-			
+			akObjectRef.AddKeyword(TemporarilyMoved)
 			akObjectRef.SetPosition(0.0, 0.0, -10000.0)
 			akObjectRef.Enable(false) ; Temporarily enable for checking resources
 		else
@@ -792,6 +796,7 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 	if(kHoldPosition)
 		akObjectRef.Disable(false)
 		akObjectRef.MoveTo(kHoldPosition)
+		akObjectRef.RemoveKeyword(TemporarilyMoved)
 	endif
 	
 	if(abGetLock)
@@ -876,91 +881,6 @@ Function AdjustResource(WorkshopScript akWorkshopRef, ActorValue ResourceAV, Flo
 EndFunction
 
 
-Function StartConsumptionTimer()
-	StartTimerGameTime(fConsumptionLoopTime, ConsumptionLoopTimerID)
-EndFunction
-
-; TODO WSFW - Add support for toggling resource consumption/production to be enabled/disabled when the player doesn't own the settlement, currently it happens no matter what - which is probably more interesting, but may as well allow control
-Function ConsumeAllWorkshopResources()
-	if(bConsumptionUnderwayBlock)
-		return
-	endif
-	
-	bConsumptionUnderwayBlock = true
-	
-	Float fStartTime = Utility.GetCurrentRealtime()
-	
-	int i = 0
-	int iCount = WorkshopsAlias.GetCount()
-	
-	while(i < iCount)
-		WorkshopScript kWorkshopRef = WorkshopsAlias.GetAt(i) as WorkshopScript
-		
-		ConsumeWorkshopResources(kWorkshopRef)
-		
-		i += 1
-	endWhile
-	
-	Debug.Trace("WSFW: Resource consumption for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
-	
-	bConsumptionUnderwayBlock = false
-EndFunction
-
-
-Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
-	if( ! akWorkshopRef)
-		return
-	endif
-	
-	Float fLivingPopulation = GetWorkshopValue(akWorkshopRef, Population) - GetWorkshopValue(akWorkshopRef, RobotPopulation)
-	
-	int iRequiredFood = fLivingPopulation as Int
-	int iRequiredWater = fLivingPopulation as Int
-	
-	; Test if negative food/water production is being applied to simulate excessive requirements. This will ensure backwards compatibility with older Sim Settlements add-ons
-	Int iCurrentFoodProductionValue = Math.Ceiling(GetWorkshopValue(akWorkshopRef, Food))
-	Int iCurrentWaterProductionValue = Math.Ceiling(GetWorkshopValue(akWorkshopRef, Water))
-	
-	; Check for excess need
-	if(iCurrentFoodProductionValue < 0)
-		iRequiredFood += Math.Abs(iCurrentFoodProductionValue) as Int
-	endif
-	
-	if(iCurrentWaterProductionValue < 0)
-		iRequiredWater += Math.Abs(iCurrentWaterProductionValue) as Int
-	endif
-	
-	ObjectReference FoodContainer = GetContainer(akWorkshopRef, FoodContainerKeyword)
-	ObjectReference WaterContainer = GetContainer(akWorkshopRef, WaterContainerKeyword)
-	
-	int iAvailableFood = FoodContainer.GetItemCount(ObjectTypeFood)
-	int iAvailableWater = WaterContainer.GetItemCount(ObjectTypeWater)
-	
-	FoodContainer.RemoveItem(ObjectTypeFood, iRequiredFood)
-	WaterContainer.RemoveItem(ObjectTypeWater, iRequiredWater)
-	
-	iRequiredFood = Math.Abs(iAvailableFood - iRequiredFood) as Int
-	iRequiredWater = Math.Abs(iAvailableWater - iRequiredWater) as Int
-	
-	if(iRequiredFood > 0 || iRequiredWater > 0)
-		TransferResourcesFromLinkedWorkshops(akWorkshopRef, iRequiredFood, iRequiredWater)
-		
-		iAvailableFood = FoodContainer.GetItemCount(ObjectTypeFood)
-		iAvailableWater = WaterContainer.GetItemCount(ObjectTypeWater)
-		
-		FoodContainer.RemoveItem(ObjectTypeFood, iRequiredFood)
-		WaterContainer.RemoveItem(ObjectTypeWater, iRequiredWater)
-		
-		iRequiredFood = Math.Abs(iAvailableFood - iRequiredFood) as Int
-		iRequiredWater = Math.Abs(iAvailableWater - iRequiredWater) as Int
-	
-		; Missing AVs are used by radiant quests
-		akWorkshopRef.SetValue(MissingFood, iRequiredFood)
-		akWorkshopRef.SetValue(MissingWater, iRequiredWater)
-	endif
-EndFunction
-
-
 Float Function GetProductivityMultiplier(WorkshopScript akWorkshopRef)
 	if( ! akWorkshopRef)
 		return 0.0
@@ -1014,64 +934,6 @@ Float Function GetLinkedPopulation(WorkshopScript akWorkshopRef, Bool abIncludeP
 
 	return fTotalLinkedPopulation
 EndFunction
-
-
-Function TransferResourcesFromLinkedWorkshops(WorkshopScript akWorkshopRef, Int aiNeededFood, Int aiNeededWater)
-	; Adapted from UFO4P version of WorkshopParent.TransferResourcesFromLinkedWorkshops
-	if( ! akWorkshopRef)
-		return
-	endif
-	
-	ObjectReference FoodContainer = GetContainer(akWorkshopRef, FoodContainerKeyword)
-	ObjectReference WaterContainer = GetContainer(akWorkshopRef, WaterContainerKeyword)
-	
-	bool bTransferComplete = false
-	
-	Location[] linkedLocations = akWorkshopRef.myLocation.GetAllLinkedLocations(WorkshopCaravanKeyword)
-
-	int iLinkedLocationCount = linkedLocations.Length
-	int i = 0
-	while(i < iLinkedLocationCount && ! bTransferComplete)
-		int iLinkedWorkshopID = WorkshopLocations.Find(linkedLocations[i])
-		if(iLinkedWorkshopID >= 0)
-			WorkshopScript linkedWorkshopRef = GetWorkshop(iLinkedWorkshopID)
-			
-			if(aiNeededFood > 0)
-				ObjectReference LinkedFoodContainer = GetContainer(linkedWorkshopRef, FoodContainerKeyword)
-				
-				if(LinkedFoodContainer)
-					int iAvailableFood = LinkedFoodContainer.GetItemCount(ObjectTypeFood)
-					if(iAvailableFood > 0)
-						int iFoodToRemove = Math.Min(iAvailableFood, aiNeededFood) as int
-						LinkedFoodContainer.RemoveItem(ObjectTypeFood, iFoodToRemove, true, FoodContainer)
-						
-						aiNeededFood -= iFoodToRemove
-					endif
-				endif
-			endif
-			
-			if(aiNeededWater > 0)
-				ObjectReference LinkedWaterContainer = GetContainer(linkedWorkshopRef, WaterContainerKeyword)
-				
-				if(LinkedWaterContainer)
-					int iAvailableWater = LinkedWaterContainer.GetItemCount(ObjectTypeWater)
-					if(iAvailableWater > 0)
-						int iWaterToRemove = Math.Min(iAvailableWater, aiNeededWater) as int
-						LinkedWaterContainer.RemoveItem(ObjectTypeWater, iWaterToRemove, true, WaterContainer)
-						
-						aiNeededWater -= iWaterToRemove
-					endif
-				endif
-			endif
-		endif
-
-		if(aiNeededFood <= 0) && (aiNeededWater <= 0)
-			bTransferComplete = true
-		endif
-		
-		i += 1
-	endWhile
-endFunction
 
 
 ObjectReference Function GetContainer(WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None)

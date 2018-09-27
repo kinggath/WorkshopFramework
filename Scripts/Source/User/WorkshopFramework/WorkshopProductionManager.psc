@@ -19,6 +19,9 @@ import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:WorkshopFunctions
 
+
+CustomEvent NotEnoughResources
+
 ;/TODO 	
 - Create report holotape or note (ala AFT) for viewing all of the custom resources
 - How can we support productivity boosts?
@@ -29,7 +32,7 @@ import WorkshopFramework:WorkshopFunctions
 ; ---------------------------------------------
 
 int ProductionLoopTimerID = 100 Const
-float fThrottleContainerRouting = 0.5 Const
+float fThrottleContainerRouting = 0.04 Const
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -40,13 +43,18 @@ Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory 
 	Int Property iWorkshopParentInitializedStage = 20 Auto Const
 	WorkshopFramework:WorkshopResourceManager Property ResourceManager Auto Const Mandatory
+	
+	GlobalVariable Property Setting_AllowLinkedWorkshopConsumption Auto Const Mandatory
+	GlobalVariable Property Setting_MaintainDeficits Auto Const Mandatory
 EndGroup
 
 
 Group ActorValues
 	ActorValue[] Property FoodTypes Auto Const Mandatory
 	ActorValue Property Food Auto Const Mandatory
+	ActorValue Property MissingFood Auto Const Mandatory
 	ActorValue Property Water Auto Const Mandatory
+	ActorValue Property MissingWater Auto Const Mandatory
 	ActorValue Property Population Auto Const Mandatory
 	ActorValue Property RobotPopulation Auto Const Mandatory
 	ActorValue Property BrahminPopulation Auto Const Mandatory
@@ -66,13 +74,26 @@ Group ActorValues
 	
 	ActorValue Property FoodDamaged Auto Const Mandatory
 	ActorValue Property WaterDamaged Auto Const Mandatory
+	
+	ActorValue Property WorkshopTargetContainerHolderValue Auto Const Mandatory
+	{ AV we'll use to track the index of our WorkshopTargetContainerRecords on temporary containers }
+	
+	ActorValue Property ExtraNeeds_Food Auto Const Mandatory
+	ActorValue Property ExtraNeeds_Safety Auto Const Mandatory
+	ActorValue Property ExtraNeeds_Water Auto Const Mandatory
 EndGroup
 
 Group Aliases
 	ReferenceAlias Property SafeSpawnPoint Auto Const Mandatory 
 	{ Location to store production records }
 	RefCollectionAlias Property ProductionList Auto Const Mandatory
+	{ Alias to hold all registered ProduceResourceType objects }
+	RefCollectionAlias Property ProducedList Auto Const Mandatory
 	{ Alias to hold all registered ProductionRecord objects }
+	RefCollectionAlias Property ConsumptionList Auto Const Mandatory
+	{ Alias to hold all registered ConsumeResourceType objects }
+	RefCollectionAlias Property MissingConsumptionList Auto Const Mandatory
+	{ Alias to hold all ConsumeResourceTypes that still need production for the day }
 	RefCollectionAlias Property WorkshopContainers Auto Const Mandatory
 	{ Alias to hold all workshop containers so we can produce in them }
 EndGroup
@@ -80,6 +101,10 @@ EndGroup
 
 Group Assets
 	Form Property BlankProductionRecord Auto Const Mandatory
+	Form Property BlankProductionResourceRecord Auto Const Mandatory
+	Form Property BlankConsumptionResourceRecord Auto Const Mandatory
+	Form Property BlankMissingConsumptionForm Auto Const Mandatory
+	
 	LeveledItem Property DefaultScavProductionItem_All Auto Const Mandatory
 	{ The default WorkshopProduceScavenge leveleditem from the vanilla game. This will be used until the individual AVs are detected as a means of ensuring WorkshopFramework leaves the game largely working the same. }
 	LeveledItem Property DefaultFoodProductionItem Auto Const Mandatory
@@ -153,6 +178,9 @@ Group Keywords
 	Keyword Property ObjectTypeChem Auto Const Mandatory
 	Keyword Property ObjectTypeDrink Auto Const Mandatory
 	Keyword Property ObjectTypeNukaCola Auto Const Mandatory
+	
+	Keyword Property WorkshopItemKeyword Auto Const Mandatory
+	Keyword Property WorkshopCaravanKeyword Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -182,13 +210,33 @@ Float Property fProductionLoopTime = 24.0 Auto Hidden
 ; Vars
 ; ---------------------------------------------
 
-Bool bProductionUnderwayBlock ; Unlike a lock, with the block we will just reject any incoming calls if a block is held
-
-; Food and water are handled special since they affect the UI and gameplay mechanics. So even with specialty production, we're going to want to include high AVs. Whereas Scavenge, we can just applied a .01 scavege rating to get the UI to flag the assigned settler as a scavenger.
-Int[] iSpecialFoodProduction ; Total food value for each settlement that is producing specialty resources
-Int[] iSpecialWaterProduction ; Total water value for each settlement that is producing specialty resources
+; Unlike a lock, with blocks we will just reject any incoming calls if a block is held
+Bool bProductionUnderwayBlock 
 
 ObjectReference[] RouteContainers ; Holds containers we'll monitor for OnItemAdded to re-distribute items to appropriate containers
+
+Int iMaxProduceItemRecordIndex = 1023
+Int iNextWorkshopTargetContainerRecordIndex = -1
+Int Property NextWorkshopTargetContainerRecordIndex
+	Int Function Get()
+		iNextWorkshopTargetContainerRecordIndex += 1
+		
+		if(iNextWorkshopTargetContainerRecordIndex > iMaxProduceItemRecordIndex)
+			iNextWorkshopTargetContainerRecordIndex = 0
+		endif
+		
+		return iNextWorkshopTargetContainerRecordIndex
+	endFunction
+EndProperty
+
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords01 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords02 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords03 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords04 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords05 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords06 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords07 Auto Hidden
+WorkshopTargetContainer[] Property WorkshopTargetContainerRecords08 Auto Hidden
 
 ; ---------------------------------------------
 ; Events 
@@ -229,70 +277,104 @@ EndEvent
 
 Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akSourceContainer)
 	int iWorkshopID = RouteContainers.Find(akAddedTo)
-	WorkshopScript kTargetWorkshop = ResourceManager.Workshops[iWorkshopID]
-	ObjectReference kContainer = None
 	
-	if(kTargetWorkshop)
-		Keyword TargetContainerKeyword = None
+	ModTrace("[WSFW]  >>>>>>> OnItemAdded Event: " + aiItemCount + " " + akBaseItem + " added to " + akAddedTo)
+	if(iWorkshopID < 0)
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is temporary, storing production in temporary holding record.")
+		; Not a RouteContainer
+		UnRegisterForRemoteEvent(akAddedTo, "OnItemAdded")
+			
+		WorkshopScript thisWorkshop = akAddedTo.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		iWorkshopID = thisWorkshop.GetWorkshopID()
 		
-		; Try and auto-classify
-		if(akBaseItem as Potion)
-			if(akBaseItem.HasKeyword(ObjectTypeAlcohol))
-				TargetContainerKeyword = AlcoholContainerKeyword
-			elseif(akBaseItem.HasKeyword(ObjectTypeNukaCola))
-				TargetContainerKeyword = NukaColaContainerKeyword
-			elseif(akBaseItem.HasKeyword(ObjectTypeWater))
-				TargetContainerKeyword = WaterContainerKeyword
-			elseif(akBaseItem.HasKeyword(ObjectTypeDrink))
-				TargetContainerKeyword = DrinkContainerKeyword
-			elseif(akBaseItem.HasKeyword(ObjectTypeFood))
-				TargetContainerKeyword = FoodContainerKeyword
-			elseif(akBaseItem.HasKeyword(ObjectTypeChem))
-				TargetContainerKeyword = ChemContainerKeyword
-			else
-				TargetContainerKeyword = AidContainerKeyword
-			endif
-		elseif(akBaseItem as Component)
-			TargetContainerKeyword = ComponentContainerKeyword
-		elseif(akBaseItem == Caps001)
-			TargetContainerKeyword = CapsContainerKeyword
-		elseif(akBaseItem as Holotape)
-			TargetContainerKeyword = HolotapeContainerKeyword
-		elseif(akBaseItem as Book)
-			TargetContainerKeyword = NoteContainerKeyword
-		elseif(FertilizerList.Find(akBaseItem) >= 0)
-			TargetContainerKeyword = FertilizerContainerKeyword
-		elseif(akBaseItem as Ammo)
-			TargetContainerKeyword = AmmoContainerKeyword
-		elseif(akBaseItem as Armor)
-			TargetContainerKeyword = ArmorContainerKeyword
-		elseif(akBaseItem as ObjectMod)
-			TargetContainerKeyword = ModContainerKeyword
-		elseif(akBaseItem as Weapon)
-			TargetContainerKeyword = WeaponContainerKeyword
-		elseif(akBaseItem as MiscObject)
-			if(ScavengeList_BuildingMaterials.Find(akBaseItem) >= 0)
-				TargetContainerKeyword = ScavengeBuildingMaterialsContainerKeyword
-			elseif(ScavengeList_General.Find(akBaseItem) >= 0)
-				TargetContainerKeyword = ScavengeGeneralScrapContainerKeyword
-			elseif(ScavengeList_Parts.Find(akBaseItem) >= 0)
-				TargetContainerKeyword = ScavengePartsContainerKeyword
-			elseif(ScavengeList_Rare.Find(akBaseItem) >= 0)
-				TargetContainerKeyword = ScavengeRareContainerKeyword
-			else
-				TargetContainerKeyword = MiscContainerKeyword
+		; Likely one of our temporary containers
+		int iWorkshopTargetContainerIndex = akAddedTo.GetValue(WorkshopTargetContainerHolderValue) as Int
+		
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
+		if(iWorkshopTargetContainerIndex >= 0)
+			WorkshopTargetContainer WorkshopTargetData = GetWorkshopTargetContainerRecord(iWorkshopTargetContainerIndex)
+			
+			ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
+			
+			WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = kSpawnPoint.PlaceAtMe(BlankProductionRecord, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
+			
+			if(kRecord)
+				; Store a record of the actual produced items and their ultimate destination
+				kRecord.TemporaryContainer = akAddedTo
+				kRecord.iWorkshopID = iWorkshopID
+				kRecord.ContainerKeyword = WorkshopTargetData.TargetContainerKeyword
+				
+				ProducedList.AddRef(kRecord)
+				
+				ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
 			endif
 		endif
+	else
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
 		
-		kContainer = GetContainer(kTargetWorkshop, TargetContainerKeyword)
+		WorkshopScript thisWorkshop = ResourceManager.Workshops[iWorkshopID]
+		ObjectReference kContainer = None
+		
+		if(thisWorkshop)
+			Keyword TargetContainerKeyword = None
+			
+			; Try and auto-classify
+			if(akBaseItem as Potion)
+				if(akBaseItem.HasKeyword(ObjectTypeAlcohol))
+					TargetContainerKeyword = AlcoholContainerKeyword
+				elseif(akBaseItem.HasKeyword(ObjectTypeNukaCola))
+					TargetContainerKeyword = NukaColaContainerKeyword
+				elseif(akBaseItem.HasKeyword(ObjectTypeWater))
+					TargetContainerKeyword = WaterContainerKeyword
+				elseif(akBaseItem.HasKeyword(ObjectTypeDrink))
+					TargetContainerKeyword = DrinkContainerKeyword
+				elseif(akBaseItem.HasKeyword(ObjectTypeFood))
+					TargetContainerKeyword = FoodContainerKeyword
+				elseif(akBaseItem.HasKeyword(ObjectTypeChem))
+					TargetContainerKeyword = ChemContainerKeyword
+				else
+					TargetContainerKeyword = AidContainerKeyword
+				endif
+			elseif(akBaseItem as Component)
+				TargetContainerKeyword = ComponentContainerKeyword
+			elseif(akBaseItem == Caps001)
+				TargetContainerKeyword = CapsContainerKeyword
+			elseif(akBaseItem as Holotape)
+				TargetContainerKeyword = HolotapeContainerKeyword
+			elseif(akBaseItem as Book)
+				TargetContainerKeyword = NoteContainerKeyword
+			elseif(FertilizerList.Find(akBaseItem) >= 0)
+				TargetContainerKeyword = FertilizerContainerKeyword
+			elseif(akBaseItem as Ammo)
+				TargetContainerKeyword = AmmoContainerKeyword
+			elseif(akBaseItem as Armor)
+				TargetContainerKeyword = ArmorContainerKeyword
+			elseif(akBaseItem as ObjectMod)
+				TargetContainerKeyword = ModContainerKeyword
+			elseif(akBaseItem as Weapon)
+				TargetContainerKeyword = WeaponContainerKeyword
+			elseif(akBaseItem as MiscObject)
+				if(ScavengeList_BuildingMaterials.Find(akBaseItem) >= 0)
+					TargetContainerKeyword = ScavengeBuildingMaterialsContainerKeyword
+				elseif(ScavengeList_General.Find(akBaseItem) >= 0)
+					TargetContainerKeyword = ScavengeGeneralScrapContainerKeyword
+				elseif(ScavengeList_Parts.Find(akBaseItem) >= 0)
+					TargetContainerKeyword = ScavengePartsContainerKeyword
+				elseif(ScavengeList_Rare.Find(akBaseItem) >= 0)
+					TargetContainerKeyword = ScavengeRareContainerKeyword
+				else
+					TargetContainerKeyword = MiscContainerKeyword
+				endif
+			endif
+			
+			kContainer = GetContainer(thisWorkshop, TargetContainerKeyword)
+			
+			ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Final destination: " + kContainer)
+			if(kContainer)
+				akAddedTo.RemoveAllItems(kContainer)
+			endif
+		endif
 	endif
-	
-	if( ! kContainer)
-		Debug.Trace("Unable to locate an eligible container for this item, deleting: " + akBaseItem + ".")
-	endif
-	
-	; Route item
-	akAddedTo.RemoveItem(akBaseItem, aiItemCount, akOtherContainer = kContainer)
 EndEvent
 
 ; ---------------------------------------------
@@ -308,9 +390,15 @@ Function HandleQuestInit()
 	AddInventoryEventFilter(None)
 	
 	; Init arrays
-	iSpecialFoodProduction = new Int[128]
-	iSpecialWaterProduction = new Int[128]
 	RouteContainers = new ObjectReference[0]
+	WorkshopTargetContainerRecords01 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords02 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords03 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords04 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords05 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords06 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords07 = new WorkshopTargetContainer[128]
+	WorkshopTargetContainerRecords08 = new WorkshopTargetContainer[128]
 	
 	; Setup defaults
 	FoodProductionItem = DefaultFoodProductionItem
@@ -346,38 +434,108 @@ EndFunction
 ; Functions
 ; ---------------------------------------------
 
-Function RegisterProductionItem(LeveledItem aProduceMe, Int aiWorkshopID, Keyword aTargetContainerKeyword = None, Bool abIsFoodResource = false, Bool abIsWaterResource = false, Bool abIsScavengeResource = false)
-	WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = FindProductionItem(aProduceMe, aiWorkshopID)
+
+Function CleanResourceLists()
+	; Clean ProductionList
+	int i = 0
+	ObjectReference[] RemoveMe = new ObjectReference[0]
+	while(i < ProductionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
+		
+		if(kRecord.ProduceForm == None || kRecord.ResourceAV == None)
+			RemoveMe.Add(kRecord)
+		endif
+		
+		i += 1
+	endWhile
 	
-	if(kRecord)
-		kRecord.iCount += 1
-	else
-		CreateProductionItem(aProduceMe, aiWorkshopID, 1, aTargetContainerKeyword, abIsFoodResource, abIsWaterResource, abIsScavengeResource)
-	endif	
+	i = 0
+	while(i < RemoveMe.Length)
+		ProductionList.RemoveRef(RemoveMe[i])
+		RemoveMe[i].Disable()
+		RemoveMe[i].Delete()
+		
+		i += 1
+	endWhile
 	
-	if(abIsFoodResource)
-		iSpecialFoodProduction[aiWorkshopID] += 1
-	endif
+	i = 0
+	RemoveMe = new ObjectReference[0]
 	
-	if(abIsWaterResource)
-		iSpecialWaterProduction[aiWorkshopID] += 1
+	; Clean ConsumptionList
+	while(i < ConsumptionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption kRecord = ConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption
+		
+		if(kRecord.ConsumeForm == None || kRecord.ResourceAV == None)
+			RemoveMe.Add(kRecord)
+		endif
+		
+		i += 1
+	endWhile
+	
+	i = 0
+	while(i < RemoveMe.Length)
+		ConsumptionList.RemoveRef(RemoveMe[i])
+		RemoveMe[i].Disable()
+		RemoveMe[i].Delete()
+		
+		i += 1
+	endWhile
+	
+	
+	i = 0
+	RemoveMe = new ObjectReference[0]
+	
+	; Clean MissingConsumptionList
+	while(i < MissingConsumptionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing kRecord = ConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing
+		
+		; The referenced consumption record will already have been cleared previously
+		if(ConsumptionList.Find(kRecord.ResourceTypeConsumptionRecord) < 0)
+			kRecord.ResourceTypeConsumptionRecord = None ; Clear ref so it can be cleaned up
+			RemoveMe.Add(kRecord)
+		endif
+		
+		i += 1
+	endWhile
+	
+	i = 0
+	while(i < RemoveMe.Length)
+		MissingConsumptionList.RemoveRef(RemoveMe[i])
+		RemoveMe[i].Disable()
+		RemoveMe[i].Delete()
+		
+		i += 1
+	endWhile
+EndFunction
+
+
+Function RegisterProductionResource(LeveledItem aProduceMe, ActorValue aResourceAV, Keyword aTargetContainerKeyword = None)
+	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
+	
+	if(kSpawnPoint)
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = kSpawnPoint.PlaceAtMe(BlankProductionResourceRecord, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
+		
+		kRecord.ProduceForm = aProduceMe
+		kRecord.ResourceAV = aResourceAV
+		kRecord.TargetContainerKeyword = aTargetContainerKeyword
+		
+		ProductionList.AddRef(kRecord)
 	endif
 EndFunction
 
 
-Function UnregisterProductionItem(LeveledItem aRemoveMe, Int aiWorkshopID)
-	WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = FindProductionItem(aRemoveMe, aiWorkshopID)
+Function RegisterConsumptionResource(Form aConsumeMe, ActorValue aResourceAV, Keyword aSearchContainerKeyword = None, Bool abIsComponentFormList = false)
+	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
 	
-	if(kRecord && kRecord.iCount > 0)
-		kRecord.iCount -= 1
-	endif
-	
-	if(kRecord.bIsFood && iSpecialFoodProduction[aiWorkshopID] > 0)
-		iSpecialFoodProduction[aiWorkshopID] -= 1
-	endif
-	
-	if(kRecord.bIsWater && iSpecialWaterProduction[aiWorkshopID] > 0)
-		iSpecialWaterProduction[aiWorkshopID] -= 1
+	if(kSpawnPoint)
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption kRecord = kSpawnPoint.PlaceAtMe(BlankConsumptionResourceRecord, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption
+		
+		kRecord.ConsumeForm = aConsumeMe
+		kRecord.ResourceAV = aResourceAV
+		kRecord.SearchContainerKeyword = aSearchContainerKeyword
+		kRecord.bIsComponentFormList = abIsComponentFormList
+		
+		ConsumptionList.AddRef(kRecord)
 	endif
 EndFunction
 
@@ -387,11 +545,11 @@ Function StartProductionTimer()
 	if(RouteContainers.Length < kWorkshops.Length)
 		int i = RouteContainers.Length
 		while(i < kWorkshops.Length)
-			ObjectReference kTemp = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abForcePersist = true, abDeleteWhenAble = false)
+			ObjectReference kRouteContainer = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abForcePersist = true, abDeleteWhenAble = false)
 			
-			if(kTemp)
-				RouteContainers.Add(kTemp)
-				RegisterForRemoteEvent(kTemp, "OnItemAdded")
+			if(kRouteContainer)
+				RouteContainers.Add(kRouteContainer)
+				RegisterForRemoteEvent(kRouteContainer, "OnItemAdded")
 			endif
 			
 			i += 1
@@ -399,51 +557,6 @@ Function StartProductionTimer()
 	endif
 	
 	StartTimerGameTime(fProductionLoopTime, ProductionLoopTimerID)
-EndFunction
-
-
-WorkshopFramework:Library:ObjectRefs:ProductionRecord Function CreateProductionItem(LeveledItem aProduceMe, Int aiWorkshopID, Int aiStartCount = 1, Keyword aTargetContainerKeyword = None, Bool abIsFoodResource = false, Bool abIsWaterResource = false, Bool abIsScavengeResource = false)
-	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
-	
-	if( ! kSpawnPoint)
-		return None
-	endif
-	
-	WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = kSpawnPoint.PlaceAtMe(BlankProductionRecord, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
-	
-	if(kRecord)
-		ProductionList.AddRef(kRecord)
-		
-		kRecord.ProduceItem = aProduceMe
-		kRecord.iWorkshopID = aiWorkshopID
-		kRecord.iCount = aiStartCount
-		kRecord.bIsFood = abIsFoodResource
-		kRecord.bIsWater = abIsWaterResource
-		kRecord.bIsScavenge = abIsScavengeResource
-		kRecord.TargetContainerKeyword = aTargetContainerKeyword
-
-		return kRecord
-	endif
-	
-	return None
-EndFunction
-
-
-WorkshopFramework:Library:ObjectRefs:ProductionRecord Function FindProductionItem(LeveledItem aFindMe, Int aiWorkshopID)
-	int i = 0
-	int iMax = ProductionList.GetCount()
-	
-	while(i < iMax)
-		WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
-		
-		if(kRecord.ProduceItem && kRecord.ProduceItem == aFindMe && kRecord.iWorkshopID)
-			return kRecord
-		endif
-		
-		i += 1
-	endWhile
-	
-	return None
 EndFunction
 
 
@@ -456,21 +569,336 @@ Function ProduceAllWorkshopResources()
 	
 	Float fStartTime = Utility.GetCurrentRealtime()
 	
-	int i = 0
-	RefCollectionAlias WorkshopsAlias = ResourceManager.WorkshopsAlias
-	int iCount = WorkshopsAlias.GetCount()
+	; Clear out any resource that was part of a mod that is no longer installed
+	CleanResourceLists()
 	
-	while(i < iCount)
-		WorkshopScript kWorkshopRef = WorkshopsAlias.GetAt(i) as WorkshopScript
+	int i = 0
+	WorkshopScript[] WorkshopsArray = ResourceManager.Workshops
+	
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW]              Starting Production")
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")
+	while(i < WorkshopsArray.Length)
+		WorkshopScript kWorkshopRef = WorkshopsArray[i]
 		
+		; Start by consuming from existing resources in the appropriate containers - this gives players the most control over what should be consumed
+		ConsumeWorkshopResources(kWorkshopRef)
+		
+		; Produce the day's resources but place them in a holding state since the production is based on leveledItems, versus Consumption which is based on base items
 		ProduceWorkshopResources(kWorkshopRef)
 		
 		i += 1
 	endWhile
 	
-	Debug.Trace("WSFW: Resource production for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	; Give the OnItemAdded events time to complete
+	Utility.Wait(10.0)
+	
+	; Finally, finish consumption of resources and then send the surplus to the appropriate containers
+	ProcessSurplusResources()
+	
+	ModTrace("[WSFW] Resource production for " + WorkshopsArray.Length + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	
 	bProductionUnderwayBlock = false
 EndFunction
+
+
+Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
+	if( ! akWorkshopRef)
+		return
+	endif
+	
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW]        ConsumeWorkshopResources: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")
+	; Start with the defaults of Food and Water
+	Float fLivingPopulation = ResourceManager.GetWorkshopValue(akWorkshopRef, Population) - ResourceManager.GetWorkshopValue(akWorkshopRef, RobotPopulation)
+	
+	int iRequiredFood = fLivingPopulation as Int
+	int iRequiredWater = fLivingPopulation as Int
+	
+	; Test if negative food/water production is being applied to simulate excessive requirements. This will ensure backwards compatibility with older Sim Settlements add-ons
+	Int iCurrentFoodProductionValue = Math.Ceiling(ResourceManager.GetWorkshopValue(akWorkshopRef, Food))
+	Int iCurrentWaterProductionValue = Math.Ceiling(ResourceManager.GetWorkshopValue(akWorkshopRef, Water))
+	
+	; Check for excess need
+	if(iCurrentFoodProductionValue < 0)
+		iRequiredFood += Math.Abs(iCurrentFoodProductionValue) as Int
+	endif
+	
+	iRequiredFood += akWorkshopRef.GetValue(ExtraNeeds_Food) as Int
+	
+	if(iCurrentWaterProductionValue < 0)
+		iRequiredWater += Math.Abs(iCurrentWaterProductionValue) as Int
+	endif
+	
+	iRequiredWater += akWorkshopRef.GetValue(ExtraNeeds_Water) as Int
+	
+	ModTrace("[WSFW]            Food Needs: " + iRequiredFood)
+	ModTrace("[WSFW]            Water Needs: " + iRequiredWater)
+		; Handle actual consumption
+	if(iRequiredFood > 0)
+		iRequiredFood = ConsumeFromWorkshop(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+	endif
+	
+	if(iRequiredWater > 0)
+		iRequiredWater = ConsumeFromWorkshop(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+	endif
+	
+	
+	ModTrace("[WSFW]            Missing Food: " + iRequiredFood)
+	ModTrace("[WSFW]            Missing Water: " + iRequiredWater)
+	; Missing AVs are used by radiant quests - we can also use them in the WorkshopScript daily update loop
+	akWorkshopRef.SetValue(MissingFood, iRequiredFood)
+	akWorkshopRef.SetValue(MissingWater, iRequiredWater)
+	
+	
+	; Next handle custom registered consumption
+	int i = 0
+	while(i < ConsumptionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption thisConsumeType = ConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption
+		
+		int iRequired = akWorkshopRef.GetValue(thisConsumeType.ResourceAV) as Int
+		
+		if(iRequired > 0)
+			iRequired -= ConsumeFromWorkshop(thisConsumeType.ConsumeForm, iRequired, akWorkshopRef, thisConsumeType.SearchContainerKeyword, thisConsumeType.bIsComponentFormList)
+			
+			if(iRequired > 0) ; Still some missing
+				; During production - we'll only check those that we know have a missing resource
+				ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
+				
+				if(kSpawnPoint)
+					WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing kMissingConsumptionRef = kSpawnPoint.PlaceAtMe(BlankMissingConsumptionForm, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing
+					
+					if(kMissingConsumptionRef)
+						kMissingConsumptionRef.ResourceTypeConsumptionRecord = thisConsumeType
+						kMissingConsumptionRef.kWorkshopRef = akWorkshopRef
+						kMissingConsumptionRef.iMissing = iRequired
+												
+						MissingConsumptionList.AddRef(kMissingConsumptionRef)
+					endif
+				endif
+			endif
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+
+Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false)
+	if( ! akWorkshopRef || aiCount <= 0 || ! aConsumeMe)
+		return 0
+	endif
+	
+	int iRemainingToConsume = aiCount
+	
+	; Check specific container
+	ObjectReference kContainer
+	Int iContainerItemCount = 0
+	if(aTargetContainerKeyword)
+		kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+		
+		if(kContainer)
+			iRemainingToConsume -= ConsumeResource(kContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+		endif
+	endif
+	
+	; Check workshop container
+	if(iRemainingToConsume > 0)
+		ObjectReference workshopContainer = akWorkshopRef.GetContainer()
+		
+		if(workshopContainer != kContainer)
+			iRemainingToConsume -= ConsumeResource(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+		endif
+		
+		if(iRemainingToConsume > 0)
+			; Check linked workshops and consume from them
+			if(Setting_AllowLinkedWorkshopConsumption.GetValue() == 1)
+				int i = 0
+				Location[] LinkedLocations = akWorkshopRef.myLocation.GetAllLinkedLocations(WorkshopCaravanKeyword)
+				
+				while(i < LinkedLocations.Length && iRemainingToConsume > 0)
+					int iLinkedWorkshopID = ResourceManager.WorkshopLocations.Find(LinkedLocations[i])
+					
+					if(iLinkedWorkshopID >= 0)
+						WorkshopScript thisWorkshop = ResourceManager.Workshops[iLinkedWorkshopID]
+						
+						if(thisWorkshop.bAllowLinkedConsumption)
+							iRemainingToConsume -= ConsumeFromWorkshop(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList)
+						endif
+					endif
+					
+					i += 1
+				endWhile
+			endif
+		endif
+	endif
+	
+	; return amount consumed
+	return aiCount - iRemainingToConsume
+EndFunction
+
+
+Function ProcessSurplusResources()
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW]        ProcessSurplusResources")
+	ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")
+	
+	int i = 0
+	int iWorkshopCount = ResourceManager.Workshops.Length
+	while(i < iWorkshopCount)
+		WorkshopScript thisWorkshop = ResourceManager.Workshops[i]	
+		
+		; Process food and water and update our AVs
+		int iFoodMissing = thisWorkshop.GetValue(MissingFood) as Int
+		int iWaterMissing = thisWorkshop.GetValue(MissingWater) as Int
+			
+		int j = 0
+		while(j < ProducedList.GetCount())
+			WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = ProducedList.GetAt(j) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
+			
+			; Can we fix any issues with food or water
+			if(iFoodMissing > 0)
+				iFoodMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
+			endif
+			
+			if(iWaterMissing > 0)
+				iWaterMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
+			endif
+			
+			; Check if any of our missing consumption records are searching for produced items
+			UpdateMissingConsumptionList(kRecord.TemporaryContainer)
+			
+			; Anything remaining in the container should be sent to the appropriate place	
+			ObjectReference kContainer
+
+			if(kRecord.ContainerKeyword)
+				; Production record specified a specific destination
+				kContainer = GetContainer(thisWorkshop, kRecord.ContainerKeyword)	
+
+				ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to specific container: " + kContainer)				
+			else
+				; Send to route container so we can determine where things should go based on type
+				kContainer = RouteContainers[kRecord.iWorkshopID]
+				
+				ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to routing container: " + kContainer)
+				; Prevent OnItemAdded spam
+				Utility.Wait(fThrottleContainerRouting)
+			endif
+			
+			
+			if(kContainer)
+				kRecord.TemporaryContainer.RemoveAllItems(kContainer)
+			endif
+			
+			; Destroy temporary container
+			kRecord.TemporaryContainer.SetLinkedRef(None, WorkshopItemKeyword)
+			kRecord.TemporaryContainer.Disable()
+			kRecord.TemporaryContainer.Delete()
+			
+			j += 1
+		endWhile
+		
+		; Update missing food and water
+		thisWorkshop.SetValue(MissingFood, iFoodMissing)
+		thisWorkshop.SetValue(MissingWater, iWaterMissing)
+		
+		i += 1
+	endWhile
+		
+	
+	; Send out events for any remaining Missing Consumption List items so mods who are watching for it can produce side effects - since the base game only applies happiness hits based on things like food and water
+	i = 0
+	while(i < MissingConsumptionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing thisMissingRecord = MissingConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing
+				
+		Var[] kArgs = new Var[4]
+		kArgs[0] = thisMissingRecord.kWorkshopRef
+		kArgs[1] = thisMissingRecord.ResourceTypeConsumptionRecord.ResourceAV
+		kArgs[2] = thisMissingRecord.ResourceTypeConsumptionRecord.ConsumeForm
+		kArgs[3] = thisMissingRecord.iMissing
+		
+		SendCustomEvent("NotEnoughResources", kArgs)
+		
+		i += 1
+	endWhile
+	
+	; If deficits are disabled, clear missing consumption list for the day unless Deficits are turned on
+	if(Setting_MaintainDeficits.GetValue() == 0.0)
+		MissingConsumptionList.RemoveAll()
+	endif
+	
+	; Clear the produced list for the day
+	ProducedList.RemoveAll()
+EndFunction
+
+
+Function UpdateMissingConsumptionList(ObjectReference akContainerRef)
+	int i = 0
+	
+	WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing[] RemoveMe = new WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing[0]
+	
+	while(i < MissingConsumptionList.GetCount())
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing thisMissingRecord = MissingConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing
+		
+		int iConsumedCount = ConsumeResource(akContainerRef, thisMissingRecord.ResourceTypeConsumptionRecord.ConsumeForm, thisMissingRecord.iMissing, thisMissingRecord.ResourceTypeConsumptionRecord.bIsComponentFormList)
+		
+		if(iConsumedCount > 0)
+			if(thisMissingRecord.iMissing == iConsumedCount)
+				RemoveMe.Add(thisMissingRecord)
+			else
+				thisMissingRecord.iMissing -= iConsumedCount
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	
+	i = 0
+	while(i < RemoveMe.Length)
+		MissingConsumptionList.RemoveRef(RemoveMe[i])
+		
+		i += 1
+	endWhile
+EndFunction
+
+
+Int Function ConsumeResource(ObjectReference akContainerRef, Form aConsumeMe, Int aiCount, Bool abComponentFormList = false)
+	Int iContainerItemCount
+	Bool bComponents = false
+	if(abComponentFormList || aConsumeMe as Component)
+		bComponents = true
+		iContainerItemCount = akContainerRef.GetComponentCount(aConsumeMe)
+	else
+		iContainerItemCount = akContainerRef.GetItemCount(aConsumeMe)
+	endif
+	
+	Int iConsumedCount = 0
+	if(iContainerItemCount > 0)
+		if(iContainerItemCount >= aiCount)
+			iConsumedCount = aiCount
+		else
+			iConsumedCount = iContainerItemCount
+		endif
+		
+		if(bComponents)
+			akContainerRef.RemoveItemByComponent(aConsumeMe, iConsumedCount)
+		else
+			akContainerRef.RemoveItem(aConsumeMe, iConsumedCount)
+		endif
+	endif
+	
+	return iConsumedCount
+EndFunction
+
 
 Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 	if( ! akWorkshopRef)
@@ -481,7 +909,12 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 	
 	if(iWorkshopID < 0)
 		return
-	endif	
+	endif
+
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW] =============================================")
+	ModTrace("[WSFW]        ProduceWorkshopResources: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")	
 	
 	; First produce general resources based on ratings (food/water/scavenge/caps/fertilizer)
 	int iMaxProduceFoodRemaining = ProduceFood(akWorkshopRef)
@@ -496,46 +929,30 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 	int iMax = ProductionList.GetCount()
 	
 	while(i < iMax)
-		WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
 		
-		if(kRecord.ProduceItem && kRecord.iWorkshopID == iWorkshopID)
-			int iProduceCount = kRecord.iCount
+		if(kRecord.ProduceForm)
+			int iProduceCount = akWorkshopRef.GetValue(kRecord.ResourceAV) as Int
 			
-			if(kRecord.bIsWater)
+			if(kRecord.TargetContainerKeyword == WaterContainerKeyword)
 				if(iMaxProduceWaterRemaining > 0)
-					Keyword ContainerKeyword = kRecord.TargetContainerKeyword
-						
-					if( ! ContainerKeyword)
-						ContainerKeyword = WaterContainerKeyword
-					endif
-					
 					if(iMaxProduceWaterRemaining > iProduceCount)
 						iMaxProduceWaterRemaining -= iProduceCount
 					else
 						iProduceCount = iMaxProduceWaterRemaining
 						iMaxProduceWaterRemaining = 0
 					endif
-					
-					ProduceItems(kRecord.ProduceItem, akWorkshopRef, iProduceCount, ContainerKeyword)
 				endif
-			elseif(kRecord.bIsFood)
+			elseif(kRecord.TargetContainerKeyword == FoodContainerKeyword)
 				if(iMaxProduceFoodRemaining > 0)
-					Keyword ContainerKeyword = kRecord.TargetContainerKeyword
-						
-					if( ! ContainerKeyword)
-						ContainerKeyword = FoodContainerKeyword
-					endif
-					
 					if(iMaxProduceFoodRemaining > iProduceCount)
 						iMaxProduceFoodRemaining -= iProduceCount
 					else
 						iProduceCount = iMaxProduceFoodRemaining
 						iMaxProduceFoodRemaining = 0
 					endif
-					
-					ProduceItems(kRecord.ProduceItem, akWorkshopRef, iProduceCount, ContainerKeyword)
 				endif
-			elseif(kRecord.bIsScavenge)
+			elseif(kRecord.TargetContainerKeyword == ScrapContainerKeyword || GetParentContainerKeyword(kRecord.TargetContainerKeyword) == ScrapContainerKeyword)	
 				if(iMaxProduceScavengeRemaining > 0)
 					if(iMaxProduceScavengeRemaining > iProduceCount)
 						iMaxProduceScavengeRemaining -= iProduceCount
@@ -543,14 +960,12 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 						iProduceCount = iMaxProduceScavengeRemaining
 						iMaxProduceScavengeRemaining = 0
 					endif
-					
-					ProduceItems(kRecord.ProduceItem, akWorkshopRef, kRecord.iCount, kRecord.TargetContainerKeyword)
 				endif
 			else
 				; TODO: Expand the storage system for more gameplay options - things like limitations on non-scavenge items so players can build more storage. Ex. MaxProduceWeapons or MaxProduceAmmo
-								
-				ProduceItems(kRecord.ProduceItem, akWorkshopRef, kRecord.iCount, kRecord.TargetContainerKeyword)
 			endif
+			
+			ProduceItems(kRecord.ProduceForm, akWorkshopRef, iProduceCount, kRecord.TargetContainerKeyword)
 		endif
 		
 		i += 1
@@ -570,6 +985,10 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 		return -1
 	endif
 	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceFood: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")	
+	
 	Int iCurrentFoodProductionValue = Math.Ceiling(ResourceManager.GetWorkshopValue(akWorkshopRef, Food))
 	Float fLivingPopulation = akWorkshopRef.GetBaseValue(Population) - akWorkshopRef.GetBaseValue(RobotPopulation)
 	Float fPopulationBrahmin = akWorkshopRef.GetValue(BrahminPopulation)
@@ -580,12 +999,10 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 		iCurrentFoodProductionValue += Math.Ceiling(iBrahminMaxFoodBoost * akWorkshopRef.brahminProductionBoost)
 	endif
 	
-	; Reduce by special production
-	iCurrentFoodProductionValue -= iSpecialFoodProduction[iWorkshopID]
-	
 	; Reduce by damage
 	iCurrentFoodProductionValue = Math.max(0, iCurrentFoodProductionValue - (akWorkshopRef.GetValue(FoodDamaged) as int)) as int
 	
+	ModTrace("[WSFW]                  Food Production Value: " + iCurrentFoodProductionValue)
 		
 	if(iCurrentFoodProductionValue > 0)
 		; Test to make sure we aren't at max surplus food
@@ -596,6 +1013,9 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 		int iCurrentStoredFood = FoodContainer.GetItemCount(ObjectTypeFood)
 		int iMaxProduceFood = iMaxStoredFood - iCurrentStoredFood
 		int iProduceFood = Math.Min(iCurrentFoodProductionValue, iMaxProduceFood) as Int
+		
+		ModTrace("[WSFW]                  Current Stored Food: " + iCurrentStoredFood)
+		ModTrace("[WSFW]                  Max Stored Food: " + iMaxProduceFood)
 		if(iProduceFood > 0)
 			ProduceFoodTypes(akWorkshopRef, iProduceFood)
 			
@@ -621,14 +1041,17 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 		return -1
 	endif
 	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceWater: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")	
+	
 	Int iCurrentWaterProductionValue = Math.Ceiling(ResourceManager.GetWorkshopValue(akWorkshopRef, Water))
 	Float fLivingPopulation = akWorkshopRef.GetBaseValue(Population) - akWorkshopRef.GetBaseValue(RobotPopulation)
-		
-	; Reduce by special production
-	iCurrentWaterProductionValue -= iSpecialWaterProduction[iWorkshopID]
 	
 	; Reduce by damage
 	iCurrentWaterProductionValue = Math.max(0, iCurrentWaterProductionValue - (akWorkshopRef.GetValue(WaterDamaged) as int)) as int
+	
+	ModTrace("[WSFW]                  Water Production Value: " + iCurrentWaterProductionValue)
 	
 	if(iCurrentWaterProductionValue > 0)
 		; Test to make sure we aren't at max surplus water
@@ -639,6 +1062,10 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 		int iCurrentStoredWater = WaterContainer.GetItemCount(ObjectTypeWater)
 		int iMaxProduceWater = iMaxStoredWater - iCurrentStoredWater
 		int iProduceWater = Math.Min(iCurrentWaterProductionValue, iMaxProduceWater) as Int
+		
+		ModTrace("[WSFW]                  Current Stored Water: " + iCurrentStoredWater)
+		ModTrace("[WSFW]                  Max Stored Water: " + iMaxProduceWater)
+		
 		if(iProduceWater > 0)
 			ProduceItems(WaterProductionItem, akWorkshopRef, iProduceWater, WaterContainerKeyword)
 			
@@ -664,6 +1091,10 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 		return -1
 	endif
 	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceScavenge: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")
+	
 	ObjectReference ScavengeContainer = GetContainer(akWorkshopRef, ScrapContainerKeyword)
 	ObjectReference BuildingMaterialsContainer = GetContainer(akWorkshopRef, ScavengeBuildingMaterialsContainerKeyword)
 	ObjectReference GeneralContainer = GetContainer(akWorkshopRef, ScavengeGeneralScrapContainerKeyword)
@@ -671,6 +1102,7 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 	ObjectReference RareContainer = GetContainer(akWorkshopRef, ScavengeRareContainerKeyword)
 	
 	int iCurrentStoredScavenge = ScavengeContainer.GetItemCount(ScavengeList_All)
+	ModTrace("[WSFW]                  Current Stored Scav: " + iCurrentStoredScavenge)
 	Float fLivingPopulation = akWorkshopRef.GetBaseValue(Population) - akWorkshopRef.GetBaseValue(RobotPopulation)
 	
 	if(BuildingMaterialsContainer != ScavengeContainer)
@@ -696,13 +1128,18 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 	Float fScavengePartsProduction = ResourceManager.GetWorkshopValue(akWorkshopRef, Scavenge_Parts)
 	Float fScavengeRareProduction = ResourceManager.GetWorkshopValue(akWorkshopRef, Scavenge_Rare)
 	
+	ModTrace("[WSFW]                  Scav Production Value: " + fScavengeGeneralProduction)
+	ModTrace("[WSFW]                  Current Stored Scav (After adding subcontainers): " + iCurrentStoredScavenge)
+	ModTrace("[WSFW]                  Max Stored Scav: " + iMaxStoredScavenge)
 	int iMaxProduce = iMaxStoredScavenge - iCurrentStoredScavenge
 	
 	if(fScavengeBuildingMaterialsProduction <= 0 && fScavengePartsProduction <= 0 && fScavengeRareProduction <=0)
 		; Player has no mods taking advantage of the new AVs, just use the default scavenge system
-		ProduceItems(DefaultScavProductionItem_All, akWorkshopRef, Math.Floor(fScavengeGeneralProduction), ScavengeGeneralScrapContainerKeyword)
-		
-		iMaxProduce -= Math.Floor(fScavengeGeneralProduction)
+		if(fScavengeGeneralProduction > 0)
+			ProduceItems(DefaultScavProductionItem_All, akWorkshopRef, Math.Floor(fScavengeGeneralProduction), ScavengeGeneralScrapContainerKeyword)
+			
+			iMaxProduce -= Math.Floor(fScavengeGeneralProduction)
+		endif
 	else	
 		Float fTotalProduction = fScavengeBuildingMaterialsProduction + fScavengeGeneralProduction + fScavengePartsProduction + fScavengeRareProduction
 		
@@ -754,14 +1191,21 @@ int Function ProduceFertilizer(WorkshopScript akWorkshopRef)
 		return -1
 	endif
 	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceFertilizer: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")
+	
 	ObjectReference FertilizerContainer = GetContainer(akWorkshopRef, FertilizerContainerKeyword)
 	
+	int iProduce = akWorkshopRef.GetBaseValue(BrahminPopulation) as int
 	int iCurrentStoredFertilizer = FertilizerContainer.GetItemCount(FertilizerList)
 	; Test against max and produce
 	int iMaxStoredFertilizer = akWorkshopRef.maxBrahminFertilizerProduction
-	if(iCurrentStoredFertilizer < iMaxStoredFertilizer)
-		int iProduce = akWorkshopRef.GetBaseValue(BrahminPopulation) as int
-		
+	
+	ModTrace("[WSFW]                  Fertilizer Production Value: " + iProduce)
+	ModTrace("[WSFW]                  Current Stored Fertilizer: " + iCurrentStoredFertilizer)
+	ModTrace("[WSFW]                  Max Stored Fertilizer: " + iMaxStoredFertilizer)
+	if(iCurrentStoredFertilizer < iMaxStoredFertilizer && iProduce > 0)		
 		ProduceItems(FertilizerProductionItem, akWorkshopRef, Math.Min(iProduce, iMaxStoredFertilizer) as Int, FertilizerContainerKeyword)
 		
 		return iMaxStoredFertilizer - iProduce
@@ -781,6 +1225,10 @@ Function ProduceVendorIncome(WorkshopScript akWorkshopRef)
 	if(iWorkshopID < 0)
 		return
 	endif
+	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceVendorIncome: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")
 	
 	Float fBaseIncome = ResourceManager.GetWorkshopValue(akWorkshopRef, VendorIncome) * akWorkshopRef.vendorIncomeBaseMult
 	
@@ -806,9 +1254,12 @@ Function ProduceVendorIncome(WorkshopScript akWorkshopRef)
 		; don't go above max allowed
 		iVendorIncomeFinal = Math.Min(iVendorIncomeFinal, akWorkshopRef.maxVendorIncome) as int
 		
+		ModTrace("[WSFW]                  VendorIncome Value: " + iVendorIncomeFinal)
 		if(iVendorIncomeFinal >= 1)
 			ProduceItems(Caps001, akWorkshopRef, iVendorIncomeFinal, CapsContainerKeyword)
 		endif	
+	else
+		ModTrace("[WSFW]                  Population Too Low to Produce Vendor Income")
 	endif
 EndFunction
 
@@ -823,6 +1274,10 @@ Function ProduceFoodTypes(WorkshopScript akWorkshopRef, Int aiCount = 1)
 	if(iWorkshopID < 0)
 		return
 	endif
+	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  ProduceFoodTypes: " + akWorkshopRef + ", Count: " + aiCount)
+	ModTrace("[WSFW] ==============================================")
 	
 	; Calculate food specialties
 	int iFoodTypeCount = FoodTypes.Length
@@ -858,7 +1313,7 @@ Function ProduceFoodTypes(WorkshopScript akWorkshopRef, Int aiCount = 1)
 	
 	int iFoodTypeCount_CurrentWorkshop = iFoodTypeIndex_CurrentWorkshop.Length
 	
-	
+	ModTrace("[WSFW]                  Food Type Array iFoodTypeIndex_CurrentWorkshop: " + iFoodTypeIndex_CurrentWorkshop)
 	if(iFoodTypeCount_CurrentWorkshop > 0)
 		if(iFoodTypeCount_CurrentWorkshop == 1)
 			ProduceItems(GetFoodItem(iFoodTypeIndex_CurrentWorkshop[0]), akWorkshopRef, aiCount, FoodContainerKeyword)
@@ -910,22 +1365,145 @@ EndFunction
 
 
 Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount = 1, Keyword aTargetContainerKeyword = None)
-	ObjectReference kContainer 
+	if( ! aProduceMe || ! akWorkshopRef || aiCount < 1)
+		return
+	endif
 	
-	if( ! aTargetContainerKeyword)
-		; Send to temporary container so we can reroute all items
-		int iWorkshopID = akWorkshopRef.GetWorkshopID()
-		kContainer = RouteContainers[iWorkshopID]
-		; Give a brief pause so we don't overwhelm ourselves with OnItemAdded events
-		Utility.Wait(fThrottleContainerRouting)
+	int iWorkshopID = akWorkshopRef.GetWorkshopID()
+	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                       ProduceItems: " + aProduceMe + " at " + akWorkshopRef + ", Count: " + aiCount)
+	ModTrace("[WSFW] ==============================================")
+	
+	; We need to first create the items in a temporary container so we resolve things like LeveledItems which can represent a large quantity of various items. In order to track where these are supposed to end up ultimately, we'll create our tracking record and store a ref to the destination container, we'll then tag our temporary container with an AV that matches the index of our tracking record.
+		; Set up a tracking record so we can pair the destination container keyword and workshop ID with the final created items
+	int iWorkshopTargetContainerIndex = PrepareWorkshopTargetContainerRecord_Lock(iWorkshopID, aTargetContainerKeyword)
+	
+	if(iWorkshopTargetContainerIndex < 0) ; Couldn't prep a record - just drop it in the container directly
+		ObjectReference kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+					
+		if(kContainer)
+			kContainer.AddItem(aProduceMe, aiCount)
+		endif
 	else
-		kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+		; Setup our temp container and tag it with the WorkshopTargetContainerRecord index
+		ObjectReference kTempContainer = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abDeleteWhenAble = false)
+		kTempContainer.SetValue(WorkshopTargetContainerHolderValue, iWorkshopTargetContainerIndex)
+		kTempContainer.SetLinkedRef(akWorkshopRef, WorkshopItemKeyword)
+		
+		; After the item is created in the temporary container, we'll check the AV, and record the final actual items that are being produced. The consumption cycle will then consume things from the temporary containers and the Workshop Workbench, when it finishes, it will create the remaining surplus items in the corresponding containers and clear all of the temporary containers/records.
+			; Monitor for the OnItemAdded event and add the additem
+		RegisterForRemoteEvent(kTempContainer, "OnItemAdded")
+		
+		ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
+		kTempContainer.AddItem(aProduceMe, aiCount)
+	endif		
+	
+	; Give a brief pause so we don't overwhelm ourselves with OnItemAdded events
+	Utility.Wait(fThrottleContainerRouting)
+EndFunction
+
+
+Int Function PrepareWorkshopTargetContainerRecord_Lock(Int aiWorkshopID, Keyword aTargetContainerKeyword)
+	Int iLockKey = GetLock()
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("Unable to get lock!", 2)
+		
+		return -1
+	endif	
+	
+	; Lock acquired do work
+	int iWorkshopTargetContainerRecordIndex = NextWorkshopTargetContainerRecordIndex 
+	
+	WorkshopTargetContainer NewWorkshopTargetContainer = new WorkshopTargetContainer
+	NewWorkshopTargetContainer.TargetContainerKeyword = aTargetContainerKeyword
+	NewWorkshopTargetContainer.iWorkshopID = aiWorkshopID
+	
+	UpdateWorkshopTargetContainerRecord(iWorkshopTargetContainerRecordIndex, NewWorkshopTargetContainer)
+	
+	; Release Edit Lock
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("Failed to release lock " + iLockKey + "!", 2)
 	endif
 	
-	if(kContainer)
-		kContainer.AddItem(aProduceMe, aiCount)
-	endif
+	return iWorkshopTargetContainerRecordIndex
 EndFunction
+
+
+WorkshopTargetContainer Function GetWorkshopTargetContainerRecord(Int aiIndex)
+	if(aiIndex < 128)
+		return WorkshopTargetContainerRecords01[aiIndex]
+	elseif(aiIndex < 256)
+		return WorkshopTargetContainerRecords02[aiIndex - 128]
+	elseif(aiIndex < 384)
+		return WorkshopTargetContainerRecords03[aiIndex - 256]
+	elseif(aiIndex < 512)
+		return WorkshopTargetContainerRecords04[aiIndex - 384]
+	elseif(aiIndex < 640)
+		return WorkshopTargetContainerRecords05[aiIndex - 512]
+	elseif(aiIndex < 768)
+		return WorkshopTargetContainerRecords06[aiIndex - 640]
+	elseif(aiIndex < 896)
+		return WorkshopTargetContainerRecords07[aiIndex - 768]
+	elseif(aiIndex < 1024)
+		return WorkshopTargetContainerRecords08[aiIndex - 896]
+	endif
+	
+	return None
+EndFunction
+
+
+Function UpdateWorkshopTargetContainerRecord(Int aiIndex, WorkshopTargetContainer aProducedRecord)
+	if(aiIndex < 128)
+		if(WorkshopTargetContainerRecords01 == None)
+			WorkshopTargetContainerRecords01 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords01[aiIndex] = aProducedRecord
+	elseif(aiIndex < 256)
+		if(WorkshopTargetContainerRecords02 == None)
+			WorkshopTargetContainerRecords02 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords02[aiIndex - 128] = aProducedRecord
+	elseif(aiIndex < 384)
+		if(WorkshopTargetContainerRecords03 == None)
+			WorkshopTargetContainerRecords03 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords03[aiIndex - 256] = aProducedRecord
+	elseif(aiIndex < 512)
+		if(WorkshopTargetContainerRecords04 == None)
+			WorkshopTargetContainerRecords04 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords04[aiIndex - 384] = aProducedRecord
+	elseif(aiIndex < 640)
+		if(WorkshopTargetContainerRecords05 == None)
+			WorkshopTargetContainerRecords05 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords05[aiIndex - 512] = aProducedRecord
+	elseif(aiIndex < 768)
+		if(WorkshopTargetContainerRecords06 == None)
+			WorkshopTargetContainerRecords06 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords06[aiIndex - 640] = aProducedRecord
+	elseif(aiIndex < 896)
+		if(WorkshopTargetContainerRecords07 == None)
+			WorkshopTargetContainerRecords07 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords07[aiIndex - 768] = aProducedRecord
+	elseif(aiIndex < 1024)
+		if(WorkshopTargetContainerRecords08 == None)
+			WorkshopTargetContainerRecords08 = new WorkshopTargetContainer[128]
+		endif
+		
+		WorkshopTargetContainerRecords08[aiIndex - 896] = aProducedRecord
+	endif
+endFunction
 
 
 Function SetupWorkshopContainer(WorkshopObjectScript akContainerRef, WorkshopScript akWorkshopRef)
@@ -948,7 +1526,7 @@ ObjectReference Function GetContainer(WorkshopScript akWorkshopRef, Keyword aTar
 		return None
 	endif
 	
-	ObjectReference kContainer = akWorkshopRef.GetContainer()
+	ObjectReference kContainer
 	
 	if(aTargetContainerKeyword != None)
 		ObjectReference[] kTemp = akWorkshopRef.GetLinkedRefChildren(aTargetContainerKeyword)
@@ -961,7 +1539,11 @@ ObjectReference Function GetContainer(WorkshopScript akWorkshopRef, Keyword aTar
 		endif
 	endif
 	
-	return kContainer
+	if(kContainer)
+		return kContainer
+	else
+		return akWorkshopRef.GetContainer()
+	endif
 EndFunction
 
 

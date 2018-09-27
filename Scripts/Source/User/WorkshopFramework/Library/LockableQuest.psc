@@ -132,6 +132,7 @@ EndFunction
 
 
 Int Function GetQueueCount()
+	Debug.Trace("[WSFW] Current lock count for quest " + Self + ": " + iGenericLock_LockCount)
 	return iGenericLock_LockCount
 EndFunction
 

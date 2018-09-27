@@ -298,7 +298,6 @@ Function CompleteRun(String asCustomCallbackID, Int aiCallBackID, Var akResult)
 	
 	; Send the response with the callback ID so in case the original caller needs it
 	if(asCustomCallbackID != "")
-		
 		Var[] kResultArgs = new Var[3]
 		kResultArgs[0] = asCustomCallbackID
 		kResultArgs[1] = aiCallBackID

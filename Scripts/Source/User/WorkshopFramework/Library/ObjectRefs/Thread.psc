@@ -27,7 +27,7 @@ int SelfDestructTimerID = 0
 ; -
 ; Properties
 ; - 
-Bool Property bAutoDestroy = true Auto Hidden
+Bool Property bAutoDestroy = true Auto Hidden ; Note: When turning off AutoDestroy - you are in charge of calling SelfDestruct on this thread when you are done
 Int Property iCallBackID = -1 Auto Hidden
 String Property sCustomCallbackID = "" Auto Hidden
 

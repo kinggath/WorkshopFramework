@@ -113,12 +113,6 @@ bool Property bRadioOn = true auto hidden		; for now only used on temp radio obj
 
 
 Group WSFWSettings
-	LeveledItem Property ProductionItem Auto Const 
-	{ IMPORTANT! Be sure to set ProductionManager property as well if using this. LeveledItem to produce in the workshop each day }
-
-	WorkshopFramework:WorkshopProductionManager Property ProductionManager Auto Const
-	{ [Optional] Needed to make use of ProductionItem field }
-	
 	Keyword Property WorkshopContainerType Auto Const
 	{ [Optional] If set, this will be linked to the workshop as a special sub-container for redirecting certain resources. See documentation for valid keywords. }
 
@@ -403,10 +397,7 @@ function AssignActor(WorkshopNPCScript newActor = None)
 			endif
 		endif
 	endif
-	
-	; WSFW
-	UpdateProduction()
-	
+		
 	AssignActorCustom(newActor)
 endFunction
 
@@ -517,9 +508,6 @@ function HandleDestruction()
 	if myIdleMarkerRef
 		myIdleMarkerRef.DisableNoWait()
 	endif
-
-	; WSFW
-	UpdateProduction()
 endFunction
 
 function RecalculateResourceDamage(WorkshopScript workshopRef = NONE, bool clearAllDamage = false)
@@ -606,9 +594,6 @@ function HandlePowerStateChange(bool bPowerOn = true)
 	; send custom event for this object
 	WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
 	WorkshopParent.SendPowerStateChangedEvent(self, workshopRef)
-	
-	; WSFW
-	UpdateProduction()
 endFunction
 
 Event OnActivate(ObjectReference akActionRef)
@@ -874,9 +859,6 @@ function HandleCreation(bool bNewlyBuilt = true)
 		SetFactionOwner(WorkshopParent.PlayerFaction)
 		;WorkshopParent.wsTrace(self + " HandleCreation: unowned, assigning PlayerFaction ownership: " + GetFactionOwner())
 	endif	
-
-	; WSFW
-	UpdateProduction()
 endFunction
 
 ; clean up created refs when deleted
@@ -896,9 +878,6 @@ function HandleDeletion()
 		myIdleMarkerRef.DisableNoWait()
 		myIdleMarkerRef = none
 	endif
-
-	; WSFW
-	UpdateProduction()
 endFunction
 
 ; called on workshop objects during reset
@@ -912,18 +891,8 @@ function HandleWorkshopReset()
 			SetHarvested(false)
 		endif
 	endif
-	
-	; WSFW
-	UpdateProduction()
 endFunction
 
-
-; WSFW - Override Repair to ensure production is updated
-Function Repair()
-	Parent.Repair()
-	
-	UpdateProduction()
-EndFunction
 
 bool function HasResourceValue(ActorValue akValue)
 	if akValue && GetBaseValue(akValue) > 0
@@ -1030,49 +999,3 @@ endFunction
 ObjectReference function UFO4P_GetMyDamageHelperRef()
 	return myDamageHelperRef
 endFunction
-
-
-; WSFW Special Function for ProductionItem
-Bool bIsRegisteredForProduction = false
-Function UpdateProduction()
-	if( ! ProductionItem || ! ProductionManager)
-		return
-	endif
-	
-	Bool bProduce = true
-	
-	if(IsDisabled())
-		bProduce = false
-	elseif(HasResourceDamage())
-		bProduce = false
-	elseif(RequiresPower() && ! IsPowered())
-		bProduce = false
-	elseif(RequiresActor() && ! IsActorAssigned())
-		bProduce = false
-	endif
-
-	if(bProduce)
-		if( ! bIsRegisteredForProduction)
-			bIsRegisteredForProduction = true
-			
-			Bool bIsFood = HasResourceValue(ProductionManager.Food)
-			Bool bIsWater = HasResourceValue(ProductionManager.Water)
-			Bool bIsScavenge = IsScavengeResource()
-			
-			ProductionManager.RegisterProductionItem(ProductionItem, workshopID, None, bIsFood, bIsWater, bIsScavenge)
-		endif
-	else
-		if(bIsRegisteredForProduction)
-			ProductionManager.UnregisterProductionItem(ProductionItem, workshopID)
-		endif
-	endif
-EndFunction
-
-; WSFW - Check all 4 scav resource types
-Bool Function IsScavengeResource()
-	if(HasResourceValue(ProductionManager.Scavenge_General) || HasResourceValue(ProductionManager.Scavenge_BuildingMaterials) || HasResourceValue(ProductionManager.Scavenge_Parts) || HasResourceValue(ProductionManager.Scavenge_Rare))
-		return true
-	else
-		return false
-	endif
-EndFunction

@@ -14,6 +14,7 @@
 Scriptname WorkshopFramework:ObjectRefs:Thread_PlaceObject extends WorkshopFramework:Library:ObjectRefs:Thread
 
 import WorkshopFramework:Library:DataStructures
+import WorkshopFramework:Library:ThirdParty:Cobb:CobbLibraryRotations
 
 ; -
 ; Consts
@@ -46,11 +47,17 @@ Scene Property WorkshopRadioScene01 Auto Const Mandatory
 ObjectReference Property WorkshopRadioRef Auto Mandatory
 { Found on WorkshopParent script property of same name }
 
+Keyword Property ForceStaticKeyword Auto Const Mandatory
+{ Keyword to tag objects so we can monitor for their onload event }
 
 ; -
 ; Properties
 ; -
 
+; We are turning off bAutoDestroy so our batch event manager can grab the result ref
+ObjectReference Property kResult Auto Hidden
+
+ObjectReference Property kPositionRelativeTo Auto Hidden
 WorkshopScript Property kWorkshopRef Auto Hidden
 ObjectReference Property kSpawnAt Auto Hidden
 Form Property SpawnMe Auto Hidden
@@ -61,6 +68,8 @@ Float Property fAngleX = 0.0 Auto Hidden
 Float Property fAngleY = 0.0 Auto Hidden 
 Float Property fAngleZ = 0.0 Auto Hidden 
 Float Property fScale = 0.0 Auto Hidden
+Bool Property bStartEnabled = true Auto Hidden
+Bool Property bForceStatic = true Auto Hidden
 Bool Property bFauxPowered = true Auto Hidden
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
@@ -71,11 +80,15 @@ LinkToMe[] Property LinkedRefs Auto Hidden
 ; -
 
 Event ObjectReference.OnLoad(ObjectReference akSenderRef)
-	akSenderRef.SetAngle(fAngleX, fAngleY, fAngleZ)
-	akSenderRef.SetPosition(fPosX, fPosY, fPosZ)
-	
-	if(fScale != 1.0 && fScale != 0)
-		akSenderRef.SetScale(fScale)
+	if(akSenderRef.HasKeyword(ForceStaticKeyword))
+		akSenderRef.SetMotionType(akSenderRef.Motion_Keyframed)
+	else
+		akSenderRef.SetAngle(fAngleX, fAngleY, fAngleZ)
+		akSenderRef.SetPosition(fPosX, fPosY, fPosZ)
+		
+		if(fScale != 1.0 && fScale != 0)
+			akSenderRef.SetScale(fScale)
+		endif
 	endif
 	
 	UnregisterForAllEvents()
@@ -122,25 +135,60 @@ EndFunction
 
 	
 Function ReleaseObjectReferences()
+	kResult = None
 	kSpawnAt = None
 	LinkedRefs = None
 	kWorkshopRef = None
 	WorkshopRadioRef = None
+	kPositionRelativeTo = None
 EndFunction
 
 
 Function RunCode()
-	ObjectReference kResult = None
+	bAutoDestroy = false
+	kResult = None
 	; Place temporary object at player
 	ObjectReference kTempPositionHelper = kSpawnAt.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
 	
 	if(kTempPositionHelper)
+		if(kPositionRelativeTo != None)
+			; Calculate position
+			Float[] fPosition = new Float[3]
+			Float[] fAngle = new Float[3]
+			Float[] fPosOffset = new Float[3]
+			Float[] fAngleOffset = new Float[3]
+			Float[] fNew3dData = new Float[6]
+					
+			fPosition[0] = kPositionRelativeTo.X
+			fPosition[1] = kPositionRelativeTo.Y
+			fPosition[2] = kPositionRelativeTo.Z
+			fAngle[0] = kPositionRelativeTo.GetAngleX()
+			fAngle[1] = kPositionRelativeTo.GetAngleY()
+			fAngle[2] = kPositionRelativeTo.GetAngleZ()
+	
+			fPosOffset[0] = fPosX
+			fPosOffset[1] = fPosY
+			fPosOffset[2] = fPosZ
+			fAngleOffset[0] = fAngleX
+			fAngleOffset[1] = fAngleY
+			fAngleOffset[2] = fAngleZ
+			
+			fNew3dData = GetCoordinatesRelativeToBase(fPosition, fAngle, fPosOffset, fAngleOffset)
+			
+			fPosX = fNew3dData[0]
+			fPosY = fNew3dData[1]
+			fPosZ = fNew3dData[2]
+			fAngleX = fNew3dData[3]
+			fAngleY = fNew3dData[4]
+			fAngleZ = fNew3dData[5]
+		endif
+				
 		; Rotation can only occur in the loaded area, so handle that immediately
 		kTempPositionHelper.SetAngle(fAngleX, fAngleY, fAngleZ)
 		kTempPositionHelper.SetPosition(fPosX, fPosY, fPosZ)
 		
 		; Place Object at temp object
-		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = false, abDeleteWhenAble = false)
+		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = (! bStartEnabled), abDeleteWhenAble = false)
 				
 		if(kResult)
 			if(kResult as Actor)
@@ -155,10 +203,14 @@ Function RunCode()
 					if(fScale != 1)
 						kResult.SetScale(fScale)
 					endif
-				else
-					bAutoDestroy = false
+				else					
 					RegisterForRemoteEvent(kResult, "OnLoad")
 				endif
+			endif
+			
+			if(bForceStatic)
+				kResult.AddKeyword(ForceStaticKeyword)
+				RegisterForRemoteEvent(kResult, "OnLoad")
 			endif
 			
 			if(fScale != 1)

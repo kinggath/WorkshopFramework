@@ -1622,9 +1622,26 @@ function TryToAssignResourceObjectsPUBLIC(WorkshopScript workshopRef)
 	; lock editing
 	GetEditLock()
 	
-	TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
-	TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
-	TryToAssignBeds(workshopRef)
+	; WSFW - Override based on autoassign settings
+	if( ! AutoAssignFood)
+		wsTrace("[WSWF Override] Auto assign disabled for food.")
+	else
+		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
+	endif
+	
+	; WSFW - Override based on autoassign settings
+	if( ! AutoAssignDefense)
+		wsTrace("[WSWF Override] Auto assign disabled for defense.")
+	else
+		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
+	endif
+	
+	; WSFW - Override based on autoassign settings
+	if( ! AutoAssignBeds)
+		wsTrace("[WSWF Override] Auto assign disabled for beds.")
+	else
+		TryToAssignBeds(workshopRef)
+	endif
 
 	wsTrace(" TryToAssignResourceObjectsPUBLIC DONE: " + workshopRef)
 	wsTrace("------------------------------------------------------------------------------ ")
@@ -1855,6 +1872,13 @@ function TryToAutoAssignActor(WorkshopScript workshopRef, WorkshopNPCScript acto
 	Bool bAutoAssignBeds = AutoAssignBeds
 	Bool bAutoAssignFood = AutoAssignFood
 	Bool bAutoAssignDefense = AutoAssignDefense
+		; TryToAutoAssignActor is only called when an NPC is added to the settlement. For non-created NPCs, ie. the starting NPCs, we want them to autoassign at first or else when the player arrives at a settlement the first time, if they have the options disabled, those NPCs won't have assignments
+	if(	! actorToAssign.IsCreated())
+		bAutoAssignBeds = true
+		bAutoAssignFood = true
+		bAutoAssignDefense = true
+	endif
+	
 	
 	if( ! bAutoAssignBeds && ! bAutoAssignFood && ! bAutoAssignDefense)
 		return
@@ -2093,6 +2117,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 			; scrapped or the NPC is killed.
 			/;
 			; UnassignActor_Private (assignedActor, bRemoveFromWorkshop = false, bSendUnassignEvent = !bAlreadyAssigned, bResetMode = bResetMode)
+			
 			UnassignActor_Private_SkipExclusions(assignedActor, workshopRef)
 		endif
 
@@ -2182,6 +2207,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 		;If we're not in reset mode and objects have been unassigned in this process that have not already been taken care of, (e.g. if UnassignActor_Private
 		;was called above, those objects will have been re-assigned already), try to find a new owner. Likewise, try to find more work objects for assigned
 		;actor if he is below his limit (in all those cases, bShouldTryToAssignResources will be 'true').
+		; WSWF - Ignore AutoAssign properties here so multi-assignment still works
 		if !bResetMode && bShouldTryToAssignResources && workshopID == currentWorkshopID
 			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
@@ -2658,6 +2684,9 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 
 	bool bResetHappiness = false
 
+	; WSFW - Skip based on autoassign settings
+	Bool bAutoAssignBeds = AutoAssignBeds
+		
 	if WorkshopActors == NONE
 		WorkshopActors = GetWorkshopActors(workshopRef)
 	endif
@@ -2733,7 +2762,7 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 			assignedActor.SetValue (WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, 1)
 			UpdateVendorFlagsAll (workshopRef)
 		endif
-
+	
 		if assignedActor.IsCreated()
 			assignedActor.SetPersistLoc (workshopRef.myLocation)
 			if assignedActor.bIsSynth
@@ -2748,6 +2777,9 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 			;ClearFromOldLocations() should run on all in-game created actors, not only on those tagged as synths.
 			wstrace(" 	" + assignedActor + " GetLocRefType = " + assignedActor.GetLocRefTypes())
 			assignedActor.ClearFromOldLocations() ; 101931: make sure location data is correct
+		else
+			; WSWF - When an NPC is first added we want to assign 
+			bAutoAssignBeds = true
 		endif
 
 		if workshopRef.PlayerHasVisited
@@ -2775,7 +2807,7 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	endif
 
 	;Even if not in reset mode, this should not run if the workshop is not loaded:
-	if !bResetMode && newWorkshopID == currentWorkshopID 
+	if !bResetMode && newWorkshopID == currentWorkshopID && bAutoAssignBeds 
 		wsTrace("	AddActorToWorkshop: step 5 - try to assign a bed, maybe")
 		TryToAssignBeds (workshopRef)
 	endif
@@ -3150,10 +3182,16 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 
 	;If not in reset mode, try to find new owners for unassigned objects:
 	if !bResetMode && bShouldTryToAssignResources
-		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
-		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
+		if(AutoAssignFood)
+			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
+		endif
+		
+		if(AutoAssignDefense)
+			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
+		endif
+		
 		;If actor was removed from workshop, there may be an unassigned bed now:
-		if bRemoveFromWorkshop
+		if bRemoveFromWorkshop && AutoAssignBeds
 			TryToAssignBeds (workshopRef)
 		endif
 	endif
@@ -3345,7 +3383,7 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 		;if workshop is the current workshop, add all unowned beds to the UFO4P_UnassignedBeds array:
 		if UFO4P_Owned == false && workshopRef.GetWorkshopID() == currentWorkshopID
 			UFO4P_AddUnassignedBedToArray (workObject)
-			if !bResetMode
+			if !bResetMode && AutoAssignBeds
 				TryToAssignBeds (workshopRef)
 			endif
 		endif
@@ -3626,11 +3664,6 @@ endFunction
 
 ; assign spare beds to any NPCs that don't have one
 function TryToAssignBeds(WorkshopScript workshopRef)
-	; WSFW - Skip based on autoassign settings
-	if( ! AutoAssignBeds)
-		return
-	endif
-	
 	;/
 	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
@@ -3714,12 +3747,6 @@ endFunction
 
 ; try to assign all objects of the specified resource types
 function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resourceValue)
-	; WSFW - Override based on autoassign settings
-	if((resourceValue == WorkshopRatings[WorkshopRatingSafety].resourceValue && ! AutoAssignDefense) || (resourceValue == WorkshopRatings[WorkshopRatingFood].resourceValue && ! AutoAssignFood))
-		wsTrace("[WSWF Override] Auto assign disabled for this resource type.")
-		return
-	endif
-	
 	;/
 	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
@@ -4146,67 +4173,8 @@ endFunction
 
 
 function TransferResourcesFromLinkedWorkshops(WorkshopScript workshopRef, int neededFood, int neededWater)
-
-	int workshopID = workshopRef.GetWorkshopID()
-	ObjectReference containerRef = workshopRef.GetContainer()
-
-	;--------------------------------------------------------------------------------------------------------------------------------
-	;
-	;	UFO4P 2.0.1 Bug #22251:
-	;
-	;	This function did not track the number of items transferred and instead removed the needed resources from all linked work-.
-	;	shops. As a result, resources were permanently swapped forth and back without any need if there was more than one workshop
-	;	with low resources within the linked network.
-	;
-	;	To keep this legible, the vanilla code has been commented out entriely, and the new code added below.
-	;
-	;--------------------------------------------------------------------------------------------------------------------------------
-
-	wsTrace("TransferResourcesFromLinkedWorkshops: Transferring ...")
-
-	bool UFO4P_TransferComplete = false
-	
-	Location[] linkedLocations = workshopRef.myLocation.GetAllLinkedLocations(WorkshopCaravanKeyword)
-
-	int LinkedLocationCount = linkedLocations.Length
-	int index = 0
-	while index < LinkedLocationCount && UFO4P_TransferComplete == false
-		int linkedWorkshopID = WorkshopLocations.Find(linkedLocations[index])
-		if linkedWorkshopID >= 0
-			WorkshopScript linkedWorkshopRef = GetWorkshop(linkedWorkshopID)
-			objectReference linkedContainerRef = linkedWorkshopRef.GetContainer()
-			if linkedContainerRef
-				if neededFood > 0
-					int availableFood_LinkedWorkshop = linkedContainerRef.GetItemCount(WorkshopConsumeFood)
-					if availableFood_LinkedWorkshop > 0
-						int FoodToRemove = Math.Min (availableFood_LinkedWorkshop, neededFood) as int
-						linkedContainerRef.RemoveItem(WorkshopConsumeFood, FoodToRemove, true, containerRef)
-						neededFood -= FoodToRemove
-						wsTrace("   Transferred " + FoodToRemove + " food from linked workshop " + linkedWorkshopRef + " to " + workshopRef)
-						wsTrace("      Remaining food to transfer = " + neededFood)
-					endif
-				endif
-				if neededWater > 0
-					int availableWater_LinkedWorkshop = linkedContainerRef.GetItemCount(WorkshopConsumeWater)
-					if availableWater_LinkedWorkshop > 0
-						int WaterToRemove = Math.Min (availableWater_LinkedWorkshop, neededWater) as int
-						linkedContainerRef.RemoveItem(WorkshopConsumeWater, WaterToRemove, true, containerRef)
-						neededWater -= WaterToRemove
-						wsTrace("   Transferred " + WaterToRemove + " water from linked workshop " + linkedWorkshopRef + " to " + workshopRef)
-						wsTrace("      Remaining water to transfer = " + neededWater)
-					endif
-				endif
-			endif
-		else
-			wsTrace("TransferResourcesFromLinkedWorkshops: ERROR - workshop location " + linkedLocations[index] + " not found in workshop location array", 2)
-		endif
-
-		if (neededFood <= 0) && (neededWater <= 0)
-			UFO4P_TransferComplete = true
-		endif
-		index += 1
-	endWhile
-
+	; WSFW - We're handling this in WorkshopResourceManager now
+	return
 endFunction
 
 ; called by ResetWorkshop
@@ -4677,11 +4645,18 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	wsTrace("	ResetWorkshop: " + workshopRef + "  ASSIGNING RESOURCES:")
 	wsTrace("------------------------------------------------------------------------------ ")
 	
-	TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
-	TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
+	if(AutoAssignFood)
+		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
+	endif
+	
+	if(AutoAssignDefense)
+		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
+	endif
 	;Put this at the end since this is now still safe to do if the workshop has unloaded (because we have all the data we need
 	;to run this stored in arrays):
-	TryToAssignBeds (workshopRef)
+	if(AutoAssignBeds)
+		TryToAssignBeds (workshopRef)
+	endif
 	;UFO4P 2.0.4 Bug #24274: modified the following line to pass the actor array to SetUnassignedPopulationRating:
 	SetUnassignedPopulationRating (workshopRef, workshopActors)
 
