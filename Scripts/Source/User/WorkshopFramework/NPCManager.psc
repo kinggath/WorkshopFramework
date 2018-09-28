@@ -263,18 +263,17 @@ Function RecruitAllWorkshopNPCs()
 	Float fStartTime = Utility.GetCurrentRealtime()
 	
 	int i = 0
-	RefCollectionAlias WorkshopsAlias = ResourceManager.WorkshopsAlias
-	int iCount = WorkshopsAlias.GetCount()
+	WorkshopScript[] AllWorkshops = ResourceManager.Workshops
 	
-	while(i < iCount)
-		WorkshopScript kWorkshopRef = WorkshopsAlias.GetAt(i) as WorkshopScript
+	while(i < AllWorkshops.Length)
+		WorkshopScript kWorkshopRef = AllWorkshops[i]
 		
 		RecruitWorkshopNPCs(kWorkshopRef)
 		
 		i += 1
 	endWhile
 	
-	Debug.Trace("WSFW: NPC recruitment for " + iCount + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
+	Debug.Trace("WSFW: NPC recruitment for " + AllWorkshops.Length + " workshops took " + (Utility.GetCurrentRealtime() - fStartTime) + " seconds.")
 	bRecruitmentUnderwayBlock = false
 EndFunction
 
@@ -558,7 +557,7 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 
 	akActorRef.EvaluatePackage()
 
-	if( ! akWorkshopRef.RecalculateWorkshopResources())
+	if( ! akWorkshopRef.RecalculateWorkshopResources() && akActorRef.bCountsForPopulation)
 		; Could not recalc workshop resources, manually adjust population
 		ModifyActorValue(akWorkshopRef, Population, 1)
 	endif	

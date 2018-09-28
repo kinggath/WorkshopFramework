@@ -25,6 +25,7 @@ import WorkshopFramework:Library:ThirdParty:Cobb:CobbLibraryRotations
 ; Editor Properties
 ; -
 
+WorkshopFramework:WorkshopResourceManager Property ResourceManager Auto Const Mandatory
 Form Property PositionHelper Auto Const Mandatory
 { XMarker object for temporary positioning }
 WorkshopParentScript Property WorkshopParent Auto Const Mandatory
@@ -56,6 +57,7 @@ Keyword Property ForceStaticKeyword Auto Const Mandatory
 
 ; We are turning off bAutoDestroy so our batch event manager can grab the result ref
 ObjectReference Property kResult Auto Hidden
+Bool Property bAwaitingOnLoadEvent = false Auto Hidden
 
 ObjectReference Property kPositionRelativeTo Auto Hidden
 WorkshopScript Property kWorkshopRef Auto Hidden
@@ -205,12 +207,14 @@ Function RunCode()
 					endif
 				else					
 					RegisterForRemoteEvent(kResult, "OnLoad")
+					bAwaitingOnLoadEvent = true
 				endif
 			endif
 			
 			if(bForceStatic)
 				kResult.AddKeyword(ForceStaticKeyword)
 				RegisterForRemoteEvent(kResult, "OnLoad")
+				bAwaitingOnLoadEvent = true
 			endif
 			
 			if(fScale != 1)
@@ -223,18 +227,19 @@ Function RunCode()
 				if(bFauxPowered && kResult.HasKeyword(WorkshopCanBePowered))
 					FauxPowered(kResult)
 				endif
-					
+				
 				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
 				if(asWorkshopObject)
 					asWorkshopObject.workshopID = kWorkshopRef.GetWorkshopID()
-					
-					kWorkshopRef.RecalculateWorkshopResources()
 					
 					if(asWorkshopObject.HasKeyword(WorkshopRadioObject))
 						ConfigureRadio(asWorkshopObject, kWorkshopRef)				
 					endif
 					
 					asWorkshopObject.HandleCreation(true)
+					
+					; Instead of doing kWorkshopRef.RecalculateWorkshopResources, we'll allow our ResourceManager to handle it. This let's us remotely update the workshop so things like the pipboy data are correct even when the settlement is unloaded.
+					ResourceManager.ApplyObjectSettlementResources(asWorkshopObject, kWorkshopRef)
 				endif
 			endif
 			

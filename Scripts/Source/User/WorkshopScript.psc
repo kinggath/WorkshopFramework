@@ -2504,11 +2504,6 @@ endFunction
 bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 
 	;if bOnlyIfLocationLoaded == false || myLocation.IsLoaded()
-	;UFO4P 2.0.3 Bug #23469: replaced the previous line with the following line:
-	;IsLoaded() returns 'true' if any cell of a location is loaded. Thus, it will be 'true' even if only a few cells on the edge of the player's 5x5 grid are
-	;loaded and most of the workshop is still in unloaded area. Checking for the player currently being within a cell of the workshop will remedy the problem
-	;for small workshops that cover an area not larger than 3x3 cells. For larger workshops, there's currently no practicable solution.
-	;if bOnlyIfLocationLoaded == false || Game.GetPlayer().GetCurrentLocation() == myLocation
 	
 	;UFO4P 2.0.4 Bug #24122: replaced the previous line with the following line:
 	;While in workshop mode, the player's current location is 'none' (entering/leaving workshop mode triggers a location change event). Thus,

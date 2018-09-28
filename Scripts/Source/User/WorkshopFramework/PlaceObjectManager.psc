@@ -19,7 +19,7 @@ import WorkshopFramework:Library:ThirdParty:Cobb:CobbLibraryRotations
 
 
 CustomEvent ObjectBatchCreated
-
+CustomEvent ObjectRemoved
 
 Struct ObjectWatch
 	int iAwaitingObjectCount = 0
@@ -33,6 +33,7 @@ EndStruct
 ; ---------------------------------------------
 
 String sThreadID_ObjectCreated = "ObjectCreated"
+String sThreadID_ObjectRemoved = "ObjectRemoved"
 Int MAXBATCHQUEUEID = 1000000
 
 ; ---------------------------------------------
@@ -52,6 +53,7 @@ EndGroup
 
 Group Assets
 	Form Property PlaceObjectThread Auto Const Mandatory
+	Form Property ScrapObjectThread Auto Const Mandatory
 	Form Property PositionHelper Auto Const Mandatory
 EndGroup
 
@@ -116,6 +118,14 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 			; Clean up thread now that we have the result
 			kThreadRef.SelfDestruct()
 		endif
+	elseif(sCustomCallCallbackID == sThreadID_ObjectRemoved)
+		WorkshopFramework:ObjectRefs:Thread_ScrapObject kThreadRef = akargs[2] as WorkshopFramework:ObjectRefs:Thread_ScrapObject
+		
+		Var[] kArgs = new Var[2]
+		kArgs[0] = akargs[1] as Int
+		kArgs[1] = kThreadRef.bWasRemoved
+		
+		SendCustomEvent("ObjectRemoved", kArgs)
 	endif
 EndEvent
 
@@ -240,7 +250,7 @@ Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = N
 		if( ! abCallbackEventNeeded)
 			sCustomCallbackID = ""
 		else
-			ModTrace("[WSFW] PlaceObjectManager: Creating thread - requesting callback event.")
+			ModTrace("[WSFW] PlaceObjectManager: Creating CreateObject thread - requesting callback event.")
 		endif
 		
 		WorkshopFramework:ObjectRefs:Thread_PlaceObject kThread = ThreadManager.CreateThread(PlaceObjectThread) as WorkshopFramework:ObjectRefs:Thread_PlaceObject
@@ -268,6 +278,71 @@ Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = N
 			return iCallBackID
 		endif
 	endif
+		
+	return -1
+EndFunction
+
+
+ObjectReference Function CreateObjectImmediately(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = None, ActorValueSet aSetAV = None, Int aiFormlistIndex = -1, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true)
+	; Send creation request to the thread manager
+	Form FormToPlace = GetWorldObjectForm(aPlaceMe, aiFormlistIndex)
+		
+	if(FormToPlace)
+		WorkshopFramework:ObjectRefs:Thread_PlaceObject kThread = ThreadManager.CreateThread(PlaceObjectThread) as WorkshopFramework:ObjectRefs:Thread_PlaceObject
+		
+		if(kThread)
+			if(aSetAV)
+				kThread.AddTagAVSet(GetActorValueSetForm(aSetAV), aSetAV.fValue)
+			endif
+			
+			kThread.bStartEnabled = abStartEnabled
+			kThread.bForceStatic = aPlaceMe.bForceStatic
+			kThread.kSpawnAt = PlayerRef
+			kThread.SpawnMe = FormToPlace
+			kThread.fPosX = aPlaceMe.fPosX
+			kThread.fPosY = aPlaceMe.fPosY
+			kThread.fPosZ = aPlaceMe.fPosZ
+			kThread.fAngleX = aPlaceMe.fAngleX
+			kThread.fAngleY = aPlaceMe.fAngleY
+			kThread.fAngleZ = aPlaceMe.fAngleZ
+			kThread.fScale = aPlaceMe.fScale
+			kThread.kWorkshopRef = akWorkshopRef
+			
+			kThread.RunCode()
+			
+			ObjectReference kCreatedRef = kThread.kResult
+			
+			if( ! kThread.bAwaitingOnLoadEvent)
+				kThread.ReleaseObjectReferences()
+				kThread.SelfDestruct()
+			endif
+			
+			return kCreatedRef
+		endif
+	endif
+		
+	return None
+EndFunction
+
+
+Int Function ScrapObject(ObjectReference akScrapMe, Bool abCallbackEventNeeded = true)
+	; Send creation request to the thread manager
+	String sCustomCallbackID = sThreadID_ObjectRemoved
+	if( ! abCallbackEventNeeded)
+		sCustomCallbackID = ""
+	else
+		ModTrace("[WSFW] PlaceObjectManager: Creating ScrapObject thread - requesting callback event.")
+	endif
+		
+	WorkshopFramework:ObjectRefs:Thread_ScrapObject kThread = ThreadManager.CreateThread(ScrapObjectThread) as WorkshopFramework:ObjectRefs:Thread_ScrapObject
+	
+	if(kThread)
+		kThread.kScrapMe = akScrapMe
+					
+		int iCallBackID = ThreadManager.QueueThread(kThread, sCustomCallbackID)
+		
+		return iCallBackID
+	endif	
 		
 	return -1
 EndFunction

@@ -11,7 +11,7 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:HUDFrameworkManager extends WorkshopFramework:Library:SlaveQuest
+Scriptname WorkshopFramework:HUDFrameworkManager extends WorkshopFramework:Library:SlaveQuest Conditional
 { Interface for HUDFramework }
 
 
@@ -31,7 +31,7 @@ import WorkshopFramework:Library:UtilityFunctions
 ; Properties
 ; ---------------------------------------------
 
-Bool bIsHUDFrameworkInstalled = false
+Bool bIsHUDFrameworkInstalled = false Conditional
 Bool Property IsHUDFrameworkInstalled
 	Bool Function Get()
 		return bIsHUDFrameworkInstalled
