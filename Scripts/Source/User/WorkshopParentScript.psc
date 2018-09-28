@@ -1623,21 +1623,21 @@ function TryToAssignResourceObjectsPUBLIC(WorkshopScript workshopRef)
 	GetEditLock()
 	
 	; WSFW - Override based on autoassign settings
-	if( ! AutoAssignFood)
+	if(workshopRef.OwnedByPlayer && ! AutoAssignFood)
 		wsTrace("[WSWF Override] Auto assign disabled for food.")
 	else
 		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 	endif
 	
 	; WSFW - Override based on autoassign settings
-	if( ! AutoAssignDefense)
+	if(workshopRef.OwnedByPlayer && ! AutoAssignDefense)
 		wsTrace("[WSWF Override] Auto assign disabled for defense.")
 	else
 		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
 	endif
 	
 	; WSFW - Override based on autoassign settings
-	if( ! AutoAssignBeds)
+	if(workshopRef.OwnedByPlayer && ! AutoAssignBeds)
 		wsTrace("[WSWF Override] Auto assign disabled for beds.")
 	else
 		TryToAssignBeds(workshopRef)
@@ -1873,7 +1873,7 @@ function TryToAutoAssignActor(WorkshopScript workshopRef, WorkshopNPCScript acto
 	Bool bAutoAssignFood = AutoAssignFood
 	Bool bAutoAssignDefense = AutoAssignDefense
 		; TryToAutoAssignActor is only called when an NPC is added to the settlement. For non-created NPCs, ie. the starting NPCs, we want them to autoassign at first or else when the player arrives at a settlement the first time, if they have the options disabled, those NPCs won't have assignments
-	if(	! actorToAssign.IsCreated())
+	if(	! actorToAssign.IsCreated() || ! workshopRef.OwnedByPlayer)
 		bAutoAssignBeds = true
 		bAutoAssignFood = true
 		bAutoAssignDefense = true
@@ -2686,7 +2686,10 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 
 	; WSFW - Skip based on autoassign settings
 	Bool bAutoAssignBeds = AutoAssignBeds
-		
+	if( ! workshopRef.OwnedByPlayer)
+		bAutoAssignBeds = true
+	endif
+	
 	if WorkshopActors == NONE
 		WorkshopActors = GetWorkshopActors(workshopRef)
 	endif
@@ -3182,16 +3185,16 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 
 	;If not in reset mode, try to find new owners for unassigned objects:
 	if !bResetMode && bShouldTryToAssignResources
-		if(AutoAssignFood)
+		if(AutoAssignFood || ! workshopRef.OwnedByPlayer)
 			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 		endif
 		
-		if(AutoAssignDefense)
+		if(AutoAssignDefense || ! workshopRef.OwnedByPlayer)
 			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
 		endif
 		
 		;If actor was removed from workshop, there may be an unassigned bed now:
-		if bRemoveFromWorkshop && AutoAssignBeds
+		if(bRemoveFromWorkshop && (AutoAssignBeds || ! workshopRef.OwnedByPlayer))
 			TryToAssignBeds (workshopRef)
 		endif
 	endif
@@ -3700,11 +3703,6 @@ endFunction
 
 ; assign a spare bed to the specified actor if he needs one
 function TryToAssignBedToActor(WorkshopScript workshopRef, WorkshopNPCScript theActor)
-	; WSFW - Skip based on autoassign settings
-	if( ! AutoAssignBeds)
-		return
-	endif
-	
 	;/
 	wsTrace("	TryToAssignBedToActor: " + theActor)
 ;	wsTrace("		WorkshopCurrentBeds.IsOwnedObjectInList(theActor)=" + WorkshopCurrentBeds.IsOwnedObjectInList(theActor))
@@ -4645,16 +4643,16 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	wsTrace("	ResetWorkshop: " + workshopRef + "  ASSIGNING RESOURCES:")
 	wsTrace("------------------------------------------------------------------------------ ")
 	
-	if(AutoAssignFood)
+	if(AutoAssignFood || ! workshopRef.OwnedByPlayer)
 		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 	endif
 	
-	if(AutoAssignDefense)
+	if(AutoAssignDefense || ! workshopRef.OwnedByPlayer)
 		TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
 	endif
 	;Put this at the end since this is now still safe to do if the workshop has unloaded (because we have all the data we need
 	;to run this stored in arrays):
-	if(AutoAssignBeds)
+	if(AutoAssignBeds || ! workshopRef.OwnedByPlayer)
 		TryToAssignBeds (workshopRef)
 	endif
 	;UFO4P 2.0.4 Bug #24274: modified the following line to pass the actor array to SetUnassignedPopulationRating:

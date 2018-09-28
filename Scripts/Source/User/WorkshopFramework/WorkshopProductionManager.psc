@@ -283,7 +283,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is temporary, storing production in temporary holding record.")
 		; Not a RouteContainer
 		UnRegisterForRemoteEvent(akAddedTo, "OnItemAdded")
-			
+		
 		WorkshopScript thisWorkshop = akAddedTo.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
 		iWorkshopID = thisWorkshop.GetWorkshopID()
 		
@@ -509,7 +509,46 @@ Function CleanResourceLists()
 EndFunction
 
 
+Int Function IsProductionResourceRegistered(LeveledItem aProduceMe, ActorValue aResourceAV)
+	int i = 0
+	int iCount = ProductionList.GetCount()
+	while(i < iCount)
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
+		
+		if(kRecord.ProduceForm == aProduceMe && kRecord.ResourceAV == aResourceAV)
+			return i
+		endif
+		
+		i += 1
+	endWhile
+	
+	return -1
+EndFunction
+
+
+Int Function IsConsumptionResourceRegistered(Form aConsumeMe, ActorValue aResourceAV)
+	int i = 0
+	int iCount = ConsumptionList.GetCount()
+	while(i < iCount)
+		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption kRecord = ConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption
+		
+		if(kRecord.ConsumeForm == aConsumeMe && kRecord.ResourceAV == aResourceAV)
+			return i
+		endif
+		
+		i += 1
+	endWhile
+	
+	return -1
+EndFunction
+
+
 Function RegisterProductionResource(LeveledItem aProduceMe, ActorValue aResourceAV, Keyword aTargetContainerKeyword = None)
+	; Confirm this isn't already registered
+	if(IsProductionResourceRegistered(aProduceMe, aResourceAV) >= 0)
+		return
+	endif
+	
 	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
 	
 	if(kSpawnPoint)
@@ -520,11 +559,31 @@ Function RegisterProductionResource(LeveledItem aProduceMe, ActorValue aResource
 		kRecord.TargetContainerKeyword = aTargetContainerKeyword
 		
 		ProductionList.AddRef(kRecord)
+		
+		ResourceManager.WorkshopTrackedAVs.AddForm(kRecord.ResourceAV)
 	endif
 EndFunction
 
 
+Function UnregisterProductionResource(LeveledItem aProduceMe, ActorValue aResourceAV)
+	; Confirm this is already registered
+	int iIndex = IsProductionResourceRegistered(aProduceMe, aResourceAV)
+	if(iIndex < 0)
+		return
+	endif
+	
+	ProductionList.RemoveRef(ProductionList.GetAt(iIndex))
+	ResourceManager.WorkshopTrackedAVs.RemoveAddedForm(aResourceAV)
+EndFunction
+
+
+
 Function RegisterConsumptionResource(Form aConsumeMe, ActorValue aResourceAV, Keyword aSearchContainerKeyword = None, Bool abIsComponentFormList = false)
+	; Confirm this isn't already registered
+	if(IsConsumptionResourceRegistered(aConsumeMe, aResourceAV) >= 0)
+		return
+	endif
+	
 	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
 	
 	if(kSpawnPoint)
@@ -536,7 +595,22 @@ Function RegisterConsumptionResource(Form aConsumeMe, ActorValue aResourceAV, Ke
 		kRecord.bIsComponentFormList = abIsComponentFormList
 		
 		ConsumptionList.AddRef(kRecord)
+		
+		ResourceManager.WorkshopTrackedAVs.AddForm(kRecord.ResourceAV)
 	endif
+EndFunction
+
+
+
+Function UnregisterConsumptionResource(Form aConsumeMe, ActorValue aResourceAV)
+	; Confirm this is already registered
+	int iIndex = IsConsumptionResourceRegistered(aConsumeMe, aResourceAV)
+	if(iIndex < 0)
+		return
+	endif
+	
+	ConsumptionList.RemoveRef(ConsumptionList.GetAt(iIndex))
+	ResourceManager.WorkshopTrackedAVs.RemoveAddedForm(aResourceAV)
 EndFunction
 
 
@@ -690,21 +764,26 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 EndFunction
 
 
-Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false)
+Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false, Bool abLinkedWorkshopConsumption = false)
 	if( ! akWorkshopRef || aiCount <= 0 || ! aConsumeMe)
 		return 0
 	endif
 	
 	int iRemainingToConsume = aiCount
 	
-	; Check specific container
-	ObjectReference kContainer
+	; Check keyword specific containers
+	ObjectReference[] kContainers
 	Int iContainerItemCount = 0
 	if(aTargetContainerKeyword)
-		kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
+		kContainers = GetAllContainers(akWorkshopRef, aTargetContainerKeyword)
 		
-		if(kContainer)
-			iRemainingToConsume -= ConsumeResource(kContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+		if(kContainers.Length > 0)
+			int i = 0
+			while(i < kContainers.Length && iRemainingToConsume > 0)
+				iRemainingToConsume -= ConsumeResource(kContainers[i], aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+				
+				i += 1
+			endWhile
 		endif
 	endif
 	
@@ -712,12 +791,14 @@ Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript ak
 	if(iRemainingToConsume > 0)
 		ObjectReference workshopContainer = akWorkshopRef.GetContainer()
 		
-		if(workshopContainer != kContainer)
+		if(kContainers.Find(workshopContainer) < 0)
 			iRemainingToConsume -= ConsumeResource(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList)
 		endif
 		
-		if(iRemainingToConsume > 0)
-			; Check linked workshops and consume from them
+		if(iRemainingToConsume > 0 && ! abLinkedWorkshopConsumption)
+			; Check linked workshops and consume from them 
+			
+			; TODO - This is super inefficient and impractical (was in the vanilla game method as well). Although much harder to solve now that we've introduced custom consumption, so we can't even easily just flag a settlement as having nothing to ensure it is skipped in the next round of checks.
 			if(Setting_AllowLinkedWorkshopConsumption.GetValue() == 1)
 				int i = 0
 				Location[] LinkedLocations = akWorkshopRef.myLocation.GetAllLinkedLocations(WorkshopCaravanKeyword)
@@ -729,7 +810,7 @@ Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript ak
 						WorkshopScript thisWorkshop = ResourceManager.Workshops[iLinkedWorkshopID]
 						
 						if(thisWorkshop.bAllowLinkedConsumption)
-							iRemainingToConsume -= ConsumeFromWorkshop(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList)
+							iRemainingToConsume -= ConsumeFromWorkshop(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption = true) ; Send true to prevent an infinite loop
 						endif
 					endif
 					
@@ -755,53 +836,57 @@ Function ProcessSurplusResources()
 	int iWorkshopCount = ResourceManager.Workshops.Length
 	while(i < iWorkshopCount)
 		WorkshopScript thisWorkshop = ResourceManager.Workshops[i]	
+		int iWorkshopID = i
 		
 		; Process food and water and update our AVs
 		int iFoodMissing = thisWorkshop.GetValue(MissingFood) as Int
 		int iWaterMissing = thisWorkshop.GetValue(MissingWater) as Int
-			
+		
+		ObjectReference[] RemoveMe = new ObjectReference[0]
+		
 		int j = 0
 		while(j < ProducedList.GetCount())
 			WorkshopFramework:Library:ObjectRefs:ProductionRecord kRecord = ProducedList.GetAt(j) as WorkshopFramework:Library:ObjectRefs:ProductionRecord
 			
-			; Can we fix any issues with food or water
-			if(iFoodMissing > 0)
-				iFoodMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
-			endif
-			
-			if(iWaterMissing > 0)
-				iWaterMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
-			endif
-			
-			; Check if any of our missing consumption records are searching for produced items
-			UpdateMissingConsumptionList(kRecord.TemporaryContainer)
-			
-			; Anything remaining in the container should be sent to the appropriate place	
-			ObjectReference kContainer
-
-			if(kRecord.ContainerKeyword)
-				; Production record specified a specific destination
-				kContainer = GetContainer(thisWorkshop, kRecord.ContainerKeyword)	
-
-				ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to specific container: " + kContainer)				
-			else
-				; Send to route container so we can determine where things should go based on type
-				kContainer = RouteContainers[kRecord.iWorkshopID]
+			if(kRecord.iWorkshopID == iWorkshopID)
+				; Can we fix any issues with food or water
+				if(iFoodMissing > 0)
+					iFoodMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
+				endif
 				
-				ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to routing container: " + kContainer)
-				; Prevent OnItemAdded spam
-				Utility.Wait(fThrottleContainerRouting)
+				if(iWaterMissing > 0)
+					iWaterMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
+				endif
+				
+				; Check if any of our missing consumption records are searching for produced items
+				UpdateMissingConsumptionList(kRecord.TemporaryContainer)
+				
+				; Anything remaining in the container should be sent to the appropriate place	
+				ObjectReference kContainer
+
+				if(kRecord.ContainerKeyword)
+					; Production record specified a specific destination
+					kContainer = GetContainer(thisWorkshop, kRecord.ContainerKeyword)	
+
+					ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to specific container: " + kContainer)				
+				else
+					; Send to route container so we can determine where things should go based on type
+					kContainer = RouteContainers[kRecord.iWorkshopID]
+					
+					ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to routing container: " + kContainer)
+					; Prevent OnItemAdded spam
+					Utility.Wait(fThrottleContainerRouting)
+				endif
+				
+				if(kContainer)
+					kRecord.TemporaryContainer.RemoveAllItems(kContainer)
+				endif
+								
+				; Destroy temporary container - we'll clear it from the alias at the end of the function
+				kRecord.TemporaryContainer.SetLinkedRef(None, WorkshopItemKeyword)
+				kRecord.TemporaryContainer.Disable()
+				kRecord.TemporaryContainer.Delete()
 			endif
-			
-			
-			if(kContainer)
-				kRecord.TemporaryContainer.RemoveAllItems(kContainer)
-			endif
-			
-			; Destroy temporary container
-			kRecord.TemporaryContainer.SetLinkedRef(None, WorkshopItemKeyword)
-			kRecord.TemporaryContainer.Disable()
-			kRecord.TemporaryContainer.Delete()
 			
 			j += 1
 		endWhile
@@ -1380,9 +1465,11 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 	int iWorkshopTargetContainerIndex = PrepareWorkshopTargetContainerRecord_Lock(iWorkshopID, aTargetContainerKeyword)
 	
 	if(iWorkshopTargetContainerIndex < 0) ; Couldn't prep a record - just drop it in the container directly
+		; This should never happen as we're just looping through the indexes, but just to be thorough....
 		ObjectReference kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
 					
 		if(kContainer)
+			ModTrace("[WSFW] !!!!! Failed to get WorkshopTargetContainerIndex - creating resources directly in container.")
 			kContainer.AddItem(aProduceMe, aiCount)
 		endif
 	else
@@ -1518,6 +1605,32 @@ Function ClearWorkshopContainer(WorkshopObjectScript akContainerRef)
 		akContainerRef.SetLinkedRef(None, akContainerRef.WorkshopContainerType)
 		WorkshopContainers.RemoveRef(akContainerRef)
 	endif
+EndFunction
+
+
+ObjectReference[] Function GetAllContainers(WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword)
+	if( ! akWorkshopRef)
+		return None
+	endif
+	
+	ObjectReference[] kContainers
+	
+	if(aTargetContainerKeyword != None)
+		kContainers = akWorkshopRef.GetLinkedRefChildren(aTargetContainerKeyword)
+		
+		if(kContainers.Length > 0)
+			return kContainers
+		else
+			; Recurse up chain of container type keywords
+			return GetAllContainers(akWorkshopRef, GetParentContainerKeyword(aTargetContainerKeyword))
+		endif
+	endif
+	
+	if(kContainers.Length == 0)
+		kContainers.Add(akWorkshopRef.GetContainer())
+	endif
+	
+	return kContainers
 EndFunction
 
 

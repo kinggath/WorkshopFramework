@@ -16,32 +16,40 @@ Scriptname WorkshopFramework:WSFW_API Hidden Const
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
 
+
 ; ------------------------------
-; GetAPI
+; CreateSettlementObject_Threaded 
 ;
-; Description: Used internally by these functions to get simple access to properties
+; Description: Creates a settlement object as if the player built it in workshop mode, and returns the reference, or None if it failed.
+;
+;
+; Parameters:
+; PlaceMe - Your objects should be in an array of structs per the WorldObject definition found in Library:DataStructures.
+;
+; akWorkshopRef [Optional] - The objectreference of the settlement workbench cast as WorkshopScript. If this is not sent, the object will not be linked to the workshop. The Link is what allows several gameplay elements: Player Scrapping, Crafting Stations to share resources, Assignable objects to be assignable, and more.
+; 
+; akPositionRelativeTo [Optional] - It the positions in your PlaceMe data are offsets from a specific reference, send that reference (note that this increases the processing time by about 40%, so sending world coordinates is definitely preferred)
+;
+; abStartEnabled [Optional] - If you would like to handle enabling the objects yourself, set this to false
 ; ------------------------------
 
-WorkshopFramework:WSFW_APIQuest Function GetAPI() global
-	WorkshopFramework:WSFW_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSFW_APIQuest
+ObjectReference Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
-	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
-		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
-			Utility.WaitMenuMode(0.1)
-		else
-			; Player still hasn't reached a point where the quests are ready to start - let's not queue these up
-			return None
-		endif
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
 	endif
 	
-	return API
+	return API.PlaceObjectManager.CreateObjectImmediately(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled)
 EndFunction
 
-; TODO - Add version of CreateSettlementObject that doesn't use the thread manager and just returns the result
+
+
 ; ------------------------------
-; CreateSettlementObject
+; CreateSettlementObject_Threaded 
 ;
-; Description: Creates a settlement object as if the player built it in workshop mode, and returns the CallbackID integer you should watch for if you included akRegisterMeForEvent and need to know about the reference
+; Description: Faster version of CreateSettlementObject. Creates a settlement object as if the player built it in workshop mode, and returns the CallbackID integer you should watch for if you included akRegisterMeForEvent and need to know about the reference.
 ;
 ; Prepare to receive CustomEvent WorkshopFramework:Library:ThreadRunner.OnThreadCompleted (which your akRegisterMeForEvent will be automatically registered for if you sent it). 
 ; 
@@ -60,7 +68,7 @@ EndFunction
 ; akRegisterMeForEvent [Optional] - The object or quest you would like to receive the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated events. If you don't need to track the items, leave this field as None.
 ; ------------------------------
 
-Int Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
+Int Function CreateSettlementObject_Threaded(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
@@ -79,6 +87,244 @@ Int Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorksh
 	return iBatchID
 EndFunction
 
+
+; ------------------------------
+; RemoveSettlementObject 
+;
+; Description: This effectively scraps an object, with everything except the provision of resourced. It handles all of the other required background activity to remove a settlement object safely. Done via thread engine.
+; 
+;
+; Parameters:
+; ObjectReference akRemoveRef - The objectreference to remove. 
+;
+; Form akRegisterMeForEvent [Optional] - The object or quest you would like to receive the WorkshopFramework:PlaceObjectManager.ObjectRemoved events. If you don't need to track the items, leave this field as None.
+; ------------------------------
+
+Int Function RemoveSettlementObject(ObjectReference akRemoveRef, Form akRegisterMeForEvent = None) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return -1
+	endif
+	
+	Bool bRequestEvents = false
+	if(akRegisterMeForEvent)
+		akRegisterMeForEvent.RegisterForCustomEvent(API.PlaceObjectManager, "ObjectRemoved")
+		bRequestEvents = true
+	endif
+	
+	int iBatchID = API.PlaceObjectManager.ScrapObject(akRemoveRef, bRequestEvents)
+	
+	return iBatchID
+EndFunction
+
+
+; -----------------------------------
+; SpawnWorkshopNPC
+;
+; Description: Spawns an NPC at the targeted settlement.
+;
+; Parameters:
+; WorkshopScript akWorkshopRef - the settlement workshop to spawn at
+; 
+; Bool abBrahmin - Whether this should be a brahmin or a settler
+;
+; ActorBase aActorFormOverride - Allows you to spawn a custom NPC. Make sure that the Actor form you are sending has the WorkshopNPCScript attached and configured!
+;
+; Returns:
+; Created NPC ref
+; -----------------------------------
+
+WorkshopNPCScript Function SpawnWorkshopNPC(WorkshopScript akWorkshopRef, Bool abBrahmin = false, ActorBase aActorFormOverride = None) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	if(aActorFormOverride != None)
+		return API.NPCManager.CreateWorkshopNPC(aActorFormOverride, akWorkshopRef)
+	elseif(abBrahmin)
+		return API.NPCManager.CreateBrahmin(akWorkshopRef)
+	else
+		return API.NPCManager.CreateSettler(akWorkshopRef)
+	endif
+EndFunction
+
+
+; -----------------------------------
+; RegisterResourceProductionType
+; 
+; Description: Registers a Resource type ActorValue to produce a certain resource each day based on how much of that resource exists in a settlement. Similar to how Food and Water values cause settlements to create extra crops and water in the Workbench each day
+;
+; Parameters:
+; LeveledItem aProduceMe - The leveleditem to produce. Note that 1 will be produced for each point of the resource found.
+; 
+; ActorValue aResourceAV - The ActorValue to check the settlement for. If you want workshop objects to be able to provide this resource, ensure the ActorValue you use/create is of the Resource type (it's a drop down menu on the Actor Value edit window in the CK), then on the workshop object add that actor value and the amount you want it to produce. You also need to add the ActorValue WorkshopResourceObject with a value of 1, which is how the game knows to grab that item when calculating total resources for the settlement.
+;
+; Keyword aTargetContainerKeyword - [Optional] If you want to flag your produced items as a particular type, for example as food, set the matching container keyword (see the documentation regarding the Workshop Container system). You can also use this to force your items to be sorted into a particular container type in the Workshop Container system, assuming players are using said containers.
+; -----------------------------------
+
+Function RegisterResourceProductionType(LeveledItem aProduceMe, ActorValue aResourceAV, Keyword aTargetContainerKeyword = None) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	API.WorkshopProductionManager.RegisterProductionResource(aProduceMe, aResourceAV, aTargetContainerKeyword)
+EndFunction
+
+
+; Reverse a RegisterResourceProductionType call
+Function UnregisterResourceProductionType(LeveledItem aProduceMe, ActorValue aResourceAV) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	API.WorkshopProductionManager.UnregisterProductionResource(aProduceMe, aResourceAV)
+EndFunction
+
+
+; -----------------------------------
+; RegisterResourceConsumptionType
+; 
+; Description: Registers a Resource type ActorValue to be consumed each day based on how much of that resource exists in a settlement. This allows adding costs to virtually anything. For example, you could define a fuel resource actor value and assign it to generators so they consumed gasoline each day.
+
+; Notes: There is no inherit penalty if a settlement fails to have enough resources to be consumed each day, you will have to define that penalty. During each day's consumption, if anything is missing, a custom event will be fired you can watch for and act on. The event is called "NotEnoughResources" and will come from the WorkshopFramework:WorkshopProductionManager quest.
+;
+; Parameters:
+; Form aConsumeMe - The Form to consume. Note that 1 will be consumed for each point of the resource found. This Form can be any of the following: Keyword - will consume anything with an object type matching that keyword, FormList - will consume anything found on that formlist, Component or MiscItem or Weapon or Ammo or Armor or WeaponMod - will consume that specific thing.
+; 
+; ActorValue aResourceAV - The ActorValue to check the settlement for. If you want workshop objects to be able to consume this resource, ensure the ActorValue you use/create is of the Resource type (it's a drop down menu on the Actor Value edit window in the CK), then on the workshop object add that actor value and the amount you want it to consume. You also need to add the ActorValue WorkshopResourceObject with a value of 1, which is how the game knows to grab that item when calculating total resources for the settlement.
+;
+; Keyword aSearchContainerKeyword - [Optional] If you want to search a particular container keyword (see the documentation regarding the Workshop Container system). You can also use this to check that container type specifically, otherwise it will just check the workbench.
+;
+; Bool abIsComponentFormList - If you used a Formlist of components as aConsumeMe, change this to true. This will ensure the game correctly breaks down junk and consumes the pieces.
+; -----------------------------------
+
+Function RegisterResourceConsumptionType(Form aConsumeMe, ActorValue aResourceAV, Keyword aSearchContainerKeyword = None, Bool abIsComponentFormList = false) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	API.WorkshopProductionManager.RegisterConsumptionResource(aConsumeMe, aResourceAV, aSearchContainerKeyword, abIsComponentFormList)
+EndFunction
+
+; Reverse a RegisterConsumptionResourceType call
+Function UnregisterResourceConsumptionType(Form aConsumeMe, ActorValue aResourceAV) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	API.WorkshopProductionManager.UnregisterConsumptionResource(aConsumeMe, aResourceAV)
+EndFunction
+
+	
+; -----------------------------------
+; IsPlayerInWorkshopMode
+; -----------------------------------
+
+Bool Function IsPlayerInWorkshopMode() global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	WorkshopScript workshopRef = API.WSFW_Main.LastWorkshopAlias.GetRef() as WorkshopScript
+	
+	if(workshopRef)
+		return workshopRef.UFO4P_InWorkshopMode
+	else
+		return false
+	endif
+EndFunction
+
+
+; -----------------------------------
+; GetNearestWorkshop
+;
+; Description: Grabs closest WorkshopScript reference - with some exceptions. If the object is linked to a settlement, it will grab that workshop. If an object is in a workshop's location, it will grab that. Lastly, it will search in a radius to find the closest.
+; -----------------------------------
+
+WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	WorkshopScript nearestWorkshop = akToRef.GetLinkedRef(API.WorkshopItemKeyword) as WorkshopScript
+	if( ! nearestWorkshop)	
+		WorkshopParentScript WorkshopParent = API.WorkshopParent
+		Location thisLocation = akToRef.GetCurrentLocation()
+		nearestWorkshop = WorkshopParent.GetWorkshopFromLocation(thisLocation)
+		
+		if( ! nearestWorkshop)
+			ObjectReference[] WorkshopsNearby = akToRef.FindAllReferencesWithKeyword(API.WorkshopKeyword, 20000.0)
+			int i = 0
+			while(i < WorkshopsNearby.Length)
+				if(nearestWorkshop)
+					if(WorkshopsNearby[i].GetDistance(akToRef) < nearestWorkshop.GetDistance(akToRef))
+						nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
+					endIf
+				else
+					nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
+				endif
+				
+				i += 1
+			EndWhile
+		endif
+	endif
+	
+	return nearestWorkshop
+EndFunction
+
+
+	; -----------------------------------
+	; -----------------------------------
+	; Third Party Integration Functions
+	; -----------------------------------
+	; -----------------------------------
+	
+
+; -----------------------------------
+; IsF4SERunning
+; -----------------------------------
+
+Bool Function IsF4SERunning() global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return None
+	endif
+	
+	return API.F4SEManager.IsF4SERunning
+EndFunction
+
+
+
+	; -----------------------------------
+	; -----------------------------------
+	; Advanced
+	; -----------------------------------
+	; -----------------------------------
 
 
 ; ------------------------------
@@ -135,133 +381,32 @@ EndFunction
 
 
 
-; ------------------------------ 
-; GetWorkshopValue
+
+	; -----------------------------------
+	; -----------------------------------
+	; Do NOT Use - Functions below here are needed by this API script only
+	; -----------------------------------
+	; -----------------------------------	
+
+
+
+; ------------------------------
+; GetAPI
 ;
-; Description: Get an actorvalue from a workshop - this handles things like negative values in a clean way so that they don't display the 999 UI bug.
+; Description: Used internally by these functions to get simple access to properties
 ; ------------------------------
 
-Float Function GetWorkshopValue(ObjectReference akWorkshopRef, ActorValue aValueToCheck) global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+WorkshopFramework:WSFW_APIQuest Function GetAPI() global
+	WorkshopFramework:WSFW_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSFW_APIQuest
 	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return 0.0
-	endif
-	
-	return API.WorkshopResourceManager.GetWorkshopValue(akWorkshopRef, aValueToCheck)
-EndFunction
-
-
-
-; -----------------------------------
-; GetNearestWorkshop
-;
-; Description: Grabs closest WorkshopScript reference - with some exceptions. If the object is linked to a settlement, it will grab that workshop. If an object is in a workshop's location, it will grab that. Lastly, it will search in a radius to find the closest.
-; -----------------------------------
-
-WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
-	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return None
-	endif
-	
-	WorkshopScript nearestWorkshop = akToRef.GetLinkedRef(API.WorkshopItemKeyword) as WorkshopScript
-	if( ! nearestWorkshop)	
-		WorkshopParentScript WorkshopParent = API.WorkshopParent
-		Location thisLocation = akToRef.GetCurrentLocation()
-		nearestWorkshop = WorkshopParent.GetWorkshopFromLocation(thisLocation)
-		
-		if( ! nearestWorkshop)
-			ObjectReference[] WorkshopsNearby = akToRef.FindAllReferencesWithKeyword(API.WorkshopKeyword, 20000.0)
-			int i = 0
-			while(i < WorkshopsNearby.Length)
-				if(nearestWorkshop)
-					if(WorkshopsNearby[i].GetDistance(akToRef) < nearestWorkshop.GetDistance(akToRef))
-						nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
-					endIf
-				else
-					nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
-				endif
-				
-				i += 1
-			EndWhile
+	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
+		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
+			Utility.WaitMenuMode(0.1)
+		else
+			; Player still hasn't reached a point where the quests are ready to start - let's not queue these up
+			return None
 		endif
 	endif
 	
-	return nearestWorkshop
-EndFunction
-
-
-; -----------------------------------
-; SpawnWorkshopNPC
-;
-; Description: Spawns an NPC at the targeted settlement.
-;
-; Parameters:
-; WorkshopScript akWorkshopRef - the settlement workshop to spawn at
-; 
-; Bool abBrahmin - Whether this should be a brahmin or a settler
-;
-; ActorBase aActorFormOverride - Allows you to spawn a custom NPC. Make sure that the Actor form you are sending has the WorkshopNPCScript attached and configured!
-;
-; Returns:
-; Created NPC ref
-; -----------------------------------
-
-WorkshopNPCScript Function SpawnWorkshopNPC(WorkshopScript akWorkshopRef, Bool abBrahmin = false, ActorBase aActorFormOverride = None) global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
-	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return None
-	endif
-	
-	if(aActorFormOverride != None)
-		return API.NPCManager.CreateWorkshopNPC(aActorFormOverride, akWorkshopRef)
-	elseif(abBrahmin)
-		return API.NPCManager.CreateBrahmin(akWorkshopRef)
-	else
-		return API.NPCManager.CreateSettler(akWorkshopRef)
-	endif
-EndFunction
-
-
-; -----------------------------------
-; IsPlayerInWorkshopMode
-; -----------------------------------
-
-Bool Function IsPlayerInWorkshopMode() global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
-	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return None
-	endif
-	
-	WorkshopScript workshopRef = API.WSFW_Main.LastWorkshopAlias.GetRef() as WorkshopScript
-	
-	if(workshopRef)
-		return workshopRef.UFO4P_InWorkshopMode
-	else
-		return false
-	endif
-EndFunction
-
-
-; -----------------------------------
-; IsF4SERunning
-; -----------------------------------
-
-Bool Function IsF4SERunning() global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
-	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return None
-	endif
-	
-	return API.F4SEManager.IsF4SERunning
+	return API
 EndFunction

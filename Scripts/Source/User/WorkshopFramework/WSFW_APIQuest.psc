@@ -24,6 +24,7 @@ Group Controllers
 	WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
 	WorkshopFramework:PlaceObjectManager Property PlaceObjectManager Auto Const Mandatory
 	WorkshopFramework:WorkshopResourceManager Property WorkshopResourceManager Auto Const Mandatory
+	WorkshopFramework:WorkshopProductionManager Property WorkshopProductionManager Auto Const Mandatory
 	WorkshopFramework:NPCManager Property NPCManager Auto Const Mandatory
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory

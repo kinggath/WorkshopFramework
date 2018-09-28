@@ -11,7 +11,7 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:F4SEManager extends WorkshopFramework:Library:SlaveQuest
+Scriptname WorkshopFramework:F4SEManager extends WorkshopFramework:Library:SlaveQuest Conditional
 { Acts as an interface to F4SE }
 
 import WorkshopFramework:Library:DataStructures
@@ -37,7 +37,7 @@ EndGroup
 ; Properties
 ; ---------------------------------------------
 
-Bool bIsF4SERunning = false
+Bool bIsF4SERunning = false Conditional
 Bool Property IsF4SERunning
 	Bool Function Get()
 		return bIsF4SERunning

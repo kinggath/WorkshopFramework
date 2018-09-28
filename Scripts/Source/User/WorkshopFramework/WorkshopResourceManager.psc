@@ -291,8 +291,9 @@ Event WorkshopParentScript.WorkshopObjectBuilt(WorkshopParentScript akSenderRef,
 		
 	if(kWorkshopRef == LatestWorkshop.GetRef() && kWorkshopRef.Is3dLoaded())
 		; No need to alter tracked resources as this was placed in the current settlement
-		AddSettlementResource(kObjectRef, false)
+		TrackSettlementResource(kObjectRef, false)
 	elseif( ! kWorkshopRef.Is3dLoaded() && kObjectRef.IsDisabled() == false)
+		; Applying resources remotely
 		ApplyObjectSettlementResources(kObjectRef, kWorkshopRef, false, true)
 	endif
 EndEvent
@@ -314,11 +315,11 @@ Event WorkshopParentScript.WorkshopObjectDestroyed(WorkshopParentScript akSender
 	WorkshopScript kWorkshopRef = akArgs[1] as WorkshopScript
 		
 	if(kWorkshopRef == LatestWorkshop.GetRef())
-		RemoveSettlementResource(kObjectRef)
+		UntrackSettlementResource(kObjectRef)
 	endif
 	
 	if( ! kWorkshopRef.Is3dLoaded())
-		ApplyObjectSettlementResources(kObjectRef, kWorkshopRef, true, true)
+		ApplyObjectSettlementResources(kObjectRef, kWorkshopRef, abRemoved = true, abGetLock = true)
 	endif
 EndEvent
 
@@ -426,6 +427,8 @@ Function HandleGameLoaded()
 	if( ! WorkshopLocations)
 		WorkshopLocations = new Location[0]
 	endif
+	
+	CleanFormList(WorkshopTrackedAVs)
 EndFunction
 
 
@@ -663,14 +666,14 @@ Function ClearLatestSettlementResources()
 	LatestSettlementResources.RemoveAll()
 EndFunction
 
-Function AddSettlementResource(ObjectReference akObjectRef, Bool bConfirmLink = true)
+Function TrackSettlementResource(ObjectReference akObjectRef, Bool bConfirmLink = true)
 	if( ! bConfirmLink || akObjectRef.GetLinkedRef(WorkshopItemKeyword) == LatestWorkshop.GetRef())
 		akObjectRef.AddKeyword(WorkshopResourceKeyword)
 		LatestSettlementResources.AddRef(akObjectRef)
 	endif
 EndFunction
 
-Function RemoveSettlementResource(ObjectReference akObjectRef)
+Function UntrackSettlementResource(ObjectReference akObjectRef)
 	akObjectRef.RemoveKeyword(WorkshopResourceKeyword)
 	LatestSettlementResources.RemoveRef(akObjectRef)
 EndFunction
@@ -693,7 +696,7 @@ Function GatherLatestSettlementResources()
 	; Place results in LatestSettlementResources and tag with WorkshopResourceKeyword
 	int i = 0
 	while(i < ResourceObjects.Length)
-		AddSettlementResource(ResourceObjects[i], false)
+		TrackSettlementResource(ResourceObjects[i], false)
 		
 		i += 1
 	endWhile
@@ -933,26 +936,6 @@ Float Function GetLinkedPopulation(WorkshopScript akWorkshopRef, Bool abIncludeP
 	endwhile
 
 	return fTotalLinkedPopulation
-EndFunction
-
-
-ObjectReference Function GetContainer(WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None)
-	if( ! akWorkshopRef)
-		return None
-	endif
-	
-	; Copy from WorkshopProductionManager
-	ObjectReference kContainer = akWorkshopRef.GetContainer()
-	
-	if(aTargetContainerKeyword)
-		ObjectReference kTemp = akWorkshopRef.GetLinkedRef(aTargetContainerKeyword)
-		
-		if(kTemp)
-			kContainer = kTemp
-		endif
-	endif
-	
-	return kContainer
 EndFunction
 
 
