@@ -79,6 +79,7 @@ Group InjectableRecords
 	InjectableItemMap[] Property InjectableLeveledItems Auto Const
 EndGroup
 
+
 ; ---------------------------------------------
 ; Properties
 ; ---------------------------------------------
@@ -290,22 +291,41 @@ EndFunction
 Function AddToList(Form aTargetList, Form aAddForm)
 	LeveledActor asLA = aTargetList as LeveledActor
 	LeveledItem asLI = aTargetList as LeveledItem
+	FormList asFormList = (aAddForm as FormList) ; 1.0.1 - Added support for adding all items in a formlist with one function call
 	
 	if(asLA)
 		InjectableActorMap thisMap = FindInjectableActorMap(asLA)
 		
-		if(thisMap && thisMap.AdditionalEntries)
-			thisMap.AdditionalEntries.AddForm(aAddForm)
-			
-			asLA.AddForm(aAddForm, 1)
+		if(thisMap && thisMap.AdditionalEntries)			
+			if(asFormList)
+				int i = 0
+				while(i < asFormList.GetSize())
+					thisMap.AdditionalEntries.AddForm(asFormList.GetAt(i))			
+					asLA.AddForm(asFormList.GetAt(i), 1)
+				
+					i += 1
+				endWhile
+			else
+				thisMap.AdditionalEntries.AddForm(aAddForm)			
+				asLA.AddForm(aAddForm, 1)
+			endif
 		endif
 	elseif(asLI)
 		InjectableItemMap thisMap = FindInjectableItemMap(asLI)
 		
 		if(thisMap && thisMap.AdditionalEntries)
-			thisMap.AdditionalEntries.AddForm(aAddForm)
-			
-			asLI.AddForm(aAddForm, 1, 1)
+			if(asFormList)
+				int i = 0
+				while(i < asFormList.GetSize())
+					thisMap.AdditionalEntries.AddForm(asFormList.GetAt(i))			
+					asLI.AddForm(asFormList.GetAt(i), 1, 1)
+				
+					i += 1
+				endWhile
+			else
+				thisMap.AdditionalEntries.AddForm(aAddForm)
+				asLI.AddForm(aAddForm, 1, 1)
+			endif
 		endif
 	endif
 EndFunction
