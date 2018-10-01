@@ -94,6 +94,19 @@ Group Settings
 	{ Each entry represents the percent chance of getting that settler when a beacon is first built in a settlement. For example, if the first number is 100, you will guarantee that settler. If the next number is 30, you'd have a 30% chance of getting a second settler, etc. }
 EndGroup
 
+
+
+; 1.0.1 While we sort out adjustments to the framework for specific mod compatibility, we're going to implement some temporary overrides
+Group TemporaryFixes
+	ActorBase Property DefaultSettlerRecord Auto Const Mandatory
+	ActorBase Property DefaultSettlerGuardRecord Auto Const Mandatory
+	String[] Property sForceOverrideInjectedSettlerPlugins Auto Const
+EndGroup
+
+; 1.0.1 - Temporary fix until we can alter the framework to handle what this mod is doing
+Bool Property bOverrideInjectedSettlers = false Auto Hidden
+
+
 ; ---------------------------------------------
 ; Properties
 ; ---------------------------------------------
@@ -208,6 +221,21 @@ Function HandleQuestInit()
 	else
 		RegisterForRemoteEvent(WorkshopParent, "OnStageSet")
 	endif
+EndFunction
+
+
+Function HandleGameLoaded()
+	Parent.HandleGameLoaded()
+	
+	int i = 0
+	bOverrideInjectedSettlers = false
+	while(i < sForceOverrideInjectedSettlerPlugins.Length && ! bOverrideInjectedSettlers)
+		if(Game.IsPluginInstalled(sForceOverrideInjectedSettlerPlugins[i]))
+			bOverrideInjectedSettlers = true
+		endif
+		
+		i += 1
+	endWhile
 EndFunction
 
 ; ---------------------------------------------
@@ -403,8 +431,16 @@ WorkshopNPCScript Function CreateSettler(WorkshopScript akWorkshopRef, ObjectRef
 		; roll for farmer vs. guard
 		if(Utility.RandomInt(1, 100) <= fRecruitmentGuardChance)
 			thisActorBase = SettlerGuardActorBase
+			
+			if(bOverrideInjectedSettlers)
+				thisActorBase = DefaultSettlerGuardRecord
+			endif
 		else
 			thisActorBase = SettlerActorBase
+			
+			if(bOverrideInjectedSettlers)
+				thisActorBase = DefaultSettlerRecord
+			endif
 		endif
 	endif
 		

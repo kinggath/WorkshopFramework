@@ -1613,7 +1613,7 @@ ObjectReference[] Function GetAllContainers(WorkshopScript akWorkshopRef, Keywor
 		return None
 	endif
 	
-	ObjectReference[] kContainers
+	ObjectReference[] kContainers = new ObjectReference[0] ; 1.0.1 - Ensure this is initialized
 	
 	if(aTargetContainerKeyword != None)
 		kContainers = akWorkshopRef.GetLinkedRefChildren(aTargetContainerKeyword)
@@ -1627,6 +1627,7 @@ ObjectReference[] Function GetAllContainers(WorkshopScript akWorkshopRef, Keywor
 	endif
 	
 	if(kContainers.Length == 0)
+		kContainers = new ObjectReference[0] ; 1.0.1 - Ensure this is initialized
 		kContainers.Add(akWorkshopRef.GetContainer())
 	endif
 	

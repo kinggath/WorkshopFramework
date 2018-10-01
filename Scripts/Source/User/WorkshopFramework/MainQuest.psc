@@ -155,12 +155,27 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 	endif
 EndEvent
 
+
+; 1.0.1 - Need to ensure FillWSFWVars is filled - will also update each time the game starts in case we needed to add additional properties
+Event Quest.OnStageSet(Quest akSenderRef, Int auiStageID, Int auiItemID)
+	if(akSenderRef == WorkshopParent)
+		WorkshopParent.FillWSFWVars()
+		UnregisterForRemoteEvent(akSenderRef, "OnStageSet")
+	endif
+EndEvent
+
 ; ---------------------------------------------
 ; Extended Handlers
 ; ---------------------------------------------
 
 Function HandleGameLoaded()
 	; Make sure our debug log is open
+	if(WorkshopParent.IsRunning())
+		WorkshopParent.FillWSFWVars() ; Patch 1.0.1 - Eliminating all vanilla form edits and switching to GetFormFromFile
+	else
+		RegisterForRemoteEvent(WorkshopParent as Quest, "OnStageSet")
+	endif
+	
 	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
 	
 	Parent.HandleGameLoaded()

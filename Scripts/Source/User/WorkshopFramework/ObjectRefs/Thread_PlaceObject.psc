@@ -45,7 +45,7 @@ Keyword Property WorkshopEventRadioBeacon Auto Const Mandatory
 { Found on WorkshopParent script property of same name }
 Scene Property WorkshopRadioScene01 Auto Const Mandatory
 { Found on WorkshopParent script property of same name }
-ObjectReference Property WorkshopRadioRef Auto Mandatory
+ObjectReference Property WorkshopRadioRef Auto Mandatory ; Do not make Const - we need to clear this ref later
 { Found on WorkshopParent script property of same name }
 
 Keyword Property ForceStaticKeyword Auto Const Mandatory

@@ -864,32 +864,126 @@ EndProperty
 
 ; ------------------------------------------------------
 ;
-; WSFW - New Properties 
+; WSFW - New Properties 1.0.1 - Switched all to Hidden and added FillWSFWVars function to load them via GetFormFromFile, this new function will be called from the WSFW framework's main quest
 ;
 ; ------------------------------------------------------
 
-Group WSFW_Properties
-	GlobalVariable Property WSFW_Setting_AutoAssignBeds Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_AutoAssignFood Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_AutoAssignDefense Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_MaxFoodWorkPerSettler Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_MaxDefenseWorkPerSettler Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_TradeCaravanMinimumPopulation Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_recruitmentMinPopulationForSynth Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_startingHappiness Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_startingHappinessMin Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_startingHappinessTarget Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_resolveAttackMaxAttackRoll Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_resolveAttackAllowedDamageMin Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_workshopRadioInnerRadius Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_workshopRadioOuterRadius Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_happinessModifierMax Auto Const Mandatory
-	GlobalVariable Property WSFW_Setting_happinessModifierMin Auto Const Mandatory
-	FormList Property ExcludeFromAssignmentRules Auto Const Mandatory
-	{ Items in this list won't be auto-unassigned when a settler is assigned to them. Instead an event will be fired so the mod involved can act on the information. }
-	WorkshopFramework:NPCManager Property WSFW_NPCManager Auto Const Mandatory
-EndGroup
+GlobalVariable Property WSFW_Setting_AutoAssignBeds Auto Hidden
+GlobalVariable Property WSFW_Setting_AutoAssignFood Auto Hidden
+GlobalVariable Property WSFW_Setting_AutoAssignDefense Auto Hidden
+GlobalVariable Property WSFW_Setting_MaxFoodWorkPerSettler Auto Hidden
+GlobalVariable Property WSFW_Setting_MaxDefenseWorkPerSettler Auto Hidden
+GlobalVariable Property WSFW_Setting_TradeCaravanMinimumPopulation Auto Hidden
+GlobalVariable Property WSFW_Setting_recruitmentMinPopulationForSynth Auto Hidden
+GlobalVariable Property WSFW_Setting_startingHappiness Auto Hidden
+GlobalVariable Property WSFW_Setting_startingHappinessMin Auto Hidden
+GlobalVariable Property WSFW_Setting_startingHappinessTarget Auto Hidden
+GlobalVariable Property WSFW_Setting_resolveAttackMaxAttackRoll Auto Hidden
+GlobalVariable Property WSFW_Setting_resolveAttackAllowedDamageMin Auto Hidden
+GlobalVariable Property WSFW_Setting_workshopRadioInnerRadius Auto Hidden
+GlobalVariable Property WSFW_Setting_workshopRadioOuterRadius Auto Hidden
+GlobalVariable Property WSFW_Setting_happinessModifierMax Auto Hidden
+GlobalVariable Property WSFW_Setting_happinessModifierMin Auto Hidden
+FormList Property ExcludeFromAssignmentRules Auto Hidden
+{ Items in this list won't be auto-unassigned when a settler is assigned to them. Instead an event will be fired so the mod involved can act on the information. }
+WorkshopFramework:NPCManager Property WSFW_NPCManager Auto Hidden
 
+
+String sWSFW_Plugin = "WorkshopFramework.esm" Const
+
+int iFormID_WSFW_Setting_AutoAssignBeds = 0x000092A9 Const
+int iFormID_WSFW_Setting_AutoAssignFood = 0x000092AB Const
+int iFormID_WSFW_Setting_AutoAssignDefense = 0x000092AA Const
+int iFormID_WSFW_Setting_MaxFoodWorkPerSettler = 0x000092B7 Const
+int iFormID_WSFW_Setting_MaxDefenseWorkPerSettler = 0x000092B6 Const
+int iFormID_WSFW_Setting_TradeCaravanMinimumPopulation = 0x000092B8 Const
+int iFormID_WSFW_Setting_recruitmentMinPopulationForSynth = 0x000092B5 Const
+int iFormID_WSFW_Setting_startingHappiness = 0x000092B4 Const
+int iFormID_WSFW_Setting_startingHappinessMin = 0x000092B3 Const
+int iFormID_WSFW_Setting_startingHappinessTarget = 0x000092B2 Const
+int iFormID_WSFW_Setting_resolveAttackMaxAttackRoll = 0x000092B1 Const
+int iFormID_WSFW_Setting_resolveAttackAllowedDamageMin = 0x000092B0 Const
+int iFormID_WSFW_Setting_workshopRadioInnerRadius = 0x000092AF Const
+int iFormID_WSFW_Setting_workshopRadioOuterRadius = 0x000092AE Const
+int iFormID_WSFW_Setting_happinessModifierMax = 0x000092AC Const
+int iFormID_WSFW_Setting_happinessModifierMin = 0x000092AD Const
+int iFormID_ExcludeFromAssignmentRules = 0x000092A8 Const
+int iFormID_WSFW_NPCManager = 0x000091E2 Const
+
+
+Function FillWSFWVars()
+	if( ! WSFW_NPCManager)
+		WSFW_NPCManager = Game.GetFormFromFile(iFormID_WSFW_NPCManager, sWSFW_Plugin) as WorkshopFramework:NPCManager
+	endif
+	
+	if( ! WSFW_Setting_AutoAssignBeds)
+		WSFW_Setting_AutoAssignBeds = Game.GetFormFromFile(iFormID_WSFW_Setting_AutoAssignBeds, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_AutoAssignFood)
+		WSFW_Setting_AutoAssignFood = Game.GetFormFromFile(iFormID_WSFW_Setting_AutoAssignFood, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_AutoAssignDefense)
+		WSFW_Setting_AutoAssignDefense = Game.GetFormFromFile(iFormID_WSFW_Setting_AutoAssignDefense, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_MaxFoodWorkPerSettler)
+		WSFW_Setting_MaxFoodWorkPerSettler = Game.GetFormFromFile(iFormID_WSFW_Setting_MaxFoodWorkPerSettler, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_MaxDefenseWorkPerSettler)
+		WSFW_Setting_MaxDefenseWorkPerSettler = Game.GetFormFromFile(iFormID_WSFW_Setting_MaxDefenseWorkPerSettler, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_TradeCaravanMinimumPopulation)
+		WSFW_Setting_TradeCaravanMinimumPopulation = Game.GetFormFromFile(iFormID_WSFW_Setting_TradeCaravanMinimumPopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_recruitmentMinPopulationForSynth)
+		WSFW_Setting_recruitmentMinPopulationForSynth = Game.GetFormFromFile(iFormID_WSFW_Setting_recruitmentMinPopulationForSynth, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_startingHappiness)
+		WSFW_Setting_startingHappiness = Game.GetFormFromFile(iFormID_WSFW_Setting_startingHappiness, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_startingHappinessMin)
+		WSFW_Setting_startingHappinessMin = Game.GetFormFromFile(iFormID_WSFW_Setting_startingHappinessMin, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_startingHappinessTarget)
+		WSFW_Setting_startingHappinessTarget = Game.GetFormFromFile(iFormID_WSFW_Setting_startingHappinessTarget, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_resolveAttackMaxAttackRoll)
+		WSFW_Setting_resolveAttackMaxAttackRoll = Game.GetFormFromFile(iFormID_WSFW_Setting_resolveAttackMaxAttackRoll, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_resolveAttackAllowedDamageMin)
+		WSFW_Setting_resolveAttackAllowedDamageMin = Game.GetFormFromFile(iFormID_WSFW_Setting_resolveAttackAllowedDamageMin, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_workshopRadioInnerRadius)
+		WSFW_Setting_workshopRadioInnerRadius = Game.GetFormFromFile(iFormID_WSFW_Setting_workshopRadioInnerRadius, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_workshopRadioOuterRadius)
+		WSFW_Setting_workshopRadioOuterRadius = Game.GetFormFromFile(iFormID_WSFW_Setting_workshopRadioOuterRadius, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_happinessModifierMax)
+		WSFW_Setting_happinessModifierMax = Game.GetFormFromFile(iFormID_WSFW_Setting_happinessModifierMax, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_happinessModifierMin)
+		WSFW_Setting_happinessModifierMin = Game.GetFormFromFile(iFormID_WSFW_Setting_happinessModifierMin, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! ExcludeFromAssignmentRules)
+		ExcludeFromAssignmentRules = Game.GetFormFromFile(iFormID_ExcludeFromAssignmentRules, sWSFW_Plugin) as Formlist
+	endif
+Endfunction
 
 ; ------------------------------------------------------
 ;
@@ -911,7 +1005,7 @@ CustomEvent WorkshopRemoveActor
 ; kArgs[0] = actorRef
 ; kArgs[1] = workshopRef
 ; kArgs[2] = objectRef
-CustomEvent WorkshopActorAssignedToBed
+CustomEvent WorkshopActorAssignedToBed ; TODO: Implement this
 
 ; AssignmentRulesOverriden
 ;
@@ -1202,6 +1296,7 @@ Event OnStageSet(int auiStageID, int auiItemID)
 		Initialized = true
 	endif
 endEvent
+
 
 function InitializeLocation(WorkshopScript workshopRef, RefCollectionAlias SettlementNPCs, ReferenceAlias theLeader, ReferenceAlias theMapMarker)
 	wsTrace(" Initializing location START: " + workshopRef.myLocation)
