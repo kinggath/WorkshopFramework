@@ -3,6 +3,8 @@ Scriptname WorkshopScript extends ObjectReference Conditional
 
 ; WSFW
 import WorkshopFramework:Library:UtilityFunctions
+String sWSFW_Plugin = "WorkshopFramework.esm" Const ; WSFW - 1.0.3
+String sFO4_Plugin = "Fallout4.esm" Const ; WSFW - 1.0.3
 
 ;import WorkShopObjectScript
 ;import WorkshopParentScript
@@ -236,8 +238,8 @@ Group WSFW_AVs
 	ActorValue Property WSFW_AV_ExtraNeeds_Safety Auto Hidden
 	ActorValue Property WSFW_AV_ExtraNeeds_Water Auto Hidden
 	
-	ActorValue Property WSFW_AV_MaxBrahmin Auto Hidden
-	ActorValue Property WSFW_AV_MaxSynths Auto Hidden	
+	ActorValue Property WSFW_AV_iBaseMaxBrahmin Auto Hidden
+	ActorValue Property WSFW_AV_iBaseMaxSynths Auto Hidden	
 	ActorValue Property WSFW_AV_recruitmentGuardChance Auto Hidden	
 	ActorValue Property WSFW_AV_recruitmentBrahminChance Auto Hidden	
 	ActorValue Property WSFW_AV_recruitmentSynthChance Auto Hidden	
@@ -283,6 +285,153 @@ Group WSFW_AVs
 	Keyword Property WorkshopLinkContainer Auto Hidden
 	Faction Property FarmDiscountFaction Auto Hidden
 EndGroup
+
+
+; Form IDs
+	; WorkshopFramework.esm
+int iFormID_Setting_minProductivity = 0x0000730E Const
+int iFormID_Setting_productivityHappinessMult = 0x0000730F Const
+int iFormID_Setting_maxHappinessNoFood = 0x00007310 Const
+int iFormID_Setting_maxHappinessNoWater = 0x00007311 Const
+int iFormID_Setting_maxHappinessNoShelter = 0x00007312 Const
+int iFormID_Setting_happinessBonusFood = 0x00007313 Const
+int iFormID_Setting_happinessBonusWater = 0x00007314 Const
+int iFormID_Setting_happinessBonusBed = 0x00007315 Const
+int iFormID_Setting_happinessBonusShelter = 0x00007316 Const
+int iFormID_Setting_happinessBonusSafety = 0x00007317 Const
+int iFormID_Setting_minHappinessChangePerUpdate = 0x00007318 Const
+int iFormID_Setting_happinessChangeMult = 0x00007319 Const
+int iFormID_Setting_minHappinessThreshold = 0x0000731A Const
+int iFormID_Setting_minHappinessWarningThreshold = 0x0000731B Const
+int iFormID_Setting_minHappinessClearWarningThreshold = 0x0000731C Const
+int iFormID_Setting_happinessBonusChangePerUpdate = 0x0000731D Const
+int iFormID_Setting_maxStoredFoodBase = 0x0000731E Const
+int iFormID_Setting_maxStoredFoodPerPopulation = 0x0000731F Const
+int iFormID_Setting_maxStoredWaterBase = 0x00007320 Const
+int iFormID_Setting_maxStoredWaterPerPopulation = 0x00007321 Const
+int iFormID_Setting_maxStoredScavengeBase = 0x00007322 Const
+int iFormID_Setting_maxStoredScavengePerPopulation = 0x00007323 Const
+int iFormID_Setting_brahminProductionBoost = 0x00007324 Const
+int iFormID_Setting_maxProductionPerBrahmin = 0x00007325 Const
+int iFormID_Setting_maxBrahminFertilizerProduction = 0x00007326 Const
+int iFormID_Setting_maxStoredFertilizerBase = 0x00007327 Const
+int iFormID_Setting_minVendorIncomePopulation = 0x00007328 Const
+int iFormID_Setting_maxVendorIncome = 0x00007329 Const
+int iFormID_Setting_vendorIncomePopulationMult = 0x0000732A Const
+int iFormID_Setting_vendorIncomeBaseMult = 0x0000732B Const
+int iFormID_Setting_iMaxSurplusNPCs = 0x0000732C Const
+int iFormID_Setting_attractNPCDailyChance = 0x0000732D Const
+int iFormID_Setting_iMaxBonusAttractChancePopulation = 0x0000732E Const
+int iFormID_Setting_iBaseMaxNPCs = 0x0000732F Const
+int iFormID_Setting_attractNPCHappinessMult = 0x00007330 Const
+int iFormID_Setting_attackChanceBase = 0x00007331 Const
+int iFormID_Setting_attackChanceResourceMult = 0x00007332 Const
+int iFormID_Setting_attackChanceSafetyMult = 0x00007333 Const
+int iFormID_Setting_attackChancePopulationMult = 0x00007334 Const
+int iFormID_Setting_minDaysSinceLastAttack = 0x00007335 Const
+int iFormID_Setting_damageDailyRepairBase = 0x00007336 Const
+int iFormID_Setting_damageDailyPopulationMult = 0x00007337 Const
+int iFormID_Setting_iBaseMaxBrahmin = 0x000091D3 Const
+int iFormID_Setting_iBaseMaxSynths = 0x000091D5 Const
+int iFormID_Setting_recruitmentGuardChance = 0x000091D7 Const
+int iFormID_Setting_recruitmentBrahminChance = 0x000091D8 Const
+int iFormID_Setting_recruitmentSynthChance = 0x000091DA Const
+int iFormID_Setting_actorDeathHappinessModifier = 0x000091DC Const
+int iFormID_Setting_maxAttackStrength = 0x000091DE Const
+int iFormID_Setting_maxDefenseStrength = 0x000091E0 Const
+int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A89D Const
+int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
+int iFormID_AV_minProductivity = 0x00007338 Const
+int iFormID_AV_productivityHappinessMult = 0x00007339 Const
+int iFormID_AV_maxHappinessNoFood = 0x0000733A Const
+int iFormID_AV_maxHappinessNoWater = 0x0000733B Const
+int iFormID_AV_maxHappinessNoShelter = 0x0000733C Const
+int iFormID_AV_happinessBonusFood = 0x0000733D Const
+int iFormID_AV_happinessBonusWater = 0x0000733E Const
+int iFormID_AV_happinessBonusBed = 0x0000733F Const
+int iFormID_AV_happinessBonusShelter = 0x00007340 Const
+int iFormID_AV_happinessBonusSafety = 0x00007341 Const
+int iFormID_AV_minHappinessChangePerUpdate = 0x00007342 Const
+int iFormID_AV_happinessChangeMult = 0x00007343 Const
+int iFormID_AV_happinessBonusChangePerUpdate = 0x00007347 Const
+int iFormID_AV_maxStoredFoodBase = 0x00007348 Const
+int iFormID_AV_maxStoredFoodPerPopulation = 0x00007349 Const
+int iFormID_AV_maxStoredWaterBase = 0x0000734A Const
+int iFormID_AV_maxStoredWaterPerPopulation = 0x0000734B Const
+int iFormID_AV_maxStoredScavengeBase = 0x0000734C Const
+int iFormID_AV_maxStoredScavengePerPopulation = 0x0000734D Const
+int iFormID_AV_brahminProductionBoost = 0x0000734E Const
+int iFormID_AV_maxProductionPerBrahmin = 0x0000734F Const
+int iFormID_AV_maxBrahminFertilizerProduction = 0x00007350 Const
+int iFormID_AV_maxStoredFertilizerBase = 0x00007351 Const
+int iFormID_AV_minVendorIncomePopulation = 0x00007352 Const
+int iFormID_AV_maxVendorIncome = 0x00007353 Const
+int iFormID_AV_vendorIncomePopulationMult = 0x00007354 Const
+int iFormID_AV_vendorIncomeBaseMult = 0x00007355 Const
+int iFormID_AV_iMaxSurplusNPCs = 0x00007356 Const
+int iFormID_AV_attractNPCDailyChance = 0x00007357 Const
+int iFormID_AV_iMaxBonusAttractChancePopulation = 0x00007358 Const
+int iFormID_AV_iBaseMaxNPCs = 0x00007359 Const
+int iFormID_AV_attractNPCHappinessMult = 0x0000735A Const
+int iFormID_AV_attackChanceBase = 0x0000735B Const
+int iFormID_AV_attackChanceResourceMult = 0x0000735C Const
+int iFormID_AV_attackChanceSafetyMult = 0x0000735D Const
+int iFormID_AV_attackChancePopulationMult = 0x0000735E Const
+int iFormID_AV_minDaysSinceLastAttack = 0x0000735F Const
+int iFormID_AV_damageDailyRepairBase = 0x00007360 Const
+int iFormID_AV_damageDailyPopulationMult = 0x00007361 Const
+int iFormID_AV_ExtraNeeds_Food = 0x000072EF Const
+int iFormID_AV_ExtraNeeds_Safety = 0x000072F1 Const
+int iFormID_AV_ExtraNeeds_Water = 0x000072F0 Const
+int iFormID_AV_iBaseMaxBrahmin = 0x000091D2 Const
+int iFormID_AV_iBaseMaxSynths = 0x000091D4 Const
+int iFormID_AV_recruitmentGuardChance = 0x000091D6 Const
+int iFormID_AV_recruitmentBrahminChance = 0x000091D9 Const
+int iFormID_AV_recruitmentSynthChance = 0x000091DB Const
+int iFormID_AV_actorDeathHappinessModifier = 0x000091DD Const
+int iFormID_AV_maxAttackStrength = 0x000091DF Const
+int iFormID_AV_maxDefenseStrength = 0x000091E1 Const
+int iFormID_AV_RobotHappinessLevel = 0x000035D9 Const
+
+	; Fallout4.esm
+int iFormID_CurrentWorkshopID = 0x0003E0CE Const
+int iFormID_Happiness = 0x00000335 Const
+int iFormID_BonusHappiness = 0x0012722C Const
+int iFormID_HappinessTarget = 0x00127238 Const
+int iFormID_HappinessModifier = 0x00127237 Const
+int iFormID_Population = 0x0012723E Const
+int iFormID_DamagePopulation = 0x00127232 Const
+int iFormID_Food = 0x00000331 Const
+int iFormID_DamageFood = 0x00127230 Const
+int iFormID_FoodActual = 0x00127236 Const
+int iFormID_MissingFood = 0x0012723C Const
+int iFormID_Power = 0x0000032E Const
+int iFormID_Water = 0x00000332 Const
+int iFormID_MissingWater = 0x0012723D Const
+int iFormID_Safety = 0x00000333 Const
+int iFormID_DamageSafety = 0x00127234 Const
+int iFormID_MissingSafety = 0x001E3272 Const
+int iFormID_LastAttackDaysSince = 0x00127239 Const
+int iFormID_WorkshopPlayerLostControl = 0x0018BCC2 Const
+int iFormID_WorkshopPlayerOwnership = 0x0000033C Const
+int iFormID_PopulationRobots = 0x0012723F Const
+int iFormID_PopulationBrahmin = 0x0012722D Const
+int iFormID_PopulationUnassigned = 0x00127240 Const
+int iFormID_VendorIncome = 0x0010C847 Const
+int iFormID_DamageCurrent = 0x0012722F Const
+int iFormID_Beds = 0x00000334 Const
+int iFormID_MissingBeds = 0x0012723B Const
+int iFormID_Caravan = 0x000A46FD Const
+int iFormID_Radio = 0x00127241 Const
+int iFormID_WorkshopGuardPreference = 0x00113342 Const
+int iFormID_WorkshopType02 = 0x00249FD7 Const
+int iFormID_WorkshopCaravanKeyword = 0x00061C0C Const
+int iFormID_ObjectTypeWater = 0x000F4AED Const
+int iFormID_ObjectTypeFood = 0x00055ECC Const
+int iFormID_WorkshopLinkContainer = 0x0002682F Const
+int iFormID_FarmDiscountFaction = 0x0019FFC4 Const
+
+Bool bWSFWVarsFilled = false ; 1.0.3 - this will allow us to update workshops that have already past the init phase when this was installed
 
 ;******************
 ; moved from workshopparent			
@@ -1056,7 +1205,7 @@ Bool Property bUseGlobaliBaseMaxBrahmin = true Auto Hidden
 Int WSFW_iBaseMaxBrahmin = 1
 Int Property iBaseMaxBrahmin
 	Int Function Get()
-		Float AppliedValue = GetValue(WSFW_AV_MaxBrahmin)
+		Float AppliedValue = GetValue(WSFW_AV_iBaseMaxBrahmin)
 		
 		if(bUseGlobaliBaseMaxBrahmin)
 			return (AppliedValue + WSFW_Setting_iBaseMaxBrahmin.GetValue()) as Int
@@ -1075,7 +1224,7 @@ Bool Property bUseGlobaliBaseMaxSynths = true Auto Hidden
 Int WSFW_iBaseMaxSynths = 1
 Int Property iBaseMaxSynths
 	Int Function Get()
-		Float AppliedValue = GetValue(WSFW_AV_MaxSynths)
+		Float AppliedValue = GetValue(WSFW_AV_iBaseMaxSynths)
 		
 		if(bUseGlobaliBaseMaxSynths)
 			return (AppliedValue + WSFW_Setting_iBaseMaxSynths.GetValue()) as Int
@@ -1349,8 +1498,10 @@ ObjectReference[] function InitializeVendorChests(int vendorType)
 	return vendorContainers
 endFunction
 
+
 Event OnInit()
-	; WSFW Note: Be sure to use workshopparent versions of properties here as our copies wouldn't have been updated at this stage.
+	; WSFW - 1.0.3
+	FillWSFWVars() 
 	
     ; initialize building budget actor values if necessary
 	if MaxTriangles > 0
@@ -1372,10 +1523,14 @@ Event OnInit()
 	UFO4P_CheckFactionOwnershipClearedOnBeds = false
 
 	; happiness target (don't want to set a default value)
-	SetValue(WorkshopParent.WorkshopRatings[WorkshopParent.WorkshopRatingHappinessTarget].resourceValue, WorkshopParent.startingHappinessTarget)
+	SetValue(HappinessTarget, WorkshopParent.startingHappinessTarget)
 EndEvent
 
 Event OnLoad()
+	if( ! bWSFWVarsFilled)
+		FillWSFWVars()
+	endif
+	
 	; for now, block activation if not "owned" by player
 	BlockActivation(!OwnedByPlayer)
 	; grab inventory from linked container if I'm a container myself
@@ -1900,6 +2055,12 @@ endFunction
 ; **********************************************************************************************
 ; WSFW - New function to handle the resource updating on the workshop during a daily update
 Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRatingKeyword[] ratings, bool bRealUpdate)
+	if(bRealUpdate)
+		ModTrace("==============================================")
+		ModTrace("[WSFW] 			Starting WSFW_DailyUpdate_AdjustResourceValues  " + Self)
+		ModTrace("==============================================")
+	endif
+	
 	; Instead of using DailyUpdateData, we're only going to grab the values we actually need here
 	Int iTotalPopulation = GetBaseValue(Population) as int
 	Int iRobotPopulation = GetBaseValue(PopulationRobots) as int
@@ -1979,6 +2140,10 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	; ----------------------------
 
 	if(iTotalPopulation <= 0)
+		if(bRealUpdate)
+			ModTrace("[WSFW] 			Settlement has no population, skipping happiness checks.")
+		endif
+		
 		return
 	endif
 	
@@ -2023,6 +2188,13 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	;This is a helper position for all actors who do not benefit from any rexource. Set this to the maximum possible value:
 	ResourceCount[4] = iLivingPopulation
 
+	if(bRealUpdate)
+		ModTrace("[WSFW] 				Available Beds: " + iAvailableBeds)
+		ModTrace("[WSFW] 				Sheltered Beds: " + iSheltedBeds)
+		ModTrace("[WSFW] 				Hungry Settlers: " + (iLivingPopulation - iMissingFood))
+		ModTrace("[WSFW] 				Thirsty Settlers: " + (iLivingPopulation - iMissingWater))
+	endif
+		
 	;Save the positions of the resource values in ResourceCount array in the ResourcePos array. After the arrays are sorted, ResourcePos [posShelter], ResourcePos
 	;[posBeds], etc. will return the positions at which updateData.shelteredBeds, updateData.availableBeds etc. have ended up in the ResourceCount array.
 	ResourcePos[posShelter] = 0
@@ -2066,6 +2238,14 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	;The safety bonus applies either to all actors or to none:
 	If(iSafetyPerNPC > 0)
 		fActorHappiness += happinessBonusSafety
+		
+		if(bRealUpdate)
+			ModTrace("[WSFW] 				Happiness For Proper Defenses Appiled: " + happinessBonusSafety)
+		endif
+	else
+		if(bRealUpdate)
+			ModTrace("[WSFW] 				Happiness Penalty for Poor Defenses: -" + happinessBonusSafety)
+		endif
 	EndIf
 
 	Int iActorCount = Math.Min(ResourceCount[0], iLivingPopulation) As Int
@@ -2074,6 +2254,10 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	;For i = 0, none of the conditions checksd in the loop would return true and there is also no need to call the CheckActorHappiness function (because there
 	;are no happiness caps applying when no resources are missing). Therefore, we take the following value as start value and begin the loop with i = 1
 
+	if(bRealUpdate)
+		ModTrace("[WSFW] 				Settlers with All Needs Mets (" + fActorHappiness + " happiness): " + iActorCount)
+	endif
+	
 	fTotalHappiness += (iActorCount * fActorHappiness)
 	i = 1	
 	while(i < 5 && iRemainingActors > 0)
@@ -2105,16 +2289,26 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 		
 		fTotalHappiness += iActorCount * fCorrectedActorHappiness
 		
+		if(bRealUpdate)
+			ModTrace("[WSFW] 				Settlers with Partial Happiness of " + fCorrectedActorHappiness + ": " + iActorCount)
+		endif
+		
 		i += 1
 	EndWhile
 
 	; Add in Robot happiness
 	fTotalHappiness += (RobotHappinessLevel * iRobotPopulation)
 	
-	
+	if(bRealUpdate)
+		ModTrace("[WSFW] 				Robot Happiness: " + iRobotPopulation + " Robots, With Base Happiness of: " + RobotHappinessLevel)
+	endif
 	
 	; add "bonus happiness" and any happiness modifiers
 	fTotalHappiness += fBonusHappiness
+	
+	if(bRealUpdate)
+		ModTrace("[WSFW] 				Total Bonus Happiness: " + fBonusHappiness)
+	endif
 	
 	; calculate happiness
 	; add happiness modifier here - it isn't dependent on population
@@ -2148,6 +2342,9 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 		; what is happiness now?
 		float fFinalHappiness = GetValue(Happiness)
 		
+		ModTrace("[WSFW] 				Current Happiness: " + fFinalHappiness)
+		ModTrace("[WSFW] 				Target Happiness Long Term: " + fTotalHappiness)
+		ModTrace("[WSFW] 				Predicted Happiness Change Tomorrow: " + iDeltaHappiness)
 		; achievement
 		if(fFinalHappiness >= WorkshopParent.HappinessAchievementValue)
 			Game.AddAchievement(WorkshopParent.HappinessAchievementID)
@@ -2193,6 +2390,10 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 			endif
 		endif
 	EndIf
+	
+	if(bRealUpdate)
+		ModTrace("[WSFW] 			Completed WSFW_DailyUpdate_AdjustResourceValues  " + Self)
+	endif
 EndFunction
 
 function DailyUpdateAttractNewSettlers(WorkshopDataScript:WorkshopRatingKeyword[] ratings, DailyUpdateData updateData)
@@ -2549,3 +2750,573 @@ function UFO4P_ClearFactionOwnershipOnBeds()
 	endWhile
 	UFO4P_CheckFactionOwnershipClearedOnBeds = false
 endFunction
+
+
+
+; WSFW - Patch 1.0.3
+Function FillWSFWVars() 
+	bWSFWVarsFilled = true
+	
+	if( ! WSFW_Setting_minProductivity)
+		WSFW_Setting_minProductivity = Game.GetFormFromFile(iFormID_Setting_minProductivity, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_productivityHappinessMult)
+		WSFW_Setting_productivityHappinessMult = Game.GetFormFromFile(iFormID_Setting_productivityHappinessMult, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_maxHappinessNoFood)
+		WSFW_Setting_maxHappinessNoFood = Game.GetFormFromFile(iFormID_Setting_maxHappinessNoFood, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_maxHappinessNoWater)
+		WSFW_Setting_maxHappinessNoWater = Game.GetFormFromFile(iFormID_Setting_maxHappinessNoWater, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_maxHappinessNoShelter)
+		WSFW_Setting_maxHappinessNoShelter = Game.GetFormFromFile(iFormID_Setting_maxHappinessNoShelter, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessBonusFood)
+		WSFW_Setting_happinessBonusFood = Game.GetFormFromFile(iFormID_Setting_happinessBonusFood, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessBonusWater)
+		WSFW_Setting_happinessBonusWater = Game.GetFormFromFile(iFormID_Setting_happinessBonusWater, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessBonusBed)
+		WSFW_Setting_happinessBonusBed = Game.GetFormFromFile(iFormID_Setting_happinessBonusBed, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessBonusShelter)
+		WSFW_Setting_happinessBonusShelter = Game.GetFormFromFile(iFormID_Setting_happinessBonusShelter, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_happinessBonusSafety)
+		WSFW_Setting_happinessBonusSafety = Game.GetFormFromFile(iFormID_Setting_happinessBonusSafety, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_minHappinessChangePerUpdate)
+		WSFW_Setting_minHappinessChangePerUpdate = Game.GetFormFromFile(iFormID_Setting_minHappinessChangePerUpdate, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessChangeMult)
+		WSFW_Setting_happinessChangeMult = Game.GetFormFromFile(iFormID_Setting_happinessChangeMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_minHappinessThreshold)
+		WSFW_Setting_minHappinessThreshold = Game.GetFormFromFile(iFormID_Setting_minHappinessThreshold, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_minHappinessWarningThreshold)
+		WSFW_Setting_minHappinessWarningThreshold = Game.GetFormFromFile(iFormID_Setting_minHappinessWarningThreshold, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_minHappinessClearWarningThreshold)
+		WSFW_Setting_minHappinessClearWarningThreshold = Game.GetFormFromFile(iFormID_Setting_minHappinessClearWarningThreshold, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_happinessBonusChangePerUpdate)
+		WSFW_Setting_happinessBonusChangePerUpdate = Game.GetFormFromFile(iFormID_Setting_happinessBonusChangePerUpdate, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredFoodBase)
+		WSFW_Setting_maxStoredFoodBase = Game.GetFormFromFile(iFormID_Setting_maxStoredFoodBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredFoodPerPopulation)
+		WSFW_Setting_maxStoredFoodPerPopulation = Game.GetFormFromFile(iFormID_Setting_maxStoredFoodPerPopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredWaterBase)
+		WSFW_Setting_maxStoredWaterBase = Game.GetFormFromFile(iFormID_Setting_maxStoredWaterBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredWaterPerPopulation)
+		WSFW_Setting_maxStoredWaterPerPopulation = Game.GetFormFromFile(iFormID_Setting_maxStoredWaterPerPopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredScavengeBase)
+		WSFW_Setting_maxStoredScavengeBase = Game.GetFormFromFile(iFormID_Setting_maxStoredScavengeBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredScavengePerPopulation)
+		WSFW_Setting_maxStoredScavengePerPopulation = Game.GetFormFromFile(iFormID_Setting_maxStoredScavengePerPopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_brahminProductionBoost)
+		WSFW_Setting_brahminProductionBoost = Game.GetFormFromFile(iFormID_Setting_brahminProductionBoost, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxProductionPerBrahmin)
+		WSFW_Setting_maxProductionPerBrahmin = Game.GetFormFromFile(iFormID_Setting_maxProductionPerBrahmin, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxBrahminFertilizerProduction)
+		WSFW_Setting_maxBrahminFertilizerProduction = Game.GetFormFromFile(iFormID_Setting_maxBrahminFertilizerProduction, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxStoredFertilizerBase)
+		WSFW_Setting_maxStoredFertilizerBase = Game.GetFormFromFile(iFormID_Setting_maxStoredFertilizerBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_minVendorIncomePopulation)
+		WSFW_Setting_minVendorIncomePopulation = Game.GetFormFromFile(iFormID_Setting_minVendorIncomePopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxVendorIncome)
+		WSFW_Setting_maxVendorIncome = Game.GetFormFromFile(iFormID_Setting_maxVendorIncome, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_vendorIncomePopulationMult)
+		WSFW_Setting_vendorIncomePopulationMult = Game.GetFormFromFile(iFormID_Setting_vendorIncomePopulationMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_vendorIncomeBaseMult)
+		WSFW_Setting_vendorIncomeBaseMult = Game.GetFormFromFile(iFormID_Setting_vendorIncomeBaseMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_iMaxSurplusNPCs)
+		WSFW_Setting_iMaxSurplusNPCs = Game.GetFormFromFile(iFormID_Setting_iMaxSurplusNPCs, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attractNPCDailyChance)
+		WSFW_Setting_attractNPCDailyChance = Game.GetFormFromFile(iFormID_Setting_attractNPCDailyChance, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_iMaxBonusAttractChancePopulation)
+		WSFW_Setting_iMaxBonusAttractChancePopulation = Game.GetFormFromFile(iFormID_Setting_iMaxBonusAttractChancePopulation, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_iBaseMaxNPCs)
+		WSFW_Setting_iBaseMaxNPCs = Game.GetFormFromFile(iFormID_Setting_iBaseMaxNPCs, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attractNPCHappinessMult)
+		WSFW_Setting_attractNPCHappinessMult = Game.GetFormFromFile(iFormID_Setting_attractNPCHappinessMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attackChanceBase)
+		WSFW_Setting_attackChanceBase = Game.GetFormFromFile(iFormID_Setting_attackChanceBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attackChanceResourceMult)
+		WSFW_Setting_attackChanceResourceMult = Game.GetFormFromFile(iFormID_Setting_attackChanceResourceMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attackChanceSafetyMult)
+		WSFW_Setting_attackChanceSafetyMult = Game.GetFormFromFile(iFormID_Setting_attackChanceSafetyMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_attackChancePopulationMult)
+		WSFW_Setting_attackChancePopulationMult = Game.GetFormFromFile(iFormID_Setting_attackChancePopulationMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_minDaysSinceLastAttack)
+		WSFW_Setting_minDaysSinceLastAttack = Game.GetFormFromFile(iFormID_Setting_minDaysSinceLastAttack, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_damageDailyRepairBase)
+		WSFW_Setting_damageDailyRepairBase = Game.GetFormFromFile(iFormID_Setting_damageDailyRepairBase, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_damageDailyPopulationMult)
+		WSFW_Setting_damageDailyPopulationMult = Game.GetFormFromFile(iFormID_Setting_damageDailyPopulationMult, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_iBaseMaxBrahmin)
+		WSFW_Setting_iBaseMaxBrahmin = Game.GetFormFromFile(iFormID_Setting_iBaseMaxBrahmin, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_iBaseMaxSynths)
+		WSFW_Setting_iBaseMaxSynths = Game.GetFormFromFile(iFormID_Setting_iBaseMaxSynths, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_recruitmentGuardChance)
+		WSFW_Setting_recruitmentGuardChance = Game.GetFormFromFile(iFormID_Setting_recruitmentGuardChance, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_recruitmentBrahminChance)
+		WSFW_Setting_recruitmentBrahminChance = Game.GetFormFromFile(iFormID_Setting_recruitmentBrahminChance, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_recruitmentSynthChance)
+		WSFW_Setting_recruitmentSynthChance = Game.GetFormFromFile(iFormID_Setting_recruitmentSynthChance, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_actorDeathHappinessModifier)
+		WSFW_Setting_actorDeathHappinessModifier = Game.GetFormFromFile(iFormID_Setting_actorDeathHappinessModifier, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxAttackStrength)
+		WSFW_Setting_maxAttackStrength = Game.GetFormFromFile(iFormID_Setting_maxAttackStrength, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_maxDefenseStrength)
+		WSFW_Setting_maxDefenseStrength = Game.GetFormFromFile(iFormID_Setting_maxDefenseStrength, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_AdjustMaxNPCsByCharisma)
+		WSFW_Setting_AdjustMaxNPCsByCharisma = Game.GetFormFromFile(iFormID_Setting_AdjustMaxNPCsByCharisma, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_Setting_RobotHappinessLevel)
+		WSFW_Setting_RobotHappinessLevel = Game.GetFormFromFile(iFormID_Setting_RobotHappinessLevel, sWSFW_Plugin) as GlobalVariable
+	endif
+
+	if( ! WSFW_AV_minProductivity)
+		WSFW_AV_minProductivity = Game.GetFormFromFile(iFormID_AV_minProductivity, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_productivityHappinessMult)
+		WSFW_AV_productivityHappinessMult = Game.GetFormFromFile(iFormID_AV_productivityHappinessMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxHappinessNoFood)
+		WSFW_AV_maxHappinessNoFood = Game.GetFormFromFile(iFormID_AV_maxHappinessNoFood, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxHappinessNoWater)
+		WSFW_AV_maxHappinessNoWater = Game.GetFormFromFile(iFormID_AV_maxHappinessNoWater, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxHappinessNoShelter)
+		WSFW_AV_maxHappinessNoShelter = Game.GetFormFromFile(iFormID_AV_maxHappinessNoShelter, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusFood)
+		WSFW_AV_happinessBonusFood = Game.GetFormFromFile(iFormID_AV_happinessBonusFood, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusWater)
+		WSFW_AV_happinessBonusWater = Game.GetFormFromFile(iFormID_AV_happinessBonusWater, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusBed)
+		WSFW_AV_happinessBonusBed = Game.GetFormFromFile(iFormID_AV_happinessBonusBed, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusShelter)
+		WSFW_AV_happinessBonusShelter = Game.GetFormFromFile(iFormID_AV_happinessBonusShelter, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusSafety)
+		WSFW_AV_happinessBonusSafety = Game.GetFormFromFile(iFormID_AV_happinessBonusSafety, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_minHappinessChangePerUpdate)
+		WSFW_AV_minHappinessChangePerUpdate = Game.GetFormFromFile(iFormID_AV_minHappinessChangePerUpdate, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessChangeMult)
+		WSFW_AV_happinessChangeMult = Game.GetFormFromFile(iFormID_AV_happinessChangeMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_happinessBonusChangePerUpdate)
+		WSFW_AV_happinessBonusChangePerUpdate = Game.GetFormFromFile(iFormID_AV_happinessBonusChangePerUpdate, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredFoodBase)
+		WSFW_AV_maxStoredFoodBase = Game.GetFormFromFile(iFormID_AV_maxStoredFoodBase, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredFoodPerPopulation)
+		WSFW_AV_maxStoredFoodPerPopulation = Game.GetFormFromFile(iFormID_AV_maxStoredFoodPerPopulation, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredWaterBase)
+		WSFW_AV_maxStoredWaterBase = Game.GetFormFromFile(iFormID_AV_maxStoredWaterBase, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredWaterPerPopulation)
+		WSFW_AV_maxStoredWaterPerPopulation = Game.GetFormFromFile(iFormID_AV_maxStoredWaterPerPopulation, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredScavengeBase)
+		WSFW_AV_maxStoredScavengeBase = Game.GetFormFromFile(iFormID_AV_maxStoredScavengeBase, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredScavengePerPopulation)
+		WSFW_AV_maxStoredScavengePerPopulation = Game.GetFormFromFile(iFormID_AV_maxStoredScavengePerPopulation, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_brahminProductionBoost)
+		WSFW_AV_brahminProductionBoost = Game.GetFormFromFile(iFormID_AV_brahminProductionBoost, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxProductionPerBrahmin)
+		WSFW_AV_maxProductionPerBrahmin = Game.GetFormFromFile(iFormID_AV_maxProductionPerBrahmin, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxBrahminFertilizerProduction)
+		WSFW_AV_maxBrahminFertilizerProduction = Game.GetFormFromFile(iFormID_AV_maxBrahminFertilizerProduction, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxStoredFertilizerBase)
+		WSFW_AV_maxStoredFertilizerBase = Game.GetFormFromFile(iFormID_AV_maxStoredFertilizerBase, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_minVendorIncomePopulation)
+		WSFW_AV_minVendorIncomePopulation = Game.GetFormFromFile(iFormID_AV_minVendorIncomePopulation, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxVendorIncome)
+		WSFW_AV_maxVendorIncome = Game.GetFormFromFile(iFormID_AV_maxVendorIncome, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_vendorIncomePopulationMult)
+		WSFW_AV_vendorIncomePopulationMult = Game.GetFormFromFile(iFormID_AV_vendorIncomePopulationMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_vendorIncomeBaseMult)
+		WSFW_AV_vendorIncomeBaseMult = Game.GetFormFromFile(iFormID_AV_vendorIncomeBaseMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_iMaxSurplusNPCs)
+		WSFW_AV_iMaxSurplusNPCs = Game.GetFormFromFile(iFormID_AV_iMaxSurplusNPCs, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attractNPCDailyChance)
+		WSFW_AV_attractNPCDailyChance = Game.GetFormFromFile(iFormID_AV_attractNPCDailyChance, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_iMaxBonusAttractChancePopulation)
+		WSFW_AV_iMaxBonusAttractChancePopulation = Game.GetFormFromFile(iFormID_AV_iMaxBonusAttractChancePopulation, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_iBaseMaxNPCs)
+		WSFW_AV_iBaseMaxNPCs = Game.GetFormFromFile(iFormID_AV_iBaseMaxNPCs, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attractNPCHappinessMult)
+		WSFW_AV_attractNPCHappinessMult = Game.GetFormFromFile(iFormID_AV_attractNPCHappinessMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attackChanceBase)
+		WSFW_AV_attackChanceBase = Game.GetFormFromFile(iFormID_AV_attackChanceBase, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attackChanceResourceMult)
+		WSFW_AV_attackChanceResourceMult = Game.GetFormFromFile(iFormID_AV_attackChanceResourceMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attackChanceSafetyMult)
+		WSFW_AV_attackChanceSafetyMult = Game.GetFormFromFile(iFormID_AV_attackChanceSafetyMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_attackChancePopulationMult)
+		WSFW_AV_attackChancePopulationMult = Game.GetFormFromFile(iFormID_AV_attackChancePopulationMult, sWSFW_Plugin) as ActorValue
+	endif
+	
+	if( ! WSFW_AV_minDaysSinceLastAttack)
+		WSFW_AV_minDaysSinceLastAttack = Game.GetFormFromFile(iFormID_AV_minDaysSinceLastAttack, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_damageDailyRepairBase)
+		WSFW_AV_damageDailyRepairBase = Game.GetFormFromFile(iFormID_AV_damageDailyRepairBase, sWSFW_Plugin) as ActorValue
+	endif
+	
+	if( ! WSFW_AV_damageDailyPopulationMult)
+		WSFW_AV_damageDailyPopulationMult = Game.GetFormFromFile(iFormID_AV_damageDailyPopulationMult, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_ExtraNeeds_Food)
+		WSFW_AV_ExtraNeeds_Food = Game.GetFormFromFile(iFormID_AV_ExtraNeeds_Food, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_ExtraNeeds_Safety)
+		WSFW_AV_ExtraNeeds_Safety = Game.GetFormFromFile(iFormID_AV_ExtraNeeds_Safety, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_ExtraNeeds_Water)
+		WSFW_AV_ExtraNeeds_Water = Game.GetFormFromFile(iFormID_AV_ExtraNeeds_Water, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_ExtraNeeds_Water)
+		WSFW_AV_ExtraNeeds_Water = Game.GetFormFromFile(iFormID_AV_ExtraNeeds_Water, sWSFW_Plugin) as ActorValue
+	endif
+	
+	if( ! WSFW_AV_iBaseMaxBrahmin)
+		WSFW_AV_iBaseMaxBrahmin = Game.GetFormFromFile(iFormID_AV_iBaseMaxBrahmin, sWSFW_Plugin) as ActorValue
+	endif
+	
+	if( ! WSFW_AV_iBaseMaxSynths)
+		WSFW_AV_iBaseMaxSynths = Game.GetFormFromFile(iFormID_AV_iBaseMaxSynths, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_recruitmentGuardChance)
+		WSFW_AV_recruitmentGuardChance = Game.GetFormFromFile(iFormID_AV_recruitmentGuardChance, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_recruitmentBrahminChance)
+		WSFW_AV_recruitmentBrahminChance = Game.GetFormFromFile(iFormID_AV_recruitmentBrahminChance, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_recruitmentSynthChance)
+		WSFW_AV_recruitmentSynthChance = Game.GetFormFromFile(iFormID_AV_recruitmentSynthChance, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_actorDeathHappinessModifier)
+		WSFW_AV_actorDeathHappinessModifier = Game.GetFormFromFile(iFormID_AV_actorDeathHappinessModifier, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxAttackStrength)
+		WSFW_AV_maxAttackStrength = Game.GetFormFromFile(iFormID_AV_maxAttackStrength, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_maxDefenseStrength)
+		WSFW_AV_maxDefenseStrength = Game.GetFormFromFile(iFormID_AV_maxDefenseStrength, sWSFW_Plugin) as ActorValue
+	endif
+
+	if( ! WSFW_AV_RobotHappinessLevel)
+		WSFW_AV_RobotHappinessLevel = Game.GetFormFromFile(iFormID_AV_RobotHappinessLevel, sWSFW_Plugin) as ActorValue
+	endif
+	
+	;
+	; Fallout4.esm
+	;
+	if( ! CurrentWorkshopID)
+		CurrentWorkshopID = Game.GetFormFromFile(iFormID_CurrentWorkshopID, sFO4_Plugin) as GlobalVariable
+	endif
+
+	if( ! Happiness)
+		Happiness = Game.GetFormFromFile(iFormID_Happiness, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! BonusHappiness)
+		BonusHappiness = Game.GetFormFromFile(iFormID_BonusHappiness, sFO4_Plugin) as ActorValue
+	endif
+	
+	if( ! HappinessTarget)
+		HappinessTarget = Game.GetFormFromFile(iFormID_HappinessTarget, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! HappinessModifier)
+		HappinessModifier = Game.GetFormFromFile(iFormID_HappinessModifier, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Population)
+		Population = Game.GetFormFromFile(iFormID_Population, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! DamagePopulation)
+		DamagePopulation = Game.GetFormFromFile(iFormID_DamagePopulation, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Food)
+		Food = Game.GetFormFromFile(iFormID_Food, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! DamageFood)
+		DamageFood = Game.GetFormFromFile(iFormID_DamageFood, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! FoodActual)
+		FoodActual = Game.GetFormFromFile(iFormID_FoodActual, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! MissingFood)
+		MissingFood = Game.GetFormFromFile(iFormID_MissingFood, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Power)
+		Power = Game.GetFormFromFile(iFormID_Power, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Water)
+		Water = Game.GetFormFromFile(iFormID_Water, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! MissingWater)
+		MissingWater = Game.GetFormFromFile(iFormID_MissingWater, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Safety)
+		Safety = Game.GetFormFromFile(iFormID_Safety, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! DamageSafety)
+		DamageSafety = Game.GetFormFromFile(iFormID_DamageSafety, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! MissingSafety)
+		MissingSafety = Game.GetFormFromFile(iFormID_MissingSafety, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! LastAttackDaysSince)
+		LastAttackDaysSince = Game.GetFormFromFile(iFormID_LastAttackDaysSince, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! WorkshopPlayerLostControl)
+		WorkshopPlayerLostControl = Game.GetFormFromFile(iFormID_WorkshopPlayerLostControl, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! WorkshopPlayerOwnership)
+		WorkshopPlayerOwnership = Game.GetFormFromFile(iFormID_WorkshopPlayerOwnership, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! PopulationRobots)
+		PopulationRobots = Game.GetFormFromFile(iFormID_PopulationRobots, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! PopulationBrahmin)
+		PopulationBrahmin = Game.GetFormFromFile(iFormID_PopulationBrahmin, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! PopulationUnassigned)
+		PopulationUnassigned = Game.GetFormFromFile(iFormID_PopulationUnassigned, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! VendorIncome)
+		VendorIncome = Game.GetFormFromFile(iFormID_VendorIncome, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! DamageCurrent)
+		DamageCurrent = Game.GetFormFromFile(iFormID_DamageCurrent, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Beds)
+		Beds = Game.GetFormFromFile(iFormID_Beds, sFO4_Plugin) as ActorValue
+	endif
+	
+	if( ! MissingBeds)
+		MissingBeds = Game.GetFormFromFile(iFormID_MissingBeds, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Caravan)
+		Caravan = Game.GetFormFromFile(iFormID_Caravan, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! Radio)
+		Radio = Game.GetFormFromFile(iFormID_Radio, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! WorkshopGuardPreference)
+		WorkshopGuardPreference = Game.GetFormFromFile(iFormID_WorkshopGuardPreference, sFO4_Plugin) as ActorValue
+	endif
+
+	if( ! WorkshopType02)
+		WorkshopType02 = Game.GetFormFromFile(iFormID_WorkshopType02, sFO4_Plugin) as Keyword
+	endif
+
+	if( ! WorkshopCaravanKeyword)
+		WorkshopCaravanKeyword = Game.GetFormFromFile(iFormID_WorkshopCaravanKeyword, sFO4_Plugin) as Keyword
+	endif
+
+	if( ! ObjectTypeWater)
+		ObjectTypeWater = Game.GetFormFromFile(iFormID_ObjectTypeWater, sFO4_Plugin) as Keyword
+	endif
+
+	if( ! ObjectTypeFood)
+		ObjectTypeFood = Game.GetFormFromFile(iFormID_ObjectTypeFood, sFO4_Plugin) as Keyword
+	endif
+
+	if( ! WorkshopLinkContainer)
+		WorkshopLinkContainer = Game.GetFormFromFile(iFormID_WorkshopLinkContainer, sFO4_Plugin) as Keyword
+	endif
+
+	if( ! FarmDiscountFaction)
+		FarmDiscountFaction = Game.GetFormFromFile(iFormID_FarmDiscountFaction, sFO4_Plugin) as Faction
+	endif
+EndFunction

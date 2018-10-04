@@ -278,9 +278,9 @@ EndEvent
 Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akSourceContainer)
 	int iWorkshopID = RouteContainers.Find(akAddedTo)
 	
-	ModTrace("[WSFW]  >>>>>>> OnItemAdded Event: " + aiItemCount + " " + akBaseItem + " added to " + akAddedTo)
+	;ModTrace("[WSFW]  >>>>>>> OnItemAdded Event: " + aiItemCount + " " + akBaseItem + " added to " + akAddedTo)
 	if(iWorkshopID < 0)
-		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is temporary, storing production in temporary holding record.")
+		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is temporary, storing production in temporary holding record.")
 		; Not a RouteContainer
 		UnRegisterForRemoteEvent(akAddedTo, "OnItemAdded")
 		
@@ -290,7 +290,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		; Likely one of our temporary containers
 		int iWorkshopTargetContainerIndex = akAddedTo.GetValue(WorkshopTargetContainerHolderValue) as Int
 		
-		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
+		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
 		if(iWorkshopTargetContainerIndex >= 0)
 			WorkshopTargetContainer WorkshopTargetData = GetWorkshopTargetContainerRecord(iWorkshopTargetContainerIndex)
 			
@@ -306,11 +306,11 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 				
 				ProducedList.AddRef(kRecord)
 				
-				ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
+				;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
 			endif
 		endif
 	else
-		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
+		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
 		
 		WorkshopScript thisWorkshop = ResourceManager.Workshops[iWorkshopID]
 		ObjectReference kContainer = None
@@ -369,7 +369,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			
 			kContainer = GetContainer(thisWorkshop, TargetContainerKeyword)
 			
-			ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Final destination: " + kContainer)
+			;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Final destination: " + kContainer)
 			if(kContainer)
 				akAddedTo.RemoveAllItems(kContainer)
 			endif
@@ -1085,8 +1085,10 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 	endif
 	
 	; Reduce by damage
-	iCurrentFoodProductionValue = Math.max(0, iCurrentFoodProductionValue - (akWorkshopRef.GetValue(FoodDamaged) as int)) as int
+	int iFoodDamage = akWorkshopRef.GetValue(FoodDamaged) as Int
+	iCurrentFoodProductionValue = Math.max(0, iCurrentFoodProductionValue - iFoodDamage) as int
 	
+	ModTrace("[WSFW]                  Damaged Food Resources: " + iFoodDamage)
 	ModTrace("[WSFW]                  Food Production Value: " + iCurrentFoodProductionValue)
 		
 	if(iCurrentFoodProductionValue > 0)
@@ -1097,11 +1099,20 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 		
 		int iCurrentStoredFood = FoodContainer.GetItemCount(ObjectTypeFood)
 		int iMaxProduceFood = iMaxStoredFood - iCurrentStoredFood
-		int iProduceFood = Math.Min(iCurrentFoodProductionValue, iMaxProduceFood) as Int
+		int iProduceFood = iCurrentFoodProductionValue
+		
+		if(iMaxProduceFood < 0)
+			iMaxProduceFood = 0
+		elseif(iMaxProduceFood < iProduceFood)
+			iProduceFood = iMaxProduceFood
+		endif
 		
 		ModTrace("[WSFW]                  Current Stored Food: " + iCurrentStoredFood)
-		ModTrace("[WSFW]                  Max Stored Food: " + iMaxProduceFood)
+		ModTrace("[WSFW]                  Max Stored Food: " + iMaxStoredFood)
+		
 		if(iProduceFood > 0)
+			ModTrace("[WSFW]				  Producing: " + iProduceFood)
+			
 			ProduceFoodTypes(akWorkshopRef, iProduceFood)
 			
 			if(iProduceFood < iMaxProduceFood)
@@ -1134,8 +1145,10 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 	Float fLivingPopulation = akWorkshopRef.GetBaseValue(Population) - akWorkshopRef.GetBaseValue(RobotPopulation)
 	
 	; Reduce by damage
-	iCurrentWaterProductionValue = Math.max(0, iCurrentWaterProductionValue - (akWorkshopRef.GetValue(WaterDamaged) as int)) as int
+	Int iWaterDamage = akWorkshopRef.GetValue(WaterDamaged) as int
+	iCurrentWaterProductionValue = Math.max(0, iCurrentWaterProductionValue - iWaterDamage) as int
 	
+	ModTrace("[WSFW]                  Damaged Water Resources: " + iWaterDamage)
 	ModTrace("[WSFW]                  Water Production Value: " + iCurrentWaterProductionValue)
 	
 	if(iCurrentWaterProductionValue > 0)
@@ -1146,12 +1159,21 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 		
 		int iCurrentStoredWater = WaterContainer.GetItemCount(ObjectTypeWater)
 		int iMaxProduceWater = iMaxStoredWater - iCurrentStoredWater
-		int iProduceWater = Math.Min(iCurrentWaterProductionValue, iMaxProduceWater) as Int
+		int iProduceWater = iCurrentWaterProductionValue
+		
+		if(iMaxProduceWater < 0)
+			iMaxProduceWater = 0
+		elseif(iMaxProduceWater < iProduceWater)
+			iProduceWater = iMaxProduceWater
+		endif
 		
 		ModTrace("[WSFW]                  Current Stored Water: " + iCurrentStoredWater)
-		ModTrace("[WSFW]                  Max Stored Water: " + iMaxProduceWater)
+		ModTrace("[WSFW]                  Max Stored Water: " + iMaxStoredWater)
+		
 		
 		if(iProduceWater > 0)
+			ModTrace("[WSFW]                  Producing: " + iProduceWater)
+			
 			ProduceItems(WaterProductionItem, akWorkshopRef, iProduceWater, WaterContainerKeyword)
 			
 			if(iProduceWater < iMaxProduceWater)
@@ -1208,6 +1230,10 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 	
 	int iMaxStoredScavenge = (akWorkshopRef.maxStoredScavengeBase + akWorkshopRef.maxStoredScavengePerPopulation * fLivingPopulation) as Int
 	
+	if(iMaxStoredScavenge < 0)
+		iMaxStoredScavenge = 0
+	endif
+	
 	Float fScavengeBuildingMaterialsProduction = ResourceManager.GetWorkshopValue(akWorkshopRef, Scavenge_BuildingMaterials)
 	Float fScavengeGeneralProduction = ResourceManager.GetWorkshopValue(akWorkshopRef, Scavenge_General)
 	Float fScavengePartsProduction = ResourceManager.GetWorkshopValue(akWorkshopRef, Scavenge_Parts)
@@ -1218,46 +1244,61 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 	ModTrace("[WSFW]                  Max Stored Scav: " + iMaxStoredScavenge)
 	int iMaxProduce = iMaxStoredScavenge - iCurrentStoredScavenge
 	
-	if(fScavengeBuildingMaterialsProduction <= 0 && fScavengePartsProduction <= 0 && fScavengeRareProduction <=0)
-		; Player has no mods taking advantage of the new AVs, just use the default scavenge system
-		if(fScavengeGeneralProduction > 0)
-			ProduceItems(DefaultScavProductionItem_All, akWorkshopRef, Math.Floor(fScavengeGeneralProduction), ScavengeGeneralScrapContainerKeyword)
+	if(iMaxProduce < 0)
+		iMaxProduce = 0
+	endif
+	
+	if(iMaxProduce > 0)
+		if(fScavengeBuildingMaterialsProduction <= 0 && fScavengePartsProduction <= 0 && fScavengeRareProduction <=0)
+			int iProduce = fScavengeGeneralProduction as Int
+			if(iMaxProduce < iProduce)
+				iProduce = iMaxProduce
+			endif
 			
-			iMaxProduce -= Math.Floor(fScavengeGeneralProduction)
-		endif
-	else	
-		Float fTotalProduction = fScavengeBuildingMaterialsProduction + fScavengeGeneralProduction + fScavengePartsProduction + fScavengeRareProduction
-		
-		if(fTotalProduction > iMaxProduce)
-			; Determine percentages of each type to produce up to max
-			fScavengeBuildingMaterialsProduction = Math.Min(fScavengeBuildingMaterialsProduction, iMaxProduce * (fScavengeBuildingMaterialsProduction/fTotalProduction))
-			fScavengeGeneralProduction = Math.Min(fScavengeGeneralProduction, iMaxProduce * (fScavengeGeneralProduction/fTotalProduction))
-			fScavengePartsProduction = Math.Min(fScavengePartsProduction, iMaxProduce * (fScavengePartsProduction/fTotalProduction))
-			fScavengeRareProduction = Math.Min(fScavengeRareProduction, iMaxProduce * (fScavengeRareProduction/fTotalProduction))
-		endif
-		
-		if(fScavengeBuildingMaterialsProduction > 0)
-			ProduceItems(ScavProductionItem_BuildingMaterials, akWorkshopRef, Math.Floor(fScavengeBuildingMaterialsProduction), ScavengeBuildingMaterialsContainerKeyword)
+			ModTrace("[WSFW]                  Producing: " + iProduce)
+				
+			; Player has no mods taking advantage of the new AVs, just use the default scavenge system
+			if(iProduce > 0)
+				ProduceItems(DefaultScavProductionItem_All, akWorkshopRef, iProduce, ScavengeGeneralScrapContainerKeyword)
+				
+				iMaxProduce -= Math.Floor(iProduce)
+			endif
+		else	
+			Float fTotalProduction = fScavengeBuildingMaterialsProduction + fScavengeGeneralProduction + fScavengePartsProduction + fScavengeRareProduction
 			
-			iMaxProduce -= Math.Floor(fScavengeBuildingMaterialsProduction)
-		endif
-		
-		if(fScavengeGeneralProduction > 0)
-			ProduceItems(ScavProductionItem_General, akWorkshopRef, Math.Floor(fScavengeGeneralProduction), ScavengeGeneralScrapContainerKeyword)
+			ModTrace("[WSFW]                  Producing: " + fTotalProduction)
 			
-			iMaxProduce -= Math.Floor(fScavengeGeneralProduction)
-		endif
-		
-		if(fScavengePartsProduction > 0)
-			ProduceItems(ScavProductionItem_Parts, akWorkshopRef, Math.Floor(fScavengePartsProduction), ScavengePartsContainerKeyword)
+			if(fTotalProduction > iMaxProduce)
+				; Determine percentages of each type to produce up to max
+				fScavengeBuildingMaterialsProduction = Math.Min(fScavengeBuildingMaterialsProduction, iMaxProduce * (fScavengeBuildingMaterialsProduction/fTotalProduction))
+				fScavengeGeneralProduction = Math.Min(fScavengeGeneralProduction, iMaxProduce * (fScavengeGeneralProduction/fTotalProduction))
+				fScavengePartsProduction = Math.Min(fScavengePartsProduction, iMaxProduce * (fScavengePartsProduction/fTotalProduction))
+				fScavengeRareProduction = Math.Min(fScavengeRareProduction, iMaxProduce * (fScavengeRareProduction/fTotalProduction))
+			endif
 			
-			iMaxProduce -= Math.Floor(fScavengePartsProduction)
-		endif
-		
-		if(fScavengeRareProduction > 0)
-			ProduceItems(ScavProductionItem_Rare, akWorkshopRef, Math.Floor(fScavengeRareProduction), ScavengeRareContainerKeyword)
+			if(fScavengeBuildingMaterialsProduction > 0)
+				ProduceItems(ScavProductionItem_BuildingMaterials, akWorkshopRef, Math.Floor(fScavengeBuildingMaterialsProduction), ScavengeBuildingMaterialsContainerKeyword)
+				
+				iMaxProduce -= Math.Floor(fScavengeBuildingMaterialsProduction)
+			endif
 			
-			iMaxProduce -= Math.Floor(fScavengeRareProduction)
+			if(fScavengeGeneralProduction > 0)
+				ProduceItems(ScavProductionItem_General, akWorkshopRef, Math.Floor(fScavengeGeneralProduction), ScavengeGeneralScrapContainerKeyword)
+				
+				iMaxProduce -= Math.Floor(fScavengeGeneralProduction)
+			endif
+			
+			if(fScavengePartsProduction > 0)
+				ProduceItems(ScavProductionItem_Parts, akWorkshopRef, Math.Floor(fScavengePartsProduction), ScavengePartsContainerKeyword)
+				
+				iMaxProduce -= Math.Floor(fScavengePartsProduction)
+			endif
+			
+			if(fScavengeRareProduction > 0)
+				ProduceItems(ScavProductionItem_Rare, akWorkshopRef, Math.Floor(fScavengeRareProduction), ScavengeRareContainerKeyword)
+				
+				iMaxProduce -= Math.Floor(fScavengeRareProduction)
+			endif
 		endif
 	endif
 	
@@ -1286,14 +1327,26 @@ int Function ProduceFertilizer(WorkshopScript akWorkshopRef)
 	int iCurrentStoredFertilizer = FertilizerContainer.GetItemCount(FertilizerList)
 	; Test against max and produce
 	int iMaxStoredFertilizer = akWorkshopRef.maxBrahminFertilizerProduction
+	int iMaxProduce = iMaxStoredFertilizer - iCurrentStoredFertilizer
+	
+	if(iMaxProduce < 0)
+		iMaxProduce = 0
+	endif
+	
+	if(iMaxProduce < iProduce)
+		iProduce = iMaxProduce
+	endif
 	
 	ModTrace("[WSFW]                  Fertilizer Production Value: " + iProduce)
 	ModTrace("[WSFW]                  Current Stored Fertilizer: " + iCurrentStoredFertilizer)
 	ModTrace("[WSFW]                  Max Stored Fertilizer: " + iMaxStoredFertilizer)
-	if(iCurrentStoredFertilizer < iMaxStoredFertilizer && iProduce > 0)		
-		ProduceItems(FertilizerProductionItem, akWorkshopRef, Math.Min(iProduce, iMaxStoredFertilizer) as Int, FertilizerContainerKeyword)
+	
+	if(iProduce > 0)		
+		ModTrace("[WSFW]                  Producing: " + iProduce)
 		
-		return iMaxStoredFertilizer - iProduce
+		ProduceItems(FertilizerProductionItem, akWorkshopRef, iProduce, FertilizerContainerKeyword)
+		
+		return iMaxProduce - iProduce
 	endif
 	
 	return 0
@@ -1456,9 +1509,9 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 	
 	int iWorkshopID = akWorkshopRef.GetWorkshopID()
 	
-	ModTrace("[WSFW] ==============================================")	
-	ModTrace("[WSFW]                       ProduceItems: " + aProduceMe + " at " + akWorkshopRef + ", Count: " + aiCount)
-	ModTrace("[WSFW] ==============================================")
+	;ModTrace("[WSFW] ==============================================")	
+	;ModTrace("[WSFW]                       ProduceItems: " + aProduceMe + " at " + akWorkshopRef + ", Count: " + aiCount)
+	;ModTrace("[WSFW] ==============================================")
 	
 	; We need to first create the items in a temporary container so we resolve things like LeveledItems which can represent a large quantity of various items. In order to track where these are supposed to end up ultimately, we'll create our tracking record and store a ref to the destination container, we'll then tag our temporary container with an AV that matches the index of our tracking record.
 		; Set up a tracking record so we can pair the destination container keyword and workshop ID with the final created items
@@ -1482,7 +1535,7 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 			; Monitor for the OnItemAdded event and add the additem
 		RegisterForRemoteEvent(kTempContainer, "OnItemAdded")
 		
-		ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
+		;ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
 		kTempContainer.AddItem(aProduceMe, aiCount)
 	endif		
 	
