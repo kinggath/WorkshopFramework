@@ -5960,6 +5960,7 @@ function UFO4P_UpdateUnassignedActorsArray (WorkshopScript workshopRef)
 		while i < countIDs
 			int actorID = UFO4P_UnassignedActorIDs[i]
 			UFO4P_UnassignedActors.Remove (actorID)
+			i += 1 ; WSFW - 1.0.2 - Added increment to eliminate infinite loop, notified Arthmoor about issue with UFO4P code
 		endWhile
 		UFO4P_UnassignedActorIDs = none
 		workshopRef.UFO4P_HandleUnassignedActors = false

@@ -182,8 +182,8 @@ Group SettingsToCopyToWorkshops
 	ActorValue Property WSFW_AV_minDaysSinceLastAttack Auto Const Mandatory
 	ActorValue Property WSFW_AV_damageDailyRepairBase Auto Const Mandatory
 	ActorValue Property WSFW_AV_damageDailyPopulationMult Auto Const Mandatory
-	ActorValue Property WSFW_AV_MaxBrahmin Auto Const Mandatory
-	ActorValue Property WSFW_AV_MaxSynths Auto Const Mandatory
+	ActorValue Property WSFW_AV_iBaseMaxBrahmin Auto Const Mandatory
+	ActorValue Property WSFW_AV_iBaseMaxSynths Auto Const Mandatory
 	ActorValue Property WSFW_AV_recruitmentGuardChance Auto Const Mandatory	
 	ActorValue Property WSFW_AV_recruitmentBrahminChance Auto Const Mandatory	
 	ActorValue Property WSFW_AV_recruitmentSynthChance Auto Const Mandatory	
@@ -445,6 +445,27 @@ EndFunction
 ; Overrides
 ; ---------------------------------------------
 
+Function HandleInstallModChanges()
+	if(iInstalledVersion < 4) 
+		; 1.0.3 - Fix for RobotHappinessLevel which was pointing to the wrong variable
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			
+			thisWorkshop.WSFW_Setting_RobotHappinessLevel = WSFW_Setting_RobotHappinessLevel
+			thisWorkshop.WSFW_AV_RobotHappinessLevel = WSFW_AV_RobotHappinessLevel
+			; We changed the names of MaxBrahmin and MaxSynths to iBaseMax to clarify what they are for
+			thisWorkshop.WSFW_AV_iBaseMaxBrahmin = WSFW_AV_iBaseMaxBrahmin
+			thisWorkshop.WSFW_AV_iBaseMaxSynths = WSFW_AV_iBaseMaxSynths
+			
+			i += 1
+		endWhile
+	endif
+	
+	Parent.HandleInstallModChanges()
+EndFunction
 
 ; ---------------------------------------------
 ; Functions
@@ -520,7 +541,7 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSFW_Setting_maxAttackStrength = WSFW_Setting_maxAttackStrength
 	akWorkshopRef.WSFW_Setting_maxDefenseStrength = WSFW_Setting_maxDefenseStrength
 	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_AdjustMaxNPCsByCharisma
-	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_RobotHappinessLevel
+	akWorkshopRef.WSFW_Setting_RobotHappinessLevel = WSFW_Setting_RobotHappinessLevel
 	
 	akWorkshopRef.WSFW_AV_minProductivity = WSFW_AV_minProductivity
 	akWorkshopRef.WSFW_AV_productivityHappinessMult = WSFW_AV_productivityHappinessMult
@@ -567,8 +588,8 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.WSFW_AV_RobotHappinessLevel = WSFW_AV_RobotHappinessLevel
 	
 	
-	akWorkshopRef.WSFW_AV_MaxBrahmin = WSFW_AV_MaxBrahmin
-	akWorkshopRef.WSFW_AV_MaxSynths = WSFW_AV_MaxSynths
+	akWorkshopRef.WSFW_AV_iBaseMaxBrahmin = WSFW_AV_iBaseMaxBrahmin
+	akWorkshopRef.WSFW_AV_iBaseMaxSynths = WSFW_AV_iBaseMaxSynths
 	akWorkshopRef.WSFW_AV_recruitmentGuardChance = WSFW_AV_recruitmentGuardChance
 	akWorkshopRef.WSFW_AV_recruitmentBrahminChance = WSFW_AV_recruitmentBrahminChance
 	akWorkshopRef.WSFW_AV_recruitmentSynthChance = WSFW_AV_recruitmentSynthChance
