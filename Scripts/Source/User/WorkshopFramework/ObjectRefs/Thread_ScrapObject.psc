@@ -27,7 +27,7 @@ Keyword Property WorkshopKeyword Auto Const Mandatory
 Keyword Property PowerArmorKeyword Auto Const Mandatory
 Keyword Property WorkshopItemKeyword Auto Const Mandatory
 ActorBase Property CovenantTurret Auto Const Mandatory
-
+Keyword Property WorkshopStackedItemParentKEYWORD Auto Const Mandatory ; 1.0.2 - Clear links
 ; -
 ; Properties
 ; -
@@ -49,6 +49,27 @@ EndFunction
 
 Function RunCode()
 	if(ScrapSafetyCheck(kScrapMe))
+		; 1.0.4a - Unlink any items to this one
+		kScrapMe.SetLinkedRef(None)
+		
+		ObjectReference[] LinkedRefs = kScrapMe.GetLinkedRefChildren(None)
+		int i = 0
+		while(i < LinkedRefs.Length)
+			LinkedRefs[i].SetLinkedRef(None)
+			i += 1
+		endWhile
+		
+		; 1.0.4a - Unlink any stacked items
+		kScrapMe.SetLinkedRef(None, WorkshopStackedItemParentKEYWORD)
+		LinkedRefs = kScrapMe.GetLinkedRefChildren(WorkshopStackedItemParentKEYWORD)
+		i = 0
+		while(i < LinkedRefs.Length)
+			LinkedRefs[i].SetLinkedRef(None, WorkshopStackedItemParentKEYWORD)
+			
+			i += 1
+		endWhile
+		
+		
 		WorkshopScript thisWorkshop = kScrapMe.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
 		if(thisWorkshop)
 			; Remove from workshop
