@@ -191,6 +191,9 @@ Group WSFW_Globals
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Hidden
 	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Hidden
 	GlobalVariable Property CurrentWorkshopID Auto Hidden
+	
+	; 1.0.4 - Give players means to turn the happiness loss of control feature off
+	GlobalVariable Property WSFW_Setting_AllowSettlementsToLeavePlayerControl Auto Hidden
 EndGroup
 
 Group WSFW_AVs
@@ -339,8 +342,9 @@ int iFormID_Setting_recruitmentSynthChance = 0x000091DA Const
 int iFormID_Setting_actorDeathHappinessModifier = 0x000091DC Const
 int iFormID_Setting_maxAttackStrength = 0x000091DE Const
 int iFormID_Setting_maxDefenseStrength = 0x000091E0 Const
-int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A89D Const
+int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A98D Const ; 1.0.4 - Fixed typo in form ID
 int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
+int iFormID_Setting_AllowSettlementsToLeavePlayerControl = 0x00004CF3 ; 1.0.4 - New setting
 int iFormID_AV_minProductivity = 0x00007338 Const
 int iFormID_AV_productivityHappinessMult = 0x00007339 Const
 int iFormID_AV_maxHappinessNoFood = 0x0000733A Const
@@ -395,7 +399,7 @@ int iFormID_AV_RobotHappinessLevel = 0x000035D9 Const
 
 	; Fallout4.esm
 int iFormID_CurrentWorkshopID = 0x0003E0CE Const
-int iFormID_Happiness = 0x00000335 Const
+int iFormID_Happiness = 0x00129157 Const ; 1.0.4 - Was pointing at the wrong AV 
 int iFormID_BonusHappiness = 0x0012722C Const
 int iFormID_HappinessTarget = 0x00127238 Const
 int iFormID_HappinessModifier = 0x00127237 Const
@@ -2018,7 +2022,6 @@ function DailyUpdate(bool bRealUpdate = true)
 	;DailyUpdateConsumeResources(ratings, updateData, containerRef, bRealUpdate)
 	WSFW_DailyUpdate_AdjustResourceValues(ratings, bRealUpdate)
 	
-
 	; REAL UPDATE ONLY:
 	if bRealUpdate
 		; WSFW - Surplus handled by our WorkshopProductionManager script now 
@@ -2035,6 +2038,7 @@ function DailyUpdate(bool bRealUpdate = true)
 	;UFO4P 1.0.3 Bug #20775: If the timer to call this function was started by WorkshopParentScript (only then, bResetHappiness is true), call the
 	;ResetHappinessPUBLIC function on WorkshopParentScript when everything else is done
 	if bResetHappiness
+		ModTrace("Calling WorkshopParent.ResetHappinessPUBLIC on " + Self)
 		WorkshopParent.ResetHappinessPUBLIC(self)
 		;UFO4P 2.0.1 Bug #22234: reset bResetHappiness:
 		bResetHappiness = false
@@ -2065,6 +2069,9 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	Int iTotalPopulation = GetBaseValue(Population) as int
 	Int iRobotPopulation = GetBaseValue(PopulationRobots) as int
 	Int iLivingPopulation = iTotalPopulation - iRobotPopulation	
+	if(iLivingPopulation < 0)
+		iLivingPopulation = 0
+	endif
 	Int iBrahminPopulation = GetBaseValue(PopulationBrahmin) as int
 	Float fDamageMult = 1 - GetValue(DamageCurrent)/100.0
 	Float fProductivity = GetProductivityMultiplier(ratings)
@@ -2161,6 +2168,7 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	Int iMissingFood = GetValue(MissingFood) as Int
 	Int iMissingWater = GetValue(MissingWater) as Int
 	
+	
 	; variables used to track happiness for each actor
 	float fActorHappiness
 	bool bActorBed
@@ -2179,20 +2187,30 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	Int posWater = 2
 	Int posFood = 3
 
+	; 1.0.4 - Making this code easier to follow so we can track down happiness issues
+	int iHaveFood = iLivingPopulation - iMissingFood
+	if(iHaveFood < 0)
+		iHaveFood = 0
+	endif
+	int iHaveWater = iLivingPopulation - iMissingWater
+	if(iHaveWater < 0)
+		iHaveWater = 0
+	endif
+	
 	;Since iSheltedBeds <= iAvailableBeds, and both AvailableWater and AvailableFood are usually larger than the
 	;latter, filling the array in the following order will save a couple of swaps when it is sorted below:
 	ResourceCount[0] = iSheltedBeds
 	ResourceCount[1] = iAvailableBeds
-	ResourceCount[2] = iLivingPopulation - iMissingWater
-	ResourceCount[3] = iLivingPopulation - iMissingFood
+	ResourceCount[2] = iHaveWater
+	ResourceCount[3] = iHaveFood
 	;This is a helper position for all actors who do not benefit from any rexource. Set this to the maximum possible value:
 	ResourceCount[4] = iLivingPopulation
 
 	if(bRealUpdate)
 		ModTrace("[WSFW] 				Available Beds: " + iAvailableBeds)
 		ModTrace("[WSFW] 				Sheltered Beds: " + iSheltedBeds)
-		ModTrace("[WSFW] 				Hungry Settlers: " + (iLivingPopulation - iMissingFood))
-		ModTrace("[WSFW] 				Thirsty Settlers: " + (iLivingPopulation - iMissingWater))
+		ModTrace("[WSFW] 				Hungry Settlers: " + Math.Min(iMissingFood, iLivingPopulation) as Int)
+		ModTrace("[WSFW] 				Thirsty Settlers: " + Math.Min(iMissingWater, iLivingPopulation) as Int)
 	endif
 		
 	;Save the positions of the resource values in ResourceCount array in the ResourcePos array. After the arrays are sorted, ResourcePos [posShelter], ResourcePos
@@ -2208,9 +2226,12 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 		int j = 0
 		While(j < i)
 			If(ResourceCount[j] > ResourceCount[j + 1])
+				; Sort counts
 				int swapInt = ResourceCount[j]
 				ResourceCount[j] = ResourceCount[j + 1]
 				ResourceCount[j + 1] = swapInt
+				
+				; Sort indexes to match
 				swapInt = ResourcePos[j]
 				ResourcePos[j] = ResourcePos[j + 1]
 				ResourcePos[j + 1] = swapInt
@@ -2240,7 +2261,7 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 		fActorHappiness += happinessBonusSafety
 		
 		if(bRealUpdate)
-			ModTrace("[WSFW] 				Happiness For Proper Defenses Appiled: " + happinessBonusSafety)
+			ModTrace("[WSFW] 				Happiness For Proper Defenses Applied: " + happinessBonusSafety)
 		endif
 	else
 		if(bRealUpdate)
@@ -2358,8 +2379,10 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 				; always show warning first
 				WorkshopParent.DisplayMessage(WorkshopParent.WorkshopUnhappinessWarning, NONE, myLocation)
 			elseif(fFinalHappiness <= minHappinessThreshold)
-				; Player loses control 
-				SetOwnedByPlayer(false)
+				if(WSFW_Setting_AllowSettlementsToLeavePlayerControl.GetValue() == 1.0)
+					; Player loses control 
+					SetOwnedByPlayer(false)
+				endif
 			endif
 
 			; clear warning if above threshold
@@ -2703,7 +2726,7 @@ endFunction
 ; we don't normally want to do this when unloaded or everything will be 0
 ; TRUE = we did recalc; FALSE = we didn't
 bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
-
+	return true
 	;if bOnlyIfLocationLoaded == false || myLocation.IsLoaded()
 	
 	;UFO4P 2.0.4 Bug #24122: replaced the previous line with the following line:
@@ -2963,6 +2986,10 @@ Function FillWSFWVars()
 
 	if( ! WSFW_Setting_RobotHappinessLevel)
 		WSFW_Setting_RobotHappinessLevel = Game.GetFormFromFile(iFormID_Setting_RobotHappinessLevel, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	if( ! WSFW_Setting_AllowSettlementsToLeavePlayerControl)
+		WSFW_Setting_AllowSettlementsToLeavePlayerControl = Game.GetFormFromFile(iFormID_Setting_AllowSettlementsToLeavePlayerControl, sWSFW_Plugin) as GlobalVariable
 	endif
 
 	if( ! WSFW_AV_minProductivity)

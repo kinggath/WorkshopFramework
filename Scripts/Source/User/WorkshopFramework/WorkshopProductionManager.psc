@@ -18,6 +18,7 @@ Scriptname WorkshopFramework:WorkshopProductionManager extends WorkshopFramework
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:WorkshopFunctions
+import WorkshopDataScript ; 1.0.4 - Vanilla structs for Workshop stuff 
 
 
 CustomEvent NotEnoughResources
@@ -212,17 +213,18 @@ Float Property fProductionLoopTime = 24.0 Auto Hidden
 
 ; Unlike a lock, with blocks we will just reject any incoming calls if a block is held
 Bool bProductionUnderwayBlock 
+Bool bUpdatingFoodTypesBlock  ; 1.0.4
 
 ObjectReference[] RouteContainers ; Holds containers we'll monitor for OnItemAdded to re-distribute items to appropriate containers
 
 Int iMaxProduceItemRecordIndex = 1023
-Int iNextWorkshopTargetContainerRecordIndex = -1
+Int iNextWorkshopTargetContainerRecordIndex = 0
 Int Property NextWorkshopTargetContainerRecordIndex
 	Int Function Get()
 		iNextWorkshopTargetContainerRecordIndex += 1
 		
 		if(iNextWorkshopTargetContainerRecordIndex > iMaxProduceItemRecordIndex)
-			iNextWorkshopTargetContainerRecordIndex = 0
+			iNextWorkshopTargetContainerRecordIndex = 1 ; 1.0.4 - Never use 0, since we're setting this index as an AV, we need to be able to treat 0 as the container not being part of this system
 		endif
 		
 		return iNextWorkshopTargetContainerRecordIndex
@@ -237,6 +239,9 @@ WorkshopTargetContainer[] Property WorkshopTargetContainerRecords05 Auto Hidden
 WorkshopTargetContainer[] Property WorkshopTargetContainerRecords06 Auto Hidden
 WorkshopTargetContainer[] Property WorkshopTargetContainerRecords07 Auto Hidden
 WorkshopTargetContainer[] Property WorkshopTargetContainerRecords08 Auto Hidden
+
+; 1.0.4 - Tracking workshopFoodTypes from WorkshopParent so we can auto create compatibility with mods that alter it
+WorkshopFoodType[] KnownWorkshopFoodTypes 
 
 ; ---------------------------------------------
 ; Events 
@@ -276,22 +281,21 @@ EndEvent
 
 
 Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akSourceContainer)
-	int iWorkshopID = RouteContainers.Find(akAddedTo)
+	int iRouteContainerIndex = RouteContainers.Find(akAddedTo) ; 1.0.4 - Renamed to iRouteContainerIndex for clarity
 	
-	;ModTrace("[WSFW]  >>>>>>> OnItemAdded Event: " + aiItemCount + " " + akBaseItem + " added to " + akAddedTo)
-	if(iWorkshopID < 0)
-		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is temporary, storing production in temporary holding record.")
+	if(iRouteContainerIndex < 0)
+		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container " + akAddedTo + " is temporary, storing production in temporary holding record.")
 		; Not a RouteContainer
 		UnRegisterForRemoteEvent(akAddedTo, "OnItemAdded")
 		
 		WorkshopScript thisWorkshop = akAddedTo.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
-		iWorkshopID = thisWorkshop.GetWorkshopID()
+		int iWorkshopID = thisWorkshop.GetWorkshopID()
 		
 		; Likely one of our temporary containers
 		int iWorkshopTargetContainerIndex = akAddedTo.GetValue(WorkshopTargetContainerHolderValue) as Int
 		
 		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
-		if(iWorkshopTargetContainerIndex >= 0)
+		if(iWorkshopTargetContainerIndex > 0)
 			WorkshopTargetContainer WorkshopTargetData = GetWorkshopTargetContainerRecord(iWorkshopTargetContainerIndex)
 			
 			ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
@@ -308,11 +312,16 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 				
 				;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
 			endif
+		else
+			; 1.0.4 - This should never happen - but seems to be occasionally for some players. Just going to log this for now so we can attempt to debug it in the future
+			ModTrace("[WSFW] XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+			ModTrace("[WSFW] XXXXXXXXXXXXXXXXXXX Lost Container Found: " + akAddedTo + ", this container reported " + iRouteContainerIndex + " when checking RouteContainers, and " + iWorkshopTargetContainerIndex + " when tested for temporary container holding value.")
+			ModTrace("[WSFW] XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 		endif
 	else
 		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
 		
-		WorkshopScript thisWorkshop = ResourceManager.Workshops[iWorkshopID]
+		WorkshopScript thisWorkshop = ResourceManager.Workshops[iRouteContainerIndex]
 		ObjectReference kContainer = None
 		
 		if(thisWorkshop)
@@ -425,6 +434,14 @@ Function HandleQuestInit()
 	endif
 EndFunction
 
+
+Function HandleGameLoaded()
+	Parent.HandleGameLoaded()
+	
+	; Check for changes to WorkshopParent.WorkshopFoodTypes
+	UpdateFoodTypesData()
+EndFunction
+
 ; ---------------------------------------------
 ; Overrides
 ; ---------------------------------------------
@@ -434,6 +451,112 @@ EndFunction
 ; Functions
 ; ---------------------------------------------
 
+; 1.0.4 - Integrating mods that have changed the WorkshopFoodTypes array on WorkshopParent
+Function UpdateFoodTypesData()
+	;/
+	;struct WorkshopFoodType
+	;	ActorValue resourceValue
+	;	{ what resource value matches this food type }
+	;
+	;	LeveledItem foodObject
+	;	{ leveled item to use to create this food type }
+	;endStruct
+	/;
+	if(bUpdatingFoodTypesBlock)
+		return
+	endif
+	
+	bUpdatingFoodTypesBlock = true
+	
+	int i = 0
+	
+	if( ! KnownWorkshopFoodTypes || KnownWorkshopFoodTypes.Length == 0)
+		KnownWorkshopFoodTypes = new WorkshopFoodType[0]
+	else
+		; Clean out our KnownWorkshopFoodTypes in case a mod was uninstalled
+		i = 0
+		int[] RemoveIndexes = new Int[0]
+		
+		while(i < KnownWorkshopFoodTypes.Length)
+			if(KnownWorkshopFoodTypes[i].foodObject.GetFormID() == 0x00000000 || KnownWorkshopFoodTypes[i].resourceValue.GetFormID() == 0x00000000)
+				RemoveIndexes.Add(i)
+			endif
+			
+			i += 1
+		endWhile
+		
+		i = RemoveIndexes.Length ; Go through this in reverse so we don't screw up the index order 
+		while(i > 0)
+			ModTrace("[WSFW] Abandoned mod left empty entry in KnownWorkshopFoodTypes, clearing out index " + i)
+			KnownWorkshopFoodTypes.Remove(RemoveIndexes[i])
+		
+			i -= 1
+		endWhile
+	endif
+	
+	
+	; Now compare our known to those in the Workshopparent array
+	WorkshopFoodType[] MissingFoodTypes = new WorkshopFoodType[0]
+	WorkshopFoodType[] WPFoodTypes = WorkshopParent.WorkshopFoodTypes
+	i = 0
+	while(i < WPFoodTypes.Length)
+		int j = 0
+		WorkshopFoodType thisFoodType = WPFoodTypes[i]
+		
+		if(thisFoodType.resourceValue == Food_Carrot || \
+		   thisFoodType.resourceValue == Food_Corn || \
+		   thisFoodType.resourceValue == Food_Gourd || \
+		   thisFoodType.resourceValue == Food_Melon || \
+		   thisFoodType.resourceValue == Food_Mutfruit || \
+		   thisFoodType.resourceValue == Food_Razorgrain || \
+		   thisFoodType.resourceValue == Food_Tarberry || \
+		   thisFoodType.resourceValue == Food_Tato)
+		   ; Vanilla type - ignore
+		else
+			Bool bFoundMatch = false
+			while(j < KnownWorkshopFoodTypes.Length && ! bFoundMatch)
+				if(thisFoodType.resourceValue == KnownWorkshopFoodTypes[j].resourceValue)
+					bFoundMatch = true
+					
+					if(KnownWorkshopFoodTypes[j].foodObject != thisFoodType.foodObject)
+						; Production type changed
+						UnregisterProductionResource(KnownWorkshopFoodTypes[j].foodObject, KnownWorkshopFoodTypes[j].resourceValue)
+						
+						; Update type in our Known records
+						KnownWorkshopFoodTypes[j].foodObject = thisFoodType.foodObject
+						
+						; Register new type
+						RegisterProductionResource(KnownWorkshopFoodTypes[j].foodObject, KnownWorkshopFoodTypes[j].resourceValue)
+					endif
+				endif
+			
+				j += 1
+			endWhile
+			
+			if( ! bFoundMatch)
+				; New type
+				MissingFoodTypes.Add(thisFoodType)
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	i = 0
+	while(i < MissingFoodTypes.Length && KnownWorkshopFoodTypes.Length < 128)
+		ModTrace("[WSFW] Registering new food type from WorkshopParent: " + MissingFoodTypes[i])
+		; Store in array
+		KnownWorkshopFoodTypes.Add(MissingFoodTypes[i])
+		
+		; Do actual production registration
+		RegisterProductionResource(MissingFoodTypes[i].foodObject, MissingFoodTypes[i].resourceValue)
+		
+		i += 1
+	endWhile
+	
+	bUpdatingFoodTypesBlock = false
+EndFunction
+
 
 Function CleanResourceLists()
 	; Clean ProductionList
@@ -442,7 +565,8 @@ Function CleanResourceLists()
 	while(i < ProductionList.GetCount())
 		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
 		
-		if(kRecord.ProduceForm == None || kRecord.ResourceAV == None)
+		; 1.0.4 - Removed mods will not return None from their forms, but GetFormID will return 0x00000000
+		if(kRecord.ProduceForm.GetFormID() == 0x00000000 || kRecord.ResourceAV.GetFormID() == 0x00000000)
 			RemoveMe.Add(kRecord)
 		endif
 		
@@ -465,7 +589,8 @@ Function CleanResourceLists()
 	while(i < ConsumptionList.GetCount())
 		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption kRecord = ConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumption
 		
-		if(kRecord.ConsumeForm == None || kRecord.ResourceAV == None)
+		; 1.0.4 - Removed mods will not return None from their forms, but GetFormID will return 0x00000000
+		if(kRecord.ConsumeForm.GetFormID() == 0x00000000 || kRecord.ResourceAV.GetFormID() == 0x00000000)
 			RemoveMe.Add(kRecord)
 		endif
 		
@@ -546,6 +671,7 @@ EndFunction
 Function RegisterProductionResource(LeveledItem aProduceMe, ActorValue aResourceAV, Keyword aTargetContainerKeyword = None)
 	; Confirm this isn't already registered
 	if(IsProductionResourceRegistered(aProduceMe, aResourceAV) >= 0)
+		ModTrace("[WSFW] >>>>>>>> Resource already registered: " + aResourceAV + " " + aProduceMe)
 		return
 	endif
 	
@@ -554,13 +680,16 @@ Function RegisterProductionResource(LeveledItem aProduceMe, ActorValue aResource
 	if(kSpawnPoint)
 		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = kSpawnPoint.PlaceAtMe(BlankProductionResourceRecord, abDeleteWhenAble = false) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
 		
-		kRecord.ProduceForm = aProduceMe
-		kRecord.ResourceAV = aResourceAV
-		kRecord.TargetContainerKeyword = aTargetContainerKeyword
-		
-		ProductionList.AddRef(kRecord)
-		
-		ResourceManager.WorkshopTrackedAVs.AddForm(kRecord.ResourceAV)
+		if(kRecord)
+			kRecord.ProduceForm = aProduceMe
+			kRecord.ResourceAV = aResourceAV
+			kRecord.TargetContainerKeyword = aTargetContainerKeyword
+			
+			ModTrace("[WSFW] >>>>>>>> Created Production record : " + kRecord)
+			ProductionList.AddRef(kRecord)
+			
+			ResourceManager.WorkshopTrackedAVs.AddForm(kRecord.ResourceAV)
+		endif
 	endif
 EndFunction
 
@@ -616,19 +745,26 @@ EndFunction
 
 Function StartProductionTimer()
 	WorkshopScript[] kWorkshops = ResourceManager.Workshops
-	if(RouteContainers.Length < kWorkshops.Length)
-		int i = RouteContainers.Length
-		while(i < kWorkshops.Length)
+	
+	; 1.0.4 - Ensure this gets initialized. 
+	if( ! RouteContainers || RouteContainers.length == 0)
+		RouteContainers = new ObjectReference[0]
+	endif
+	
+	int i = 0
+	while(i < kWorkshops.Length)
+		; 1.0.4 - There was a bug for some users where the RouteContainers weren't being detected correctly in the OnItemAdded event, and were being counted as temporary containers, which caused them to be deleted. This change will ensure the containers are correctly recreated on the next production run
+		if(RouteContainers.Length == i || RouteContainers[i] == None)
 			ObjectReference kRouteContainer = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abForcePersist = true, abDeleteWhenAble = false)
-			
+		
 			if(kRouteContainer)
 				RouteContainers.Add(kRouteContainer)
 				RegisterForRemoteEvent(kRouteContainer, "OnItemAdded")
 			endif
-			
-			i += 1
-		endWhile
-	endif
+		endif
+		
+		i += 1
+	endWhile
 	
 	StartTimerGameTime(fProductionLoopTime, ProductionLoopTimerID)
 EndFunction
@@ -1009,10 +1145,15 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 	ProduceFertilizer(akWorkshopRef)
 	ProduceVendorIncome(akWorkshopRef)		
 	
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                  Produce Mod Added Resources: " + akWorkshopRef)
+	ModTrace("[WSFW] ==============================================")	
+	
 	; Next produce specialty resources
 	int i = 0
 	int iMax = ProductionList.GetCount()
 	
+	ModTrace("[WSFW]                      Found " + iMax + " New Resource Types")
 	while(i < iMax)
 		WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction kRecord = ProductionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeProduction
 		
@@ -1050,7 +1191,10 @@ Function ProduceWorkshopResources(WorkshopScript akWorkshopRef)
 				; TODO: Expand the storage system for more gameplay options - things like limitations on non-scavenge items so players can build more storage. Ex. MaxProduceWeapons or MaxProduceAmmo
 			endif
 			
-			ProduceItems(kRecord.ProduceForm, akWorkshopRef, iProduceCount, kRecord.TargetContainerKeyword)
+			if(iProduceCount > 0)
+				ModTrace("[WSFW]                 Producing " + iProduceCount + " " + kRecord.ProduceForm)
+				ProduceItems(kRecord.ProduceForm, akWorkshopRef, iProduceCount, kRecord.TargetContainerKeyword)
+			endif
 		endif
 		
 		i += 1
@@ -1103,7 +1247,9 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 		
 		if(iMaxProduceFood < 0)
 			iMaxProduceFood = 0
-		elseif(iMaxProduceFood < iProduceFood)
+		endif
+		
+		if(iMaxProduceFood < iProduceFood)
 			iProduceFood = iMaxProduceFood
 		endif
 		
@@ -1163,7 +1309,9 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 		
 		if(iMaxProduceWater < 0)
 			iMaxProduceWater = 0
-		elseif(iMaxProduceWater < iProduceWater)
+		endif
+		
+		if(iMaxProduceWater < iProduceWater)
 			iProduceWater = iMaxProduceWater
 		endif
 		
@@ -1509,15 +1657,16 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 	
 	int iWorkshopID = akWorkshopRef.GetWorkshopID()
 	
-	;ModTrace("[WSFW] ==============================================")	
-	;ModTrace("[WSFW]                       ProduceItems: " + aProduceMe + " at " + akWorkshopRef + ", Count: " + aiCount)
-	;ModTrace("[WSFW] ==============================================")
+	ModTrace("[WSFW] ==============================================")	
+	ModTrace("[WSFW]                       ProduceItems: " + aProduceMe + " at " + akWorkshopRef + ", Count: " + aiCount)
+	ModTrace("[WSFW] ==============================================")
 	
 	; We need to first create the items in a temporary container so we resolve things like LeveledItems which can represent a large quantity of various items. In order to track where these are supposed to end up ultimately, we'll create our tracking record and store a ref to the destination container, we'll then tag our temporary container with an AV that matches the index of our tracking record.
 		; Set up a tracking record so we can pair the destination container keyword and workshop ID with the final created items
 	int iWorkshopTargetContainerIndex = PrepareWorkshopTargetContainerRecord_Lock(iWorkshopID, aTargetContainerKeyword)
 	
-	if(iWorkshopTargetContainerIndex < 0) ; Couldn't prep a record - just drop it in the container directly
+	if(iWorkshopTargetContainerIndex < 1) ; Couldn't prep a record - just drop it in the container directly
+	; 1.0.4 - Changed check to < 1, we don't want to use index 0 as it makes it impossible to check for the index as an AV without a potential false positive
 		; This should never happen as we're just looping through the indexes, but just to be thorough....
 		ObjectReference kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
 					
@@ -1535,7 +1684,7 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 			; Monitor for the OnItemAdded event and add the additem
 		RegisterForRemoteEvent(kTempContainer, "OnItemAdded")
 		
-		;ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
+		ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
 		kTempContainer.AddItem(aProduceMe, aiCount)
 	endif		
 	
