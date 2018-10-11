@@ -852,11 +852,13 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 	ModTrace("[WSFW]            Water Needs: " + iRequiredWater)
 		; Handle actual consumption
 	if(iRequiredFood > 0)
-		iRequiredFood = ConsumeFromWorkshop(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+		; 1.0.4a - Changed from = to -=
+		iRequiredFood -= ConsumeFromWorkshop(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
 	endif
 	
 	if(iRequiredWater > 0)
-		iRequiredWater = ConsumeFromWorkshop(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+		; 1.0.4a - Changed from = to -=
+		iRequiredWater -= ConsumeFromWorkshop(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
 	endif
 	
 	
