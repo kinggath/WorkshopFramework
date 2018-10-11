@@ -141,6 +141,7 @@ Group SettingsToCopyToWorkshops
 	GlobalVariable Property WSFW_Setting_maxAttackStrength Auto Mandatory	
 	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Mandatory	
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Mandatory
+	GlobalVariable Property WSFW_Setting_AllowSettlementsToLeavePlayerControl Auto Mandatory ; 1.0.4 - New Setting
 	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Mandatory
 	
 	ActorValue Property WSFW_AV_minProductivity Auto Const Mandatory
@@ -464,6 +465,23 @@ Function HandleInstallModChanges()
 		endWhile
 	endif
 	
+	if(iInstalledVersion < 6) 
+		; 1.0.4 - If someone installed this for the first time with 1.0.3 on an existing save, many of their settlements wouldn't get the vars until they visited for the first time - rectifying this
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			
+			; Fix happiness which was pointed at the wrong AV in 1.0.3
+			thisWorkshop.Happiness = Happiness
+			
+			thisWorkshop.FillWSFWVars()
+			
+			i += 1
+		endWhile
+	endif
+	
 	Parent.HandleInstallModChanges()
 EndFunction
 
@@ -490,158 +508,14 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 		return
 	endif
 	
-	akWorkshopRef.WSFW_Setting_minProductivity = WSFW_Setting_minProductivity
-	akWorkshopRef.WSFW_Setting_productivityHappinessMult = WSFW_Setting_productivityHappinessMult
-	akWorkshopRef.WSFW_Setting_maxHappinessNoFood = WSFW_Setting_maxHappinessNoFood
-	akWorkshopRef.WSFW_Setting_maxHappinessNoWater = WSFW_Setting_maxHappinessNoWater
-	akWorkshopRef.WSFW_Setting_maxHappinessNoShelter = WSFW_Setting_maxHappinessNoShelter
-	akWorkshopRef.WSFW_Setting_happinessBonusFood = WSFW_Setting_happinessBonusFood
-	akWorkshopRef.WSFW_Setting_happinessBonusWater = WSFW_Setting_happinessBonusWater
-	akWorkshopRef.WSFW_Setting_happinessBonusBed = WSFW_Setting_happinessBonusBed
-	akWorkshopRef.WSFW_Setting_happinessBonusShelter = WSFW_Setting_happinessBonusShelter
-	akWorkshopRef.WSFW_Setting_happinessBonusSafety = WSFW_Setting_happinessBonusSafety
-	akWorkshopRef.WSFW_Setting_minHappinessChangePerUpdate = WSFW_Setting_minHappinessChangePerUpdate
-	akWorkshopRef.WSFW_Setting_happinessChangeMult = WSFW_Setting_happinessChangeMult
-	akWorkshopRef.WSFW_Setting_minHappinessThreshold = WSFW_Setting_minHappinessThreshold
-	akWorkshopRef.WSFW_Setting_minHappinessWarningThreshold = WSFW_Setting_minHappinessWarningThreshold
-	akWorkshopRef.WSFW_Setting_minHappinessClearWarningThreshold = WSFW_Setting_minHappinessClearWarningThreshold
-	akWorkshopRef.WSFW_Setting_happinessBonusChangePerUpdate = WSFW_Setting_happinessBonusChangePerUpdate
-	akWorkshopRef.WSFW_Setting_maxStoredFoodBase = WSFW_Setting_maxStoredFoodBase
-	akWorkshopRef.WSFW_Setting_maxStoredFoodPerPopulation = WSFW_Setting_maxStoredFoodPerPopulation
-	akWorkshopRef.WSFW_Setting_maxStoredWaterBase = WSFW_Setting_maxStoredWaterBase
-	akWorkshopRef.WSFW_Setting_maxStoredWaterPerPopulation = WSFW_Setting_maxStoredWaterPerPopulation
-	akWorkshopRef.WSFW_Setting_maxStoredScavengeBase = WSFW_Setting_maxStoredScavengeBase
-	akWorkshopRef.WSFW_Setting_maxStoredScavengePerPopulation = WSFW_Setting_maxStoredScavengePerPopulation
-	akWorkshopRef.WSFW_Setting_brahminProductionBoost = WSFW_Setting_brahminProductionBoost
-	akWorkshopRef.WSFW_Setting_maxProductionPerBrahmin = WSFW_Setting_maxProductionPerBrahmin
-	akWorkshopRef.WSFW_Setting_maxBrahminFertilizerProduction = WSFW_Setting_maxBrahminFertilizerProduction
-	akWorkshopRef.WSFW_Setting_maxStoredFertilizerBase = WSFW_Setting_maxStoredFertilizerBase
-	akWorkshopRef.WSFW_Setting_minVendorIncomePopulation = WSFW_Setting_minVendorIncomePopulation
-	akWorkshopRef.WSFW_Setting_maxVendorIncome = WSFW_Setting_maxVendorIncome
-	akWorkshopRef.WSFW_Setting_vendorIncomePopulationMult = WSFW_Setting_vendorIncomePopulationMult
-	akWorkshopRef.WSFW_Setting_vendorIncomeBaseMult = WSFW_Setting_vendorIncomeBaseMult
-	akWorkshopRef.WSFW_Setting_iMaxSurplusNPCs = WSFW_Setting_iMaxSurplusNPCs
-	akWorkshopRef.WSFW_Setting_attractNPCDailyChance = WSFW_Setting_attractNPCDailyChance
-	akWorkshopRef.WSFW_Setting_iMaxBonusAttractChancePopulation = WSFW_Setting_iMaxBonusAttractChancePopulation
-	akWorkshopRef.WSFW_Setting_iBaseMaxNPCs = WSFW_Setting_iBaseMaxNPCs
-	akWorkshopRef.WSFW_Setting_attractNPCHappinessMult = WSFW_Setting_attractNPCHappinessMult
-	akWorkshopRef.WSFW_Setting_attackChanceBase = WSFW_Setting_attackChanceBase
-	akWorkshopRef.WSFW_Setting_attackChanceResourceMult = WSFW_Setting_attackChanceResourceMult
-	akWorkshopRef.WSFW_Setting_attackChanceSafetyMult = WSFW_Setting_attackChanceSafetyMult
-	akWorkshopRef.WSFW_Setting_attackChancePopulationMult = WSFW_Setting_attackChancePopulationMult
-	akWorkshopRef.WSFW_Setting_minDaysSinceLastAttack = WSFW_Setting_minDaysSinceLastAttack
-	akWorkshopRef.WSFW_Setting_damageDailyRepairBase = WSFW_Setting_damageDailyRepairBase
-	akWorkshopRef.WSFW_Setting_damageDailyPopulationMult = WSFW_Setting_damageDailyPopulationMult
-	akWorkshopRef.WSFW_Setting_iBaseMaxBrahmin = WSFW_Setting_iBaseMaxBrahmin
-	akWorkshopRef.WSFW_Setting_iBaseMaxSynths = WSFW_Setting_iBaseMaxSynths
-	akWorkshopRef.WSFW_Setting_recruitmentGuardChance = WSFW_Setting_recruitmentGuardChance
-	akWorkshopRef.WSFW_Setting_recruitmentBrahminChance = WSFW_Setting_recruitmentBrahminChance
-	akWorkshopRef.WSFW_Setting_recruitmentSynthChance = WSFW_Setting_recruitmentSynthChance
-	akWorkshopRef.WSFW_Setting_actorDeathHappinessModifier = WSFW_Setting_actorDeathHappinessModifier
-	akWorkshopRef.WSFW_Setting_maxAttackStrength = WSFW_Setting_maxAttackStrength
-	akWorkshopRef.WSFW_Setting_maxDefenseStrength = WSFW_Setting_maxDefenseStrength
-	akWorkshopRef.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_AdjustMaxNPCsByCharisma
-	akWorkshopRef.WSFW_Setting_RobotHappinessLevel = WSFW_Setting_RobotHappinessLevel
-	
-	akWorkshopRef.WSFW_AV_minProductivity = WSFW_AV_minProductivity
-	akWorkshopRef.WSFW_AV_productivityHappinessMult = WSFW_AV_productivityHappinessMult
-	akWorkshopRef.WSFW_AV_maxHappinessNoFood = WSFW_AV_maxHappinessNoFood
-	akWorkshopRef.WSFW_AV_maxHappinessNoWater = WSFW_AV_maxHappinessNoWater
-	akWorkshopRef.WSFW_AV_maxHappinessNoShelter = WSFW_AV_maxHappinessNoShelter
-	akWorkshopRef.WSFW_AV_happinessBonusFood = WSFW_AV_happinessBonusFood
-	akWorkshopRef.WSFW_AV_happinessBonusWater = WSFW_AV_happinessBonusWater
-	akWorkshopRef.WSFW_AV_happinessBonusBed = WSFW_AV_happinessBonusBed
-	akWorkshopRef.WSFW_AV_happinessBonusShelter = WSFW_AV_happinessBonusShelter
-	akWorkshopRef.WSFW_AV_happinessBonusSafety = WSFW_AV_happinessBonusSafety
-	akWorkshopRef.WSFW_AV_minHappinessChangePerUpdate = WSFW_AV_minHappinessChangePerUpdate
-	akWorkshopRef.WSFW_AV_happinessChangeMult = WSFW_AV_happinessChangeMult
-	akWorkshopRef.WSFW_AV_happinessBonusChangePerUpdate = WSFW_AV_happinessBonusChangePerUpdate
-	akWorkshopRef.WSFW_AV_maxStoredFoodBase = WSFW_AV_maxStoredFoodBase
-	akWorkshopRef.WSFW_AV_maxStoredFoodPerPopulation = WSFW_AV_maxStoredFoodPerPopulation
-	akWorkshopRef.WSFW_AV_maxStoredWaterBase = WSFW_AV_maxStoredWaterBase
-	akWorkshopRef.WSFW_AV_maxStoredWaterPerPopulation = WSFW_AV_maxStoredWaterPerPopulation
-	akWorkshopRef.WSFW_AV_maxStoredScavengeBase = WSFW_AV_maxStoredScavengeBase
-	akWorkshopRef.WSFW_AV_maxStoredScavengePerPopulation = WSFW_AV_maxStoredScavengePerPopulation
-	akWorkshopRef.WSFW_AV_brahminProductionBoost = WSFW_AV_brahminProductionBoost
-	akWorkshopRef.WSFW_AV_maxProductionPerBrahmin = WSFW_AV_maxProductionPerBrahmin
-	akWorkshopRef.WSFW_AV_maxBrahminFertilizerProduction = WSFW_AV_maxBrahminFertilizerProduction
-	akWorkshopRef.WSFW_AV_maxStoredFertilizerBase = WSFW_AV_maxStoredFertilizerBase
-	akWorkshopRef.WSFW_AV_minVendorIncomePopulation = WSFW_AV_minVendorIncomePopulation
-	akWorkshopRef.WSFW_AV_maxVendorIncome = WSFW_AV_maxVendorIncome
-	akWorkshopRef.WSFW_AV_vendorIncomePopulationMult = WSFW_AV_vendorIncomePopulationMult
-	akWorkshopRef.WSFW_AV_vendorIncomeBaseMult = WSFW_AV_vendorIncomeBaseMult
-	akWorkshopRef.WSFW_AV_iMaxSurplusNPCs = WSFW_AV_iMaxSurplusNPCs
-	akWorkshopRef.WSFW_AV_attractNPCDailyChance = WSFW_AV_attractNPCDailyChance
-	akWorkshopRef.WSFW_AV_iMaxBonusAttractChancePopulation = WSFW_AV_iMaxBonusAttractChancePopulation
-	akWorkshopRef.WSFW_AV_iBaseMaxNPCs = WSFW_AV_iBaseMaxNPCs
-	akWorkshopRef.WSFW_AV_attractNPCHappinessMult = WSFW_AV_attractNPCHappinessMult
-	akWorkshopRef.WSFW_AV_attackChanceBase = WSFW_AV_attackChanceBase
-	akWorkshopRef.WSFW_AV_attackChanceResourceMult = WSFW_AV_attackChanceResourceMult
-	akWorkshopRef.WSFW_AV_attackChanceSafetyMult = WSFW_AV_attackChanceSafetyMult
-	akWorkshopRef.WSFW_AV_attackChancePopulationMult = WSFW_AV_attackChancePopulationMult
-	akWorkshopRef.WSFW_AV_minDaysSinceLastAttack = WSFW_AV_minDaysSinceLastAttack
-	akWorkshopRef.WSFW_AV_damageDailyRepairBase = WSFW_AV_damageDailyRepairBase
-	akWorkshopRef.WSFW_AV_damageDailyPopulationMult = WSFW_AV_damageDailyPopulationMult
-	akWorkshopRef.WSFW_AV_ExtraNeeds_Food = ExtraNeeds_Food
-	akWorkshopRef.WSFW_AV_ExtraNeeds_Safety = ExtraNeeds_Safety
-	akWorkshopRef.WSFW_AV_ExtraNeeds_Water = ExtraNeeds_Water
-	akWorkshopRef.WSFW_AV_RobotHappinessLevel = WSFW_AV_RobotHappinessLevel
-	
-	
-	akWorkshopRef.WSFW_AV_iBaseMaxBrahmin = WSFW_AV_iBaseMaxBrahmin
-	akWorkshopRef.WSFW_AV_iBaseMaxSynths = WSFW_AV_iBaseMaxSynths
-	akWorkshopRef.WSFW_AV_recruitmentGuardChance = WSFW_AV_recruitmentGuardChance
-	akWorkshopRef.WSFW_AV_recruitmentBrahminChance = WSFW_AV_recruitmentBrahminChance
-	akWorkshopRef.WSFW_AV_recruitmentSynthChance = WSFW_AV_recruitmentSynthChance
-	akWorkshopRef.WSFW_AV_actorDeathHappinessModifier = WSFW_AV_actorDeathHappinessModifier
-	akWorkshopRef.WSFW_AV_maxAttackStrength = WSFW_AV_maxAttackStrength
-	akWorkshopRef.WSFW_AV_maxDefenseStrength = WSFW_AV_maxDefenseStrength
-	
-	
-	akWorkshopRef.Happiness = Happiness
-	akWorkshopRef.BonusHappiness = BonusHappiness
-	akWorkshopRef.HappinessTarget = HappinessTarget
-	akWorkshopRef.HappinessModifier = HappinessModifier
-	akWorkshopRef.Population = Population
-	akWorkshopRef.DamagePopulation = DamagePopulation
-	akWorkshopRef.Food = Food
-	akWorkshopRef.DamageFood = DamageFood
-	akWorkshopRef.FoodActual = FoodActual
-	akWorkshopRef.MissingFood = MissingFood
-	akWorkshopRef.Power = Power
-	akWorkshopRef.Water = Water
-	akWorkshopRef.MissingWater = MissingWater
-	akWorkshopRef.Safety = Safety
-	akWorkshopRef.DamageSafety = DamageSafety
-	akWorkshopRef.MissingSafety = MissingSafety
-	akWorkshopRef.LastAttackDaysSince = LastAttackDaysSince
-	akWorkshopRef.WorkshopPlayerLostControl = WorkshopPlayerLostControl
-	akWorkshopRef.WorkshopPlayerOwnership = WorkshopPlayerOwnership
-	akWorkshopRef.PopulationRobots = PopulationRobots
-	akWorkshopRef.PopulationBrahmin = PopulationBrahmin
-	akWorkshopRef.PopulationUnassigned = PopulationUnassigned
-	akWorkshopRef.VendorIncome = VendorIncome
-	akWorkshopRef.DamageCurrent = DamageCurrent
-	akWorkshopRef.Beds = Beds
-	akWorkshopRef.MissingBeds = MissingBeds 
-	akWorkshopRef.Caravan = Caravan
-	akWorkshopRef.Radio = Radio
-	akWorkshopRef.WorkshopGuardPreference = WorkshopGuardPreference
-	akWorkshopRef.WorkshopType02 = WorkshopType02
-	akWorkshopRef.WorkshopCaravanKeyword = WorkshopCaravanKeyword
-	akWorkshopRef.ObjectTypeWater = ObjectTypeWater
-	akWorkshopRef.ObjectTypeFood = ObjectTypeFood
-	akWorkshopRef.WorkshopLinkContainer = WorkshopLinkContainer
-	akWorkshopRef.FarmDiscountFaction = FarmDiscountFaction
-	akWorkshopRef.CurrentWorkshopID = CurrentWorkshopID
+	; 1.0.4 - Ensure that properties get filled on workshops array immediately - otherwise if DailyUpdate hits before the player visits each settlement the properties will have never filled
+	akWorkshopRef.FillWSFWVars()
 	
 	; Add workshop and location to our copy of the arrays
 	Workshops.Add(akWorkshopRef)
 	WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
 	
 	akWorkshopRef.bPropertiesConfigured = true
-	
-	ModTrace("[WSFW] Resource Manager: Finished configuring workshop vars. " + akWorkshopRef)
 EndFunction
 
 Function CheckForWorkshopChange(Bool abTimedDoubleCheck = false)
@@ -749,7 +623,8 @@ EndFunction
 
 
 Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScript akWorkshopRef, Bool abRemoved = false, Bool abGetLock = false)
-	if( ! akWorkshopRef || akWorkshopRef.Is3dLoaded())
+	if( ! akObjectRef || ! akWorkshopRef || akWorkshopRef.Is3dLoaded()) 
+		; If the workshop is loaded, there's no need to run this manually - in fact doing so, will cause duplicate resource counts
 		return
 	endif
 	

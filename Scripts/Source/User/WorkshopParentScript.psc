@@ -3,6 +3,8 @@ Scriptname WorkshopParentScript extends Quest Hidden Conditional
 
 import CommonArrayFunctions
 import WorkshopDataScript
+; WSFW - 1.0.4: Getting ModTrace function imported to monitor for some specific issues
+import WorkshopFramework:Library:UtilityFunctions
 
 Group WorkshopRatingsGroup
 	WorkshopRatingKeyword[] Property WorkshopRatings Auto Const
@@ -1325,6 +1327,7 @@ function InitializeLocation(WorkshopScript workshopRef, RefCollectionAlias Settl
 		; this means everyone here (at game start) is a robot
 		robotPopulation = initPopulation
 	endif
+	
 	ModifyResourceData(WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue, workshopRef, robotPopulation)
 
 	; initialize ratings if it has population
@@ -1889,7 +1892,8 @@ function RemoveObjectFromWorkshop(WorkshopObjectScript workObject, WorkshopScrip
 	;UnassignObject(workObject, true)
 	;UFO4P 2.0.4 Bug #24273: replaced the previous line with the following line:
 	;Since UnassignObject now has two bool arguments, we need to make sure that 'true' is passed in to the right one.
-	UnassignObject(workObject, bRemoveObject = true)
+	; WSFW - Restored vanilla signature and added new private function
+	UnassignObject_Private(workObject, bRemoveObject = true)
 
 	; clear workshopID
 	workObject.workshopID = -1
@@ -2315,6 +2319,33 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 endFunction
 
 
+; WSFW - Restored the vanilla signature to this function in case external scripts are calling it
+function SetUnassignedPopulationRating (WorkshopScript workshopRef)
+	if UFO4P_IsWorkshopLoaded (workshopRef) == false
+		wsTrace(" SetUnassignedPopulationRating for workshop " + workshopRef + "; workshop is not loaded. Returning ...")
+		return
+	endif
+		
+	ObjectReference[] WorkshopActors = GetWorkshopActors (workshopRef)
+
+	;UFO4P 2.0.4; storing the array length in a variable, so we don't have to recalculate it in every loop cycle:
+	int countActors = WorkshopActors.Length
+	int unassignedPopulation = 0
+	int i = 0
+	while i < countActors
+		WorkshopNPCScript theActor = WorkshopActors[i] as WorkShopNPCScript
+		;UFO4P 2.0.4 Bug #24261: Also disregard caravan actors: provisioners should count as jobs
+		if theActor && theActor.bIsWorker == false && CaravanActorAliases.Find (theActor) < 0
+			unassignedPopulation += 1
+		endif
+		i += 1
+	endWhile
+
+	wsTrace(" SetUnassignedPopulationRating for workshop " + workshopRef + "; unassigned population count = " + unassignedPopulation)
+	SetResourceData (WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, workshopRef, unassignedPopulation)
+endFunction
+
+
 ;-----------------------------------------------------------------------------------------------------------------------------------
 ;	UFO4P 2.0.4 Bug #24274:
 ;	Further modifications to this function would have made the code almost illegible, so the function has been rewritten.
@@ -2323,7 +2354,8 @@ endFunction
 ;UFO4P 2.0.4 Bug #24274: added WorkshopActors as a new argument:
 ;ResetWorkshop will now pass its own actor array in when it calls this function at the end, enabling it to complete this task even if the
 ;workshop has unloaded in the meantime. It also saves some time since the array doesn't need to be recreated.
-function SetUnassignedPopulationRating (WorkshopScript workshopRef, ObjectReference[] WorkshopActors = none)
+; WSFW - renamed to make this a new function instead of breaking the vanilla signature
+function SetUnassignedPopulationRating_Private(WorkshopScript workshopRef, ObjectReference[] WorkshopActors = none)
 
 	if WorkshopActors == none
 		;UFO4P 2.0.4 Bug #24274: Checking this only if no actor array has been passed in:
@@ -4751,7 +4783,8 @@ function ResetWorkshop(WorkshopScript workshopRef)
 		TryToAssignBeds (workshopRef)
 	endif
 	;UFO4P 2.0.4 Bug #24274: modified the following line to pass the actor array to SetUnassignedPopulationRating:
-	SetUnassignedPopulationRating (workshopRef, workshopActors)
+		; WSFW - Eliminated vanilla signature edit and made this a separate function
+	SetUnassignedPopulationRating_Private(workshopRef, workshopActors)
 
 	;Check whether workshop is still loaded, and if not, clear the bed arrays. Otherwise set UFO4P_ClearBedArrays to 'true'
 	;for UFO4P_ResetCurrentWorkshop to clear them if it resets the current workshop:
@@ -4913,7 +4946,6 @@ function ModifyResourceData(ActorValue pValue, WorkshopScript pWorkshopRef, floa
 	endif
 	
 	;wsTrace(" ModifyResourceData on " + pWorkshopRef + ": actor value " + pValue + ", newValue=" + newValue)
-
 	; NOTE: we don't want to actually call ModValue since ModValue changes the actor value "modifier" pool and SetValue changes the base value
 	;  so instead we always use SetValue
 	SetResourceData(pValue, pWorkshopRef, newValue)
@@ -4931,6 +4963,7 @@ function SetResourceData (ActorValue pValue, WorkshopScript pWorkshopRef, float 
 	if pValue == NONE
 		return
 	endif
+	
 	;wsTrace(" SetResourceData: " + pWorkshopRef + ": actor value " + pValue + ", new value " + newValue)
 	float oldBaseValue = pWorkshopRef.GetBaseValue(pValue)
 	float oldValue = pWorkshopRef.GetValue(pValue)

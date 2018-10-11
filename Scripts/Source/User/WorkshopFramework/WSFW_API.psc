@@ -380,8 +380,6 @@ EndFunction
 
 
 
-
-
 	; -----------------------------------
 	; -----------------------------------
 	; Do NOT Use - Functions below here are needed by this API script only

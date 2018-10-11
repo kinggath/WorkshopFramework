@@ -15,6 +15,7 @@ Scriptname WorkshopFramework:MainQuest extends WorkshopFramework:Library:MasterQ
 
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
+import WorkshopFramework:WorkshopFunctions
 
 CustomEvent PlayerEnteredSettlement
 CustomEvent PlayerExitedSettlement
@@ -46,6 +47,10 @@ Group Keywords
 	Keyword Property LocationTypeSettlement Auto Const
 EndGroup
 
+Group Messages
+	; 1.0.4 - Adding new message to explain why ClaimSettlement isn't working 
+	Message Property CannotFindSettlement Auto Const
+EndGroup
 
 ; ---------------------------------------------
 ; Properties
@@ -72,7 +77,8 @@ Event OnTimer(Int aiTimerID)
 			Var[] kArgs
 			
 			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
-			if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+			; 1.0.4 - Added sanity check
+			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 			endif
@@ -211,4 +217,24 @@ Function HandleLocationChange(Location akNewLoc)
 		LatestLocation.ForceLocationTo(akNewLoc)
 		StartTimer(1.0, LocationChangeTimerID)	
 	endif	
+EndFunction
+
+
+; 1.0.4 - Adding method for players to claim a settlement, this will help players recover after the bug from 1.0.3 that could cause happiness to tank
+Function ClaimSettlement(WorkshopScript akWorkshopRef = None)
+	if( ! akWorkshopRef)
+		akWorkshopRef = GetNearestWorkshop(PlayerRef)
+	endif
+	
+	if(akWorkshopRef)
+		akWorkshopRef.SetOwnedByPlayer(true)
+	else
+		CannotFindSettlement.Show()
+	endif
+EndFunction
+
+
+; MCM Can't send None, so we're adding a wrapper
+Function MCM_ClaimSettlement()
+	ClaimSettlement(None)
 EndFunction

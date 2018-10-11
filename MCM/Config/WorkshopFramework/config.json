@@ -43,6 +43,16 @@
 		  }	  
 		},
 		{ 
+		  "id": "AllowSettlementsToLeave:Options",
+		  "text": "Allow Settlements To Leave",
+		  "type": "switcher",
+		  "help": "[Default: ON] If Happiness falls to 0, you will lose control of the settlement until completing a new radiant quest (radiant quests given randomly by Preston or other settlers).",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|4CF3"
+		  }	  
+		},
+		{ 
 		  "id": "LinkedSettlementConsumption:Options",
 		  "text": "Linked Settlement Consumption",
 		  "type": "switcher",
@@ -146,6 +156,26 @@
 		  }	  
 		}
 	]
-  }	
+	},
+	{                   
+		"pageDisplayName": "Tools",   
+		"content": [
+		 {
+			"text": "<p>Running these tools will not give any confirmation until you exit MCM.</p><br>",
+			"type": "text",
+			"html": true
+		 },
+		 {
+			"text": "Claim This Settlement",
+			"type": "button",
+			"help": "After exiting MCM, you will gain control of the settlement you are in, so you can begin building in it.",
+			"action": {
+				"type": "CallFunction",
+				"form": "WorkshopFramework.esm|F99", 
+				"function": "MCM_ClaimSettlement"
+			}
+		 }
+		]
+	}	
   ]
 }
