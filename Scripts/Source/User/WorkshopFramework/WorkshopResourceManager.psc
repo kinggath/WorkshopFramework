@@ -482,6 +482,16 @@ Function HandleInstallModChanges()
 		endWhile
 	endif
 	
+	; 1.0.4b - Cleaning up Workshops array, may have been a bug that caused settlements to be added multiple times
+	if(iInstalledVersion < 7)
+		if(WorkshopParent.Workshops.Length < Workshops.Length)
+			Workshops = new WorkshopScript[0]
+			WorkshopLocations = new Location[0]
+			
+			SetupAllWorkshopProperties()
+		endif
+	endif
+	
 	Parent.HandleInstallModChanges()
 EndFunction
 
@@ -512,8 +522,10 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	akWorkshopRef.FillWSFWVars()
 	
 	; Add workshop and location to our copy of the arrays
-	Workshops.Add(akWorkshopRef)
-	WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
+	if(Workshops.Find(akWorkshopRef) < 0) ; 1.0.5 - ensure this doesn't get added twice
+		Workshops.Add(akWorkshopRef)
+		WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
+	endif
 	
 	akWorkshopRef.bPropertiesConfigured = true
 EndFunction
