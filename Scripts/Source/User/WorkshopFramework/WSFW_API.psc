@@ -18,7 +18,7 @@ import WorkshopFramework:Library:UtilityFunctions
 
 
 ; ------------------------------
-; CreateSettlementObject_Threaded 
+; CreateSettlementObject
 ;
 ; Description: Creates a settlement object as if the player built it in workshop mode, and returns the reference, or None if it failed.
 ;
@@ -42,49 +42,6 @@ ObjectReference Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScr
 	endif
 	
 	return API.PlaceObjectManager.CreateObjectImmediately(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled)
-EndFunction
-
-
-
-; ------------------------------
-; CreateSettlementObject_Threaded 
-;
-; Description: Faster version of CreateSettlementObject. Creates a settlement object as if the player built it in workshop mode, and returns the CallbackID integer you should watch for if you included akRegisterMeForEvent and need to know about the reference.
-;
-; Prepare to receive CustomEvent WorkshopFramework:Library:ThreadRunner.OnThreadCompleted (which your akRegisterMeForEvent will be automatically registered for if you sent it). 
-; 
-; When receiving the event you should confirm that kArgs[0] == the CallbackID you received from this call and kArgs[1] will equal the ObjectReference to your created item.
-; 
-;
-; Parameters:
-; PlaceMe - Your objects should be in an array of structs per the WorldObject definition found in Library:DataStructures.
-;
-; akWorkshopRef [Optional] - The objectreference of the settlement workbench cast as WorkshopScript. If this is not sent, the object will not be linked to the workshop. The Link is what allows several gameplay elements: Player Scrapping, Crafting Stations to share resources, Assignable objects to be assignable, and more.
-; 
-; akPositionRelativeTo [Optional] - It the positions in your PlaceMe data are offsets from a specific reference, send that reference (note that this increases the processing time by about 40%, so sending world coordinates is definitely preferred)
-;
-; abStartEnabled [Optional] - If you would like to handle enabling the objects yourself, set this to false
-; 
-; akRegisterMeForEvent [Optional] - The object or quest you would like to receive the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated events. If you don't need to track the items, leave this field as None.
-; ------------------------------
-
-Int Function CreateSettlementObject_Threaded(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
-	WorkshopFramework:WSFW_APIQuest API = GetAPI()
-	
-	if( ! API)
-		Debug.Trace("[WSFW] Failed to get API.")
-		return -1
-	endif
-	
-	Bool bRequestEvents = false
-	if(akRegisterMeForEvent)
-		akRegisterMeForEvent.RegisterForCustomEvent(API.PlaceObjectManager, "ObjectBatchCreated")
-		bRequestEvents = true
-	endif
-	
-	int iBatchID = API.PlaceObjectManager.CreateObject(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled, bRequestEvents)
-	
-	return iBatchID
 EndFunction
 
 
@@ -328,14 +285,14 @@ EndFunction
 
 
 ; ------------------------------
-; CreateBatchSettlementObjects
+; CreateSimpleBatchSettlementObjects
 ;
 ; Description: Creates a batch of settlement objects through the thread manager and returns the batch ID to expect via custom event. This will be much faster than creating indivdual objects, but requires planning for batch-based event handling.
 ;
-; Prepare to receive CustomEvent WorkshopFramework:PlaceObjectManager.ObjectBatchCreated (which your akRegisterMeForEvent will be automatically registered for if you sent it). Object refs will be sent via that event in batches. The Var contents will be as follows:
-;    kArgs[0] = ActorValue items are tagged with, kArgs[1] = Value of tagged ActorValue, kArgs[2] = Whether or not to expect additional items in this batch, kArgs[3 through 127] = ObjectReferences of your created objects.
+; Prepare to receive CustomEvent WorkshopFramework:PlaceObjectManager.SimpleObjectBatchCreated (which your akRegisterMeForEvent will be automatically registered for if you sent it). Object refs will be sent via that event in batches. The Var contents will be as follows:
+;   Int kArgs[0] = iBatchID, Bool kArgs[1] = Whether or not to expect additional events, kArgs[1 through 127] = ObjectReferences of your created objects.
 ; 
-; When receiving the event you should confirm that kArgs[0] == GetDefaultPlaceObjectsBatchAV() (from this API) and kArgs[1] == the batch Id return value you received from this function.
+; When receiving the event you should confirm that kArgs[0] as Int == the batch Id return value you received from this function.
 ; 
 ;
 ; Parameters:
@@ -345,7 +302,65 @@ EndFunction
 ;
 ; abStartEnabled [Optional] - If you would like to handle enabling the objects yourself, set this to false
 ; 
-; akRegisterMeForEvent [Optional] - The object or quest you would like to receive the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated events. If you don't need to track the items, leave this field as None.
+; akRegisterMeForEvent [Optional] - The object or quest you would like to receive the WorkshopFramework:PlaceObjectManager.SimpleObjectBatchCreated events. If you don't need to track the items, leave this field as None.
+; ------------------------------
+
+Int Function CreateSimpleBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return -1
+	endif
+	
+	Bool bRequestEvents = false
+	if(akRegisterMeForEvent)
+		Debug.Trace("[WSFW] Registering for SimpleObjectBatchCreated events.")
+		akRegisterMeForEvent.RegisterForCustomEvent(API.PlaceObjectManager, "SimpleObjectBatchCreated")
+		bRequestEvents = true
+	endif
+	
+	int iBatchID = API.PlaceObjectManager.CreateBatchObjectsV2(PlaceMe, akWorkshopRef, akPositionRelativeTo, abStartEnabled, bRequestEvents)
+	
+	return iBatchID
+EndFunction
+
+
+
+
+	; -----------------------------------
+	; -----------------------------------
+	; OBSOLETE - Functions deemed obsolete will be moved down here and will be set to call their replacements if possible. These will always be left functional, but you should not use them any longer if you're starting fresh with the API.
+	; -----------------------------------
+	; -----------------------------------
+	
+; ------------------------------
+; CreateSettlementObject_Threaded 
+; 1.0.5 - Obsolete - This function wasn't actually sending the documented events, and the event it will send doesn't make sense for a single item.
+; ------------------------------
+
+Int Function CreateSettlementObject_Threaded(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return -1
+	endif
+	
+		Bool bRequestEvents = false
+	if(akRegisterMeForEvent)
+		akRegisterMeForEvent.RegisterForCustomEvent(API.PlaceObjectManager, "ObjectBatchCreated")
+		bRequestEvents = true
+	endif
+	
+	int iBatchID = API.PlaceObjectManager.CreateObject(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled, bRequestEvents)
+	
+	return iBatchID
+EndFunction
+
+; ------------------------------
+; CreateBatchSettlementObjects
+; 1.0.5 OBSOLETE - Use CreateSimpleBatchSettlementObjects instead
 ; ------------------------------
 
 Int Function CreateBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Form akRegisterMeForEvent = None) global
@@ -377,7 +392,6 @@ EndFunction
 ActorValue Function GetDefaultPlaceObjectsBatchAV() global
 	return Game.GetFormFromFile(0x00004CA2, "WorkshopFramework.esm") as ActorValue
 EndFunction
-
 
 
 	; -----------------------------------

@@ -36,6 +36,11 @@ Int Property GENERICLOCK_KEY_NONE = 0 AutoReadOnly Hidden
 Int INTERNAL_GENERICLOCK_KEY_FIRST = 1024 Const
 Int INTERNAL_GENERICLOCK_KEY_LAST = 2047 Const
 
+Int DEFAULT_MAX_LOCK_WAIT_COUNT = 100 Const ; 1.0.5 - Allowing quests to self unlock to avoid cases where script termination locks out a thread from ever completing. Setting this quite high to start until we get a feel for what an effective number will be for most quests. 
+
+Float fMinLockWaitTime = 0.1 Const
+Int iMaxLockTimeRandomizer = 40 Const ; 1.0.5 - Given our formula, this will result in somewhere between 0.01 and 0.40 being added to fMinLockWaitTime
+
 
 ; -----------------------------------------
 ; Vars
@@ -83,14 +88,29 @@ Int Function GetLock( Int aiKey = 0, Bool abWaitForLock = True )
     EndIf
     
     ; Wait for lock to be unlocked
-    While( IsLockHeld )
+	int iWaitCount = 0 ; 1.0.5 - It's been determined that the game engine can terminate scripts, which means there's a chance for a lock to be held indefinitely. To prevent this, we're introducing an auto-unlock feature
+	
+	Float fWaitTime = fMinLockWaitTime + Utility.RandomInt(1, iMaxLockTimeRandomizer) as Float/100.0 ; 1.0.5 - setting each call to use a different time so we can spread some out when a burst of requests hits. The wait time based on these settings will be a random amount of time between 0.1 and 0.5 seconds
+   
+   While( IsLockHeld )
         
         If( ! abWaitForLock )
             ; On second thought, don't wait, just return it's already locked
             Return GENERICLOCK_KEY_INVALID
         EndIf
         
-        Utility.Wait( 0.1 )
+		; 1.0.5 - Ensure things can continue to run while in the pipboy or other menu screens
+        Utility.WaitMenuMode( fWaitTime )
+		iWaitCount += 1
+		
+		; 1.0.5 - Auto-unlock after a certain amount of time
+		int iMaxLockWaitCount = GetMaxLockWaitCount()
+		if(iWaitCount > iMaxLockWaitCount)
+			ForceClearLock()
+			
+			; Let's log when this happens so we can start to get a picture of what an effective MAX_LOCK_WAIT_COUNT is for each function
+			Debug.Trace("[WSFW] Max GetLock wait count " + iMaxLockWaitCount + " reached. ForceClearLock called on quest: " + Self)
+		endif
     EndWhile
     
     ; Lock it with the new key
@@ -138,7 +158,7 @@ EndFunction
 
 
 Function ForceClearLock()
-	; This should really only be used in an emergency situation - for example, after terminating scripts with the Save Editor and needing to restore the lock system to functioning again
+	; 1.0.5 - We're now using this as a means of preventing locks from becoming permanently stuck	
 	EXTERNAL_GenericLock_ReleaseLock()
     iGenericLock_LockCount = 0
     iGenericLock_CurrentKey = GENERICLOCK_KEY_NONE	
@@ -202,4 +222,10 @@ EndFunction
 
 Function EXTERNAL_GenericLock_ReleaseLock()
     ; STUB:  Override this with any additional changes
+EndFunction
+
+
+Int Function GetMaxLockWaitCount()
+	; Override to alter the count your quest should wait
+	return DEFAULT_MAX_LOCK_WAIT_COUNT
 EndFunction

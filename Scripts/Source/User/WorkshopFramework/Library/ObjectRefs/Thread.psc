@@ -37,7 +37,9 @@ String Property sCustomCallbackID = "" Auto Hidden
 
 Event OnTimer(Int aiTimerID)
 	if(aiTimerID == SelfDestructTimerID)
-		SelfDestruct()
+		if(bAutoDestroy) ; 1.0.5 - without this, we can't have the threads turn off their own self destruct to delay for events
+			SelfDestruct()
+		endif
 	endif
 EndEvent
 

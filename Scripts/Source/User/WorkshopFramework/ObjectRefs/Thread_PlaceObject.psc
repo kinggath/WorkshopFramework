@@ -70,13 +70,15 @@ Float Property fAngleX = 0.0 Auto Hidden
 Float Property fAngleY = 0.0 Auto Hidden 
 Float Property fAngleZ = 0.0 Auto Hidden 
 Float Property fScale = 0.0 Auto Hidden
+Bool Property bFadeIn = false Auto Hidden ; 1.0.5 - Adding option to allow fading these items in instead of popping them in
 Bool Property bStartEnabled = true Auto Hidden
-Bool Property bForceStatic = true Auto Hidden
-Bool Property bFauxPowered = true Auto Hidden
+Bool Property bForceStatic = false Auto Hidden ; 1.0.5 - Default to false
+Bool Property bFauxPowered = false Auto Hidden ; 1.0.5 - Default to false
+Bool Property bSelfDestructThreadAfterOnLoad = true Auto Hidden ; 1.0.5 - Added option to prevent the self destruct
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
-
+Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of threads
 ; -
 ; Events
 ; -
@@ -92,9 +94,12 @@ Event ObjectReference.OnLoad(ObjectReference akSenderRef)
 			akSenderRef.SetScale(fScale)
 		endif
 	endif
-	
+
 	UnregisterForAllEvents()
-	SelfDestruct()
+	
+	if(bSelfDestructThreadAfterOnLoad) ; Added means of disabling this self-destruction
+		SelfDestruct()
+	endif
 EndEvent
 
 ; - 
@@ -190,7 +195,15 @@ Function RunCode()
 		kTempPositionHelper.SetPosition(fPosX, fPosY, fPosZ)
 		
 		; Place Object at temp object
-		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = (! bStartEnabled), abDeleteWhenAble = false)
+			; 1.0.5 - Support for bFadeIn which will allow differentiating between items popping in or fading in
+		Bool bInitiallyDisabled = true
+		
+		if(bStartEnabled && bFadeIn)
+			bInitiallyDisabled = false
+		endif
+		
+		
+		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = bInitiallyDisabled, abDeleteWhenAble = false)
 				
 		if(kResult)
 			if(kResult as Actor)
@@ -219,6 +232,11 @@ Function RunCode()
 			
 			if(fScale != 1)
 				kResult.SetScale(fScale)
+			endif
+			
+			; 1.0.5 - Prior to this, the item was either faded in, or left for the calling script to enable, the bFadeIn adds the possibility of popping in the object from here. We do it at this particular point because the OnLoad event is registered and all 3d data is set which all go quicker while disabled
+			if(bStartEnabled && ! bFadeIn)
+				kResult.Enable(false)
 			endif
 			
 			if(kWorkshopRef)

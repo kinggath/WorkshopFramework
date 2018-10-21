@@ -249,6 +249,22 @@ Setting_AllowSettlementsToLeavePlayerControl.SetValue(1.0)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_32
+Function Fragment_Terminal_32(ObjectReference akTerminalRef)
+;BEGIN CODE
+Setting_ShelterMechanic.SetValue(0.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_33
+Function Fragment_Terminal_33(ObjectReference akTerminalRef)
+;BEGIN CODE
+Setting_ShelterMechanic.SetValue(1.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property Setting_AdjustMaxNPCsByCharisma Auto Const
@@ -262,3 +278,5 @@ GlobalVariable Property Setting_RobotsCountTowardsMaxPopulation Auto Const
 GlobalVariable Property Setting_RobotHappinessLevel Auto Const
 
 GlobalVariable Property Setting_AllowSettlementsToLeavePlayerControl Auto Const
+
+GlobalVariable Property Setting_ShelterMechanic Auto Const
