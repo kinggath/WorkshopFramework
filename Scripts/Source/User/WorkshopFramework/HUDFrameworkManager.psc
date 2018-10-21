@@ -117,7 +117,7 @@ EndFunction
 
 
 Bool Function RegisterWidget(ScriptObject akHandler, String asWidgetName, Float afPositionX, Float afPositionY, Bool abLoadNow = true, Bool abAutoLoad = true)
-	if( ! IsHUDFrameworkInstalled)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
 		return false
 	endif
 	
@@ -157,6 +157,10 @@ EndFunction
 
 
 Function UnregisterWidget(String asWidgetName)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	int index = RegisteredWidgets.Find(asWidgetName)
 	
 	if(index > -1)
@@ -171,6 +175,10 @@ EndFunction
 
 
 Bool Function IsWidgetLoaded(String asWidgetName)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return false
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Widget " + asWidgetName + " it is not registered yet.")
 		return false
@@ -184,6 +192,10 @@ EndFunction
 
 
 Function LoadWidget(String asWidgetName)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to load widget " + asWidgetName + ", it is not registered yet.")
 		return
@@ -197,6 +209,10 @@ EndFunction
 
 
 Function UnloadWidget(String asWidgetName)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to unload widget " + asWidgetName + ", it is not registered yet.")
 		return
@@ -210,6 +226,10 @@ EndFunction
 
 
 Function SetWidgetPosition(String asWidgetName, Float afX, Float afY, Bool abTemporary = false)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -226,6 +246,10 @@ EndFunction
 
 
 Function ModWidgetPosition(String asWidgetName, Float afDeltaX = 0.0, Float afDeltaY = 0.0, Bool abTemporary = False)	
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -242,6 +266,10 @@ EndFunction
 
 
 Float[] Function GetWidgetPosition(String asWidgetName)	
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return None
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return None
@@ -254,6 +282,10 @@ EndFunction
 
 
 Function SetWidgetScale(String asWidgetName, Float afScaleX, Float afScaleY, Bool abTemporary = false)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -269,7 +301,11 @@ Function SetWidgetScale(String asWidgetName, Float afScaleX, Float afScaleY, Boo
 EndFunction
 
 
-Function ModWidgetScale(String asWidgetName, Float afScaleX = 0.0, Float afScaleY = 0.0, Bool abTemporary = False)	
+Function ModWidgetScale(String asWidgetName, Float afScaleX = 0.0, Float afScaleY = 0.0, Bool abTemporary = False)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -297,6 +333,10 @@ EndFunction
 
 
 Function SetWidgetOpacity(String asWidgetName, Float afOpacity = 1.0, Bool abTemporary = False)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -312,6 +352,10 @@ EndFunction
 
 
 Float Function GetWidgetOpacity(String asWidgetName)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return -1.0
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return -1.0
@@ -328,6 +372,10 @@ EndFunction
 Function SendMessage(string asWidgetName, int aiCommand, float arg1 = 0.0, float arg2 = 0.0, \
     float arg3 = 0.0, float arg4 = 0.0, float arg5 = 0.0, float arg6 = 0.0)
 
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -351,6 +399,10 @@ Function SendCustomMessage(Message akMessageToSend, float arg1 = 0.0, float arg2
     float arg3 = 0.0, float arg4 = 0.0, float arg5 = 0.0, float arg6 = 0.0, float arg7 = 0.0, \
     float arg8 = 0.0, float arg9 = 0.0)
 		
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	Var[] Args = new Var[11]
 	Args[0] = akMessageToSend
 	Args[1] = arg1
@@ -370,6 +422,10 @@ EndFunction
 Function SendMessageString(string asWidgetName, string asCommand, string asBody, \
     bool abReplaceExisting = True, bool abDeferSend = False)
 	
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] Unable to send command to HUDFramework. Widget " + asWidgetName + " is not registered yet.")
 		return
@@ -387,6 +443,10 @@ EndFunction
 
 
 Function Eval(string asExpression)
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	Var[] Args = new Var[1]
 	Args[0] = asExpression
 	
@@ -423,6 +483,10 @@ EndFunction
 
 
 Function ShowHUDWidgetsInWorkshopMode()
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
 	Var[] Args = new Var[5]
 	Args[0] = "HUDFramework"
 	Args[1] = "SwitchToPA"

@@ -194,6 +194,9 @@ Group WSFW_Globals
 	
 	; 1.0.4 - Give players means to turn the happiness loss of control feature off
 	GlobalVariable Property WSFW_Setting_AllowSettlementsToLeavePlayerControl Auto Hidden
+	
+	; 1.0.5 - Give player means to disable shelter mechanic
+	GlobalVariable Property WSFW_Setting_ShelterMechanic Auto Hidden
 EndGroup
 
 Group WSFW_AVs
@@ -343,6 +346,7 @@ int iFormID_Setting_actorDeathHappinessModifier = 0x000091DC Const
 int iFormID_Setting_maxAttackStrength = 0x000091DE Const
 int iFormID_Setting_maxDefenseStrength = 0x000091E0 Const
 int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A98D Const ; 1.0.4 - Fixed typo in form ID
+int iFormID_Setting_ShelterMechanic = 0x00006B5D ; 1.0.5
 int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
 int iFormID_Setting_AllowSettlementsToLeavePlayerControl = 0x00004CF3 ; 1.0.4 - New setting
 int iFormID_AV_minProductivity = 0x00007338 Const
@@ -1504,6 +1508,9 @@ endFunction
 
 
 Event OnInit()
+	; WSFW - 1.0.5 - Imperative that all vars are loaded. This will slow down the init, but will ensure we don't run into any None forms
+	WorkshopParent.FillWSFWVars()
+	
 	; WSFW - 1.0.3
 	FillWSFWVars() 
 	
@@ -2077,6 +2084,12 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	Float fProductivity = GetProductivityMultiplier(ratings)
 	Int iAvailableBeds = GetBaseValue(Beds) as int
 	Int iSheltedBeds = GetValue(Beds) as int
+	
+	; 1.0.5 - Added option to turn off the shelter mechanic as it's very buggy
+	if(WSFW_Setting_ShelterMechanic.GetValue() == 0.0)
+		iSheltedBeds = iAvailableBeds
+	endif
+	
 	Int iSafety = GetValue(Safety) as int
 	Int iSafetyDamage = GetValue(DamageSafety) as int
 
@@ -2726,7 +2739,6 @@ endFunction
 ; we don't normally want to do this when unloaded or everything will be 0
 ; TRUE = we did recalc; FALSE = we didn't
 bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
-	return true
 	;if bOnlyIfLocationLoaded == false || myLocation.IsLoaded()
 	
 	;UFO4P 2.0.4 Bug #24122: replaced the previous line with the following line:
@@ -2978,6 +2990,11 @@ Function FillWSFWVars()
 
 	if( ! WSFW_Setting_maxDefenseStrength)
 		WSFW_Setting_maxDefenseStrength = Game.GetFormFromFile(iFormID_Setting_maxDefenseStrength, sWSFW_Plugin) as GlobalVariable
+	endif
+	
+	; 1.0.5
+	if( ! WSFW_Setting_ShelterMechanic)
+		WSFW_Setting_ShelterMechanic = Game.GetFormFromFile(iFormID_Setting_ShelterMechanic, sWSFW_Plugin) as GlobalVariable
 	endif
 
 	if( ! WSFW_Setting_AdjustMaxNPCsByCharisma)

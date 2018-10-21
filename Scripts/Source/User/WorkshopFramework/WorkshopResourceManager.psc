@@ -24,6 +24,7 @@ import WorkshopFramework:WorkshopFunctions
 ; ---------------------------------------------
 int RecheckWithinSettlementTimerID = 100 Const
 int FixSettlerCountTimerID = 101 Const
+int iTimerID_DoubleCheckRemoteBuiltResources = 102 Const ; 1.0.5 - Switching remote resource management to a queue system
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -82,6 +83,7 @@ EndGroup
 Group Aliases
 	RefCollectionAlias Property LatestSettlementResources Auto Const Mandatory
 	ReferenceAlias Property LatestWorkshop Auto Const Mandatory
+	RefCollectionAlias Property RemoteBuiltResources Auto Const Mandatory
 EndGroup
 
 Group Assets
@@ -143,6 +145,7 @@ Group SettingsToCopyToWorkshops
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Mandatory
 	GlobalVariable Property WSFW_Setting_AllowSettlementsToLeavePlayerControl Auto Mandatory ; 1.0.4 - New Setting
 	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Mandatory
+	GlobalVariable Property WSFW_Setting_ShelterMechanic Auto Mandatory ; 1.0.5 - New Setting
 	
 	ActorValue Property WSFW_AV_minProductivity Auto Const Mandatory
 	ActorValue Property WSFW_AV_productivityHappinessMult Auto Const Mandatory
@@ -234,6 +237,7 @@ Location[] Property WorkshopLocations Auto Hidden
 ; ---------------------------------------------
 
 Bool bGatherRunningBlock = false
+Bool bHandleRemoteBuiltResourcesBlock = false
 
 
 ; ---------------------------------------------
@@ -268,6 +272,8 @@ Event OnTimer(Int aiTimerID)
 			
 			FixSettlerCount()
 		endif
+	elseif(aiTimerID == iTimerID_DoubleCheckRemoteBuiltResources)
+		HandleRemoteBuiltResources()
 	endif
 EndEvent
 
@@ -292,10 +298,15 @@ Event WorkshopParentScript.WorkshopObjectBuilt(WorkshopParentScript akSenderRef,
 		
 	if(kWorkshopRef == LatestWorkshop.GetRef() && kWorkshopRef.Is3dLoaded())
 		; No need to alter tracked resources as this was placed in the current settlement
-		TrackSettlementResource(kObjectRef, false)
+		 TrackSettlementResource(kObjectRef, false)
 	elseif( ! kWorkshopRef.Is3dLoaded() && kObjectRef.IsDisabled() == false)
+		; 1.0.5 - This is causing thread lock up when a large batch of items is built at once - such as via a Sim Settlements City Plan or Transfer Settlemetns import. Switching to a queue system.
 		; Applying resources remotely
-		ApplyObjectSettlementResources(kObjectRef, kWorkshopRef, false, true)
+		; ApplyObjectSettlementResources(kObjectRef, kWorkshopRef, false, true)
+		if(kObjectRef.GetValue(WorkshopResourceObject) > 0)
+			RemoteBuiltResources.AddRef(kObjectRef)
+			HandleRemoteBuiltResources()
+		endif
 	endif
 EndEvent
 
@@ -447,6 +458,20 @@ EndFunction
 ; ---------------------------------------------
 
 Function HandleInstallModChanges()
+	if(iInstalledVersion < 10) 
+		; 1.0.5 - Adding new ShelterMechanic option
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			
+			thisWorkshop.WSFW_Setting_ShelterMechanic = WSFW_Setting_ShelterMechanic
+			
+			i += 1
+		endWhile
+	endif
+	
 	if(iInstalledVersion < 4) 
 		; 1.0.3 - Fix for RobotHappinessLevel which was pointing to the wrong variable
 		int i = 0
@@ -658,13 +683,11 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 	endif
 	
 	Bool bContinue = true
-		
-	ObjectReference kHoldPosition = None
+	Bool bTemporarilyEnabled = false	
 	if(akObjectRef.IsDisabled())
 		if(abRemoved)
-			kHoldPosition = akObjectRef.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
-			akObjectRef.AddKeyword(TemporarilyMoved)
-			akObjectRef.SetPosition(0.0, 0.0, -10000.0)
+			bTemporarilyEnabled = true
+			; 1.0.5 - No need to move this object since we're only doing it if the workshop is unloaded
 			akObjectRef.Enable(false) ; Temporarily enable for checking resources
 		else
 			bContinue = false
@@ -704,10 +727,8 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 		endif
 	endif
 		
-	if(kHoldPosition)
+	if(bTemporarilyEnabled) ; 1.0.5 - No need to move the object since we're only doing this while the settlement is unloaded
 		akObjectRef.Disable(false)
-		akObjectRef.MoveTo(kHoldPosition)
-		akObjectRef.RemoveKeyword(TemporarilyMoved)
 	endif
 	
 	if(abGetLock)
@@ -883,4 +904,39 @@ Float Function GetWorkshopValue(ObjectReference akWorkshopRef, ActorValue aValue
 	endif
 	
 	return fValue
+EndFunction
+
+; 1.0.5 - Switching to a block function that acts as a queue instead of trying to use an edit lock on calls during an event. The event method works fine until the system is hit by a burst of requests at once, such as from a TS Import or SS City Plan
+Function HandleRemoteBuiltResources()
+	if(bHandleRemoteBuiltResourcesBlock)
+		return
+	endif
+	
+	bHandleRemoteBuiltResourcesBlock = true
+	
+	int i = RemoteBuiltResources.GetCount()
+	
+	while(i > 0)
+		ObjectReference kObjectRef = RemoteBuiltResources.GetAt(0)
+		
+		if(kObjectRef)
+			RemoteBuiltResources.RemoveRef(kObjectRef)
+			
+			WorkshopScript thisWorkshop = kObjectRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+			
+			if(thisWorkshop)
+				; Since we're now doing these in a queue instead of at the event level - we shouldn't need to worry about grabbing a lock - even if there is a race condition that occurs due to another mod trying to handle something similar (applying workshopRef resources remotely) - it will be resolved when the player next returns to the settlement - so the minimal risk is worth it.
+				ApplyObjectSettlementResources(kObjectRef, thisWorkshop, abRemoved = false, abGetLock = false)
+			endif
+		endif
+	
+		i -= 1
+	endWhile
+	
+	bHandleRemoteBuiltResourcesBlock = false
+	
+	if(RemoteBuiltResources.GetCount() > 0)
+		; Some more resources were added while we were running, just in case a follow-up event doesn't trigger this, we'll check again shortly
+		StartTimer(3.0, iTimerID_DoubleCheckRemoteBuiltResources)
+	endif
 EndFunction
