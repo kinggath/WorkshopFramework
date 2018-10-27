@@ -1012,9 +1012,10 @@ CustomEvent WorkshopActorAssignedToBed ; TODO: Implement this
 ; AssignmentRulesOverriden
 ;
 ; Event when an actor would normally be unassigned due to assignment rules, but was overridden because the item was found in the ExcludeFromAssignmentRules formlist
-; kArgs[0] = objectRef or None for Caravan
+; kArgs[0] = objectRef or WorkshopCaravanKeyword for Caravan ; WSFW 1.0.6 - Switched to sending a keyword for Caravan, since this is a Var type, it can take either - receiving event handler will need to prepare for both. Due to how early in the life of WSFW this is, it shouldn't be a problem - especially since at this phase, the public documentation doesn't even cover this system yet.
 ; kArgs[1] = workshopRef
 ; kArgs[2] = actorRef
+; kArgs[3] = lastAssignedRef
 CustomEvent AssignmentRulesOverriden
 
 ; ------------------------------------------------------
@@ -1053,16 +1054,23 @@ EndFunction
 
 ; WSFW - Internal use
 Function UnassignActor_Private_SkipExclusions(WorkshopNPCScript akActorRef, WorkshopScript akWorkshopRef)
-	wsTrace("	[WSFW] UnassignActor_Private_SkipExclusions: Unassigning " + akActorRef )
+	UnassignActor_Private_SkipExclusionsV2(akActorRef, akWorkshopRef, None) ; 1.0.6 - calling our new version
+EndFunction
+
+; WSFW - Internal use
+; WSFW 1.0.6 - Added a new argument (so versioning the function call), so we can ensure anything handling assignment rule exclusions has information on what was last assigned
+Function UnassignActor_Private_SkipExclusionsV2(WorkshopNPCScript akActorRef, WorkshopScript akWorkshopRef, Form aLastAssigned = None)
+	wsTrace("	[WSFW] UnassignActor_Private_SkipExclusionsV2: Unassigning " + akActorRef )
 	
 	; Check caravan
 	int caravanActorIndex = CaravanActorAliases.Find (akActorRef)
 	if(caravanActorIndex >= 0)
 		if(ExcludeProvisionersFromAssignmentRules)
 			Var[] kargs = new Var[0]
-			kargs.Add(None)
+			kargs.Add(WorkshopCaravanKeyword) ; WSFW 1.0.6 - Using vanilla keyword WorkshopCaravanKeyword as a proxy for caravan instead of None, so that receiving functions can definitively determine what this is
 			kargs.Add(akWorkshopRef)
 			kargs.Add(akActorRef)
+			kargs.Add(aLastAssigned) ; WSFW 1.0.6 - Sending the last assigned ref as well so the handler can decide whether to prioritize it when resolving the assignment rules
 			
 			SendCustomEvent("AssignmentRulesOverriden", kargs)
 		else
@@ -1111,6 +1119,7 @@ Function UnassignActor_Private_SkipExclusions(WorkshopNPCScript akActorRef, Work
 						kargs.Add(theObject)
 						kargs.Add(akWorkshopRef)
 						kargs.Add(akActorRef)
+						kargs.Add(aLastAssigned) ; WSFW 1.0.6 - From new argument, used to give handlers information they need to prioritize maintaining the assignment that likely triggered this unassignment override in the first place.
 						
 						SendCustomEvent("AssignmentRulesOverriden", kargs)
 						; WSFW 
@@ -2075,7 +2084,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 	kExcludedArgs.Add(assignedObject)
 	kExcludedArgs.Add(workshopRef)
 	kExcludedArgs.Add(assignedActor)
-	
+	kExcludedArgs.Add(assignedObject) ; WSFW 1.0.6 - Also sending last assigned ref so handling code can decide whether to prioritize it
 	WorkshopNPCScript previousOwner = assignedObject.GetAssignedActor()
 	bool bAlreadyAssigned = (previousOwner == assignedActor)
 
@@ -2121,6 +2130,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 							kBedExcludedArgs.Add(theBed)
 							kBedExcludedArgs.Add(workshopRef)
 							kBedExcludedArgs.Add(assignedActor)
+							kBedExcludedArgs.Add(assignedObject) ; WSFW 1.0.6 - Also sending last assigned ref so handling code can decide whether to prioritize it
 							SendCustomEvent("AssignmentRulesOverriden", kBedExcludedArgs)
 						else
 							theBed.AssignActor (none)
@@ -2216,8 +2226,7 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 			; scrapped or the NPC is killed.
 			/;
 			; UnassignActor_Private (assignedActor, bRemoveFromWorkshop = false, bSendUnassignEvent = !bAlreadyAssigned, bResetMode = bResetMode)
-			
-			UnassignActor_Private_SkipExclusions(assignedActor, workshopRef)
+			UnassignActor_Private_SkipExclusionsV2(assignedActor, workshopRef, assignedObject) ; WSFW 1.0.6 - Added new argument to send the last assigned object
 		endif
 
 		; unassign current owner, if any (and different from new owner)
@@ -2476,7 +2485,7 @@ function AssignCaravanActorPUBLIC(WorkshopNPCScript assignedActor, Location dest
 	; unassign this actor from any current job
 	;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes on that function for explanation)
 	; WSFW - Using Our Exclusion Check  UnassignActor_Private(assignedActor)
-	UnassignActor_Private_SkipExclusions(assignedActor, workshopStart)
+	UnassignActor_Private_SkipExclusionsV2(assignedActor, workshopStart, WorkshopCaravanKeyword) ; WSFW 1.0.6 - Sending WorkshopCaravanKeyword for AssignmentRulesOverriden event's sake
 
 	; is this actor already assigned to a caravan?
 	int caravanIndex = CaravanActorAliases.Find(assignedActor)
@@ -3550,6 +3559,7 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 							kargs.Add(workObject)
 							kargs.Add(workshopRef)
 							kargs.Add(owner)
+							kargs.Add(workObject) ; WSFW 1.0.6 - Also sending last assigned ref so handling code can decide whether to prioritize it
 							
 							SendCustomEvent("AssignmentRulesOverriden", kargs)
 						else

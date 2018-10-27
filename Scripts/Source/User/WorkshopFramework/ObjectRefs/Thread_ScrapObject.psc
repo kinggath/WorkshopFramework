@@ -28,6 +28,10 @@ Keyword Property PowerArmorKeyword Auto Const Mandatory
 Keyword Property WorkshopItemKeyword Auto Const Mandatory
 ActorBase Property CovenantTurret Auto Const Mandatory
 Keyword Property WorkshopStackedItemParentKEYWORD Auto Const Mandatory ; 1.0.2 - Clear links
+
+Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
+ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
+
 ; -
 ; Properties
 ; -
@@ -83,13 +87,35 @@ Function RunCode()
 			kScrapMe.SetLinkedRef(None, WorkshopItemKeyword)
 		endif
 		
-		; Disable
-		kScrapMe.Disable()
-		
-		; Delete
-		kScrapMe.Delete()
+		; 1.0.6 - Switching to safe scrapping method to avoid power grid corruption
+		SafeDelete(kScrapMe)
 		
 		bWasRemoved = true
+	endif
+EndFunction
+
+
+Function SafeDelete(ObjectReference akDeleteMe)
+	; TODO - Once F4SE adds scrap function, make use of it and skip these checks
+	Bool bSafeToDelete = true
+	if(akDeleteMe.HasKeyword(WorkshopPowerConnectionDUPLICATE000))
+		bSafeToDelete = false
+	else
+		if(akDeleteMe.IsDisabled())
+			akDeleteMe.Enable(false) ; Must be enabled to test AVs
+		endif
+		
+		if(akDeleteMe.GetValue(WorkshopSnapTransmitsPower) > 0)
+			bSafeToDelete = false
+		endif
+	endif
+	
+	; Disable
+	akDeleteMe.Disable(false)
+	
+	; Delete
+	if(bSafeToDelete)
+		akDeleteMe.Delete()
 	endif
 EndFunction
 

@@ -440,7 +440,7 @@ EndFunction
 
 
 Int Function ScrapObject(ObjectReference akScrapMe, Bool abCallbackEventNeeded = true)
-	; Send creation request to the thread manager
+	; Send deletion request to the thread manager
 	String sCustomCallbackID = sThreadID_ObjectRemoved
 	if( ! abCallbackEventNeeded)
 		sCustomCallbackID = ""

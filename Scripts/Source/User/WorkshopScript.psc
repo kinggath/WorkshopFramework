@@ -2787,7 +2787,6 @@ function UFO4P_ClearFactionOwnershipOnBeds()
 endFunction
 
 
-
 ; WSFW - Patch 1.0.3
 Function FillWSFWVars() 
 	bWSFWVarsFilled = true
