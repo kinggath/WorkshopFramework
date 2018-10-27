@@ -64,6 +64,8 @@ ObjectReference Property kControlledRef Auto Hidden
 Event OnInit()
 	UpdateVars()
 	
+	Parent.OnInit()
+	
 	; Add the keyword so the manager can pick us up
 	Self.AddKeyword(InvisibleWorkshopObjectKeyword)
 	
@@ -73,10 +75,14 @@ EndEvent
 
 Event OnWorkshopObjectDestroyed(ObjectReference akWorkshopRef)
 	Cleanup()
+	
+	Parent.OnWorkshopObjectDestroyed(akWorkshopRef)
 EndEvent
 
 Event OnWorkshopObjectMoved(ObjectReference akWorkshopRef)
 	UpdateDisplay()
+	
+	Parent.OnWorkshopObjectMoved(akWorkshopRef)
 EndEvent
 
 ; ---------------------------------------------

@@ -220,6 +220,9 @@ ActorValue function GetMultiResourceValue()
 		i += 1
 	endWhile
 	bMultiResourceInitialized = true
+	
+	; WSFW - 1.0.6 return the value after initialization in case the first call happens to be requesting the AV
+	return multiResourceValue
 endFunction
 
 ; returns true if this requires an actor assigned in order to produce/consume resources
