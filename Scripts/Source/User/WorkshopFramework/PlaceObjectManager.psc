@@ -217,6 +217,8 @@ Int Function CreateBatchObjectsV2(WorldObject[] PlaceMe, WorkshopScript akWorksh
 		WorldObject newObject = PlaceMe[index]
 		
 		if(akPositionRelativeTo)
+			newObject = CopyWorldObject(PlaceMe[index]) ; 1.0.7: Avoid overwriting the original record
+			
 			; Calculate new coords
 			Float[] fPosOffset = new Float[3]
 			Float[] fAngleOffset = new Float[3]

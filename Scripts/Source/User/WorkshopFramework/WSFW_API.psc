@@ -253,6 +253,115 @@ WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
 EndFunction
 
 
+; -----------------------------------
+; ShowMessage
+;
+; Version: Added 1.0.8 
+;
+; Description: Send messages through these to allow the player's setting to dictate whether or not they are displayed at the given moment. This allows the player to queue pop-ups and notifications for non-time sensitive things during combat, dialogue, etc. The player's settings will then determine if the queue is auto played, or if they have to access it manually via holotape (or some other interface)
+
+; Parameters:
+; Message aMessageToShow - The Message form.
+; 
+; Float afArg1 [... afArg9] - [Optional] Floats to be replaced in the message, this is the same as the vanilla Show function for Messages
+; 
+; ReferenceAlias aRefAlias - [Optional; Requires akObjectToAlias] If you are using text replacement, this would be the quest alias you need an object placed in. (You can read more about text replacement here: https://www.creationkit.com/fallout4/index.php?title=AddTextReplacementData_-_ObjectReference)
+;
+; ObjectReference akObjectToAlias - [Optional] The object reference to fill into aRefAlias
+;
+; LocationAlias aLocAlias - [Optional; Requires akLocationToAlias] If you are using text replacement, this would be the quest alias you need a location placed in. (You can read more about text replacement here: https://www.creationkit.com/fallout4/index.php?title=AddTextReplacementData_-_ObjectReference)
+;
+; Location akLocationToAlias - [Optional] The location to fill into aLocAlias 
+;
+; Bool abAutoClearAliases - If true, the filled aliases will be cleared after the message is sent. (Note: The aliases are filled immediately before sending the message based on the parameters sent - while the message is in queue, the aliases aren't touched)
+;
+; Returns: 
+; True if the message was sent immediately, false if the message was queued up
+; -----------------------------------
+	
+Bool Function ShowMessage(Message aMessageToShow, float afArg1 = 0.0, float afArg2 = 0.0, float afArg3 = 0.0, float afArg4 = 0.0, float afArg5 = 0.0, float afArg6 = 0.0, float afArg7 = 0.0, float afArg8 = 0.0, float afArg9 = 0.0, ReferenceAlias aRefAlias = None, ObjectReference akObjectToAlias = None, LocationAlias aLocAlias = None, Location akLocationToAlias = None, Bool abAutoClearAliases = true) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	if( ! API)
+		Debug.Trace("[WSFW] Failed to get API.")
+		return false
+	endif
+	
+	if(aRefAlias && akObjectToAlias && aLocAlias && akLocationToAlias)
+		LocationAndAliasMessage NewMessage = new LocationAndAliasMessage
+		
+		NewMessage.lamLocationAlias = aLocAlias
+		NewMessage.lamLocation = akLocationToAlias
+		NewMessage.lamAlias = aRefAlias
+		NewMessage.lamObjectRef = akObjectToAlias
+		NewMessage.lamMessage = aMessageToShow
+		NewMessage.bAutoClearAlias = abAutoClearAliases
+		NewMessage.fFloat01 = afArg1
+		NewMessage.fFloat02 = afArg2
+		NewMessage.fFloat03 = afArg3
+		NewMessage.fFloat04 = afArg4
+		NewMessage.fFloat05 = afArg5
+		NewMessage.fFloat06 = afArg6
+		NewMessage.fFloat07 = afArg7
+		NewMessage.fFloat08 = afArg8
+		NewMessage.fFloat09 = afArg9
+		
+		return API.MessageManager.ShowLocationAndAliasMessage(NewMessage)
+	elseif(aRefAlias && akObjectToAlias)
+		AliasMessage NewMessage = new AliasMessage
+		
+		NewMessage.amAlias = aRefAlias
+		NewMessage.amObjectRef = akObjectToAlias
+		NewMessage.amMessage = aMessageToShow
+		NewMessage.bAutoClearAlias = abAutoClearAliases
+		NewMessage.fFloat01 = afArg1
+		NewMessage.fFloat02 = afArg2
+		NewMessage.fFloat03 = afArg3
+		NewMessage.fFloat04 = afArg4
+		NewMessage.fFloat05 = afArg5
+		NewMessage.fFloat06 = afArg6
+		NewMessage.fFloat07 = afArg7
+		NewMessage.fFloat08 = afArg8
+		NewMessage.fFloat09 = afArg9
+		
+		return API.MessageManager.ShowAliasMessage(NewMessage)
+	elseif(aLocAlias && akLocationToAlias)
+		LocationMessage NewMessage = new LocationMessage
+		
+		NewMessage.lmLocationAlias = aLocAlias
+		NewMessage.lmLocation = akLocationToAlias
+		NewMessage.lmMessage = aMessageToShow
+		NewMessage.bAutoClearAlias = abAutoClearAliases
+		NewMessage.fFloat01 = afArg1
+		NewMessage.fFloat02 = afArg2
+		NewMessage.fFloat03 = afArg3
+		NewMessage.fFloat04 = afArg4
+		NewMessage.fFloat05 = afArg5
+		NewMessage.fFloat06 = afArg6
+		NewMessage.fFloat07 = afArg7
+		NewMessage.fFloat08 = afArg8
+		NewMessage.fFloat09 = afArg9
+		
+		return API.MessageManager.ShowLocationMessage(NewMessage)
+	else
+		BasicMessage NewMessage = new BasicMessage
+		
+		NewMessage.bmMessage = aMessageToShow
+		NewMessage.fFloat01 = afArg1
+		NewMessage.fFloat02 = afArg2
+		NewMessage.fFloat03 = afArg3
+		NewMessage.fFloat04 = afArg4
+		NewMessage.fFloat05 = afArg5
+		NewMessage.fFloat06 = afArg6
+		NewMessage.fFloat07 = afArg7
+		NewMessage.fFloat08 = afArg8
+		NewMessage.fFloat09 = afArg9
+		
+		return API.MessageManager.ShowBasicMessage(NewMessage)
+	endif
+EndFunction
+
+
 	; -----------------------------------
 	; -----------------------------------
 	; Third Party Integration Functions

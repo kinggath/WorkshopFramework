@@ -62,6 +62,7 @@ Bool Property bAwaitingOnLoadEvent = false Auto Hidden
 ObjectReference Property kPositionRelativeTo Auto Hidden
 WorkshopScript Property kWorkshopRef Auto Hidden
 ObjectReference Property kSpawnAt Auto Hidden
+ObjectReference Property kMoveToWorldspaceRef Auto Hidden ; 1.0.8 - If set, objects will be moved to this item post-rotation, pre-positioning so they are placed in the correct worldspace
 Form Property SpawnMe Auto Hidden
 Float Property fPosX = 0.0 Auto Hidden
 Float Property fPosY = 0.0 Auto Hidden
@@ -148,6 +149,7 @@ Function ReleaseObjectReferences()
 	kWorkshopRef = None
 	WorkshopRadioRef = None
 	kPositionRelativeTo = None
+	kMoveToWorldspaceRef = None
 EndFunction
 
 
@@ -192,6 +194,17 @@ Function RunCode()
 				
 		; Rotation can only occur in the loaded area, so handle that immediately
 		kTempPositionHelper.SetAngle(fAngleX, fAngleY, fAngleZ)
+		
+		
+		; 1.0.8 - Added kMoveToWorldspaceRef to ensure objects end up in the correct worldspace before the coordinates are set
+		if( ! kMoveToWorldspaceRef && kWorkshopRef)
+			kMoveToWorldspaceRef = kWorkshopRef
+		endif
+		
+		if(kMoveToWorldspaceRef)
+			kTempPositionHelper.MoveTo(kMoveToWorldspaceRef, abMatchRotation = false)
+		endif
+		
 		kTempPositionHelper.SetPosition(fPosX, fPosY, fPosZ)
 		
 		; Place Object at temp object

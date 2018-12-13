@@ -31,6 +31,10 @@ CustomEvent PlayerExitedSettlement
 
 Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const
+	WorkshopTutorialScript Property TutorialQuest Auto Const
+	{ 1.0.7 - Adding ability to control this quest }
+	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
+	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
 EndGroup
 
 Group Aliases
@@ -233,8 +237,52 @@ Function ClaimSettlement(WorkshopScript akWorkshopRef = None)
 	endif
 EndFunction
 
+; 1.0.7 - Adding option to toggle Workshop Tutorials
+Function DisableWorkshopTutorials()
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopObjectMoved")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopObjectDestroyed")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToWork")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopActorUnassigned")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopObjectDestructionStageChanged")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopObjectPowerStageChanged")
+	TutorialQuest.UnregisterForCustomEvent(WorkshopParent, "WorkshopEnterMenu")
+	
+	; Stop any existing help messages
+	int i = 0
+	while(i < TutorialQuest.TutorialSteps.Length)
+		if(TutorialQuest.TutorialSteps[i].HelpMessage)
+			TutorialQuest.TutorialSteps[i].HelpMessage.UnshowAsHelpMessage()
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+; 1.0.7 - Adding option to toggle Workshop Tutorials
+Function EnableWorkshopTutorials()
+	TutorialQuest.InitializeQuest()
+	
+	; Reset all of the tutorials
+	int i = 0
+	while(i < TutorialQuest.Tutorials.Length)
+		TutorialQuest.RollBackTutorial(TutorialQuest.Tutorials[i])
+		
+		i += 1
+	endWhile
+EndFunction
+
 
 ; MCM Can't send None, so we're adding a wrapper
 Function MCM_ClaimSettlement()
 	ClaimSettlement(None)
+EndFunction
+
+
+Function MCM_ToggleWorkshopTutorials()
+	if(Setting_WorkshopTutorialsEnabled.GetValue() == 1.0)
+		EnableWorkshopTutorials()
+	else
+		DisableWorkshopTutorials()
+	endif
 EndFunction

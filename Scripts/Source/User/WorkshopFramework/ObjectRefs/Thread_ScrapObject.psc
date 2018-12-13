@@ -87,6 +87,9 @@ Function RunCode()
 			kScrapMe.SetLinkedRef(None, WorkshopItemKeyword)
 		endif
 		
+		; 1.0.7 RemoveObjectPUBLIC will handle this for WorkshopObjectScript objects, but let's make sure it's cleared from general ownership - this may not be necessary - but we want to avoid persistence at all costs
+		kScrapMe.SetActorRefOwner(None)
+		
 		; 1.0.6 - Switching to safe scrapping method to avoid power grid corruption
 		SafeDelete(kScrapMe)
 		
@@ -98,10 +101,16 @@ EndFunction
 Function SafeDelete(ObjectReference akDeleteMe)
 	; TODO - Once F4SE adds scrap function, make use of it and skip these checks
 	Bool bSafeToDelete = true
+	; 1.0.8 - Take current statuses into account
+	Bool bIsDeleted = akDeleteMe.IsDeleted() 
+	Bool bIsDisabled = akDeleteMe.IsDisabled()
+	Bool bTemporarilyRelocated = false ; 1.0.8 - Tracking whether object is moved to hide the Enable from the player
 	if(akDeleteMe.HasKeyword(WorkshopPowerConnectionDUPLICATE000))
 		bSafeToDelete = false
-	else
+	elseif( ! bIsDeleted)
 		if(akDeleteMe.IsDisabled())
+			bTemporarilyRelocated = true
+			akDeleteMe.MoveTo(akDeleteMe, 0.0, 0.0, -10000.0) ; 1.0.8 - Hiding the enable/disable from the player
 			akDeleteMe.Enable(false) ; Must be enabled to test AVs
 		endif
 		
@@ -111,10 +120,16 @@ Function SafeDelete(ObjectReference akDeleteMe)
 	endif
 	
 	; Disable
-	akDeleteMe.Disable(false)
+	if( ! bIsDisabled)
+		akDeleteMe.Disable(false)
+	endif
+	
+	if(bTemporarilyRelocated)
+		akDeleteMe.MoveTo(akDeleteMe, 0.0, 0.0, 10000.0) ; 1.0.8 - Restore to original position
+	endif
 	
 	; Delete
-	if(bSafeToDelete)
+	if( ! bIsDeleted && bSafeToDelete)
 		akDeleteMe.Delete()
 	endif
 EndFunction
