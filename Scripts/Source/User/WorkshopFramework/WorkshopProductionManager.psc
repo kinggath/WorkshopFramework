@@ -47,6 +47,8 @@ Group Controllers
 	
 	GlobalVariable Property Setting_AllowLinkedWorkshopConsumption Auto Const Mandatory
 	GlobalVariable Property Setting_MaintainDeficits Auto Const Mandatory
+	GlobalVariable Property Setting_BasicConsumptionOnly Auto Const Mandatory
+	{ 1.0.7 - New option so that settlers only consume purified water and vanilla crops, so they leave specialty food and water alone }
 EndGroup
 
 
@@ -125,6 +127,8 @@ Group Assets
 	LeveledItem Property DefaultFertilizerProductionItem Auto Const Mandatory
 	Form Property Caps001 Auto Const Mandatory
 	Form Property DummyContainerForm Auto Const Mandatory
+	Form Property PurifiedWater Auto Const Mandatory
+	{ 1.0.7 - Supporting option to only consume purified water }
 EndGroup
 
 
@@ -141,6 +145,9 @@ Group Formlists
 	{ Point to active list used by injection manager }
 	FormList Property ScavengeList_Rare Auto Const Mandatory
 	{ Point to active list used by injection manager }
+	
+	FormList Property VanillaBuildableCropList Auto Const Mandatory
+	{ 1.0.7 - Supporting option to only consume basic crops }
 EndGroup
 
 
@@ -178,7 +185,7 @@ Group Keywords
 	Keyword Property ObjectTypeAlcohol Auto Const Mandatory
 	Keyword Property ObjectTypeChem Auto Const Mandatory
 	Keyword Property ObjectTypeDrink Auto Const Mandatory
-	Keyword Property ObjectTypeNukaCola Auto Const Mandatory
+	Keyword Property ObjectTypeNukaCola Auto Const Mandatory	
 	
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property WorkshopCaravanKeyword Auto Const Mandatory
@@ -284,7 +291,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 	int iRouteContainerIndex = RouteContainers.Find(akAddedTo) ; 1.0.4 - Renamed to iRouteContainerIndex for clarity
 	
 	if(iRouteContainerIndex < 0)
-		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container " + akAddedTo + " is temporary, storing production in temporary holding record.")
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container " + akAddedTo + " is temporary, storing production in temporary holding record.")
 		; Not a RouteContainer
 		UnRegisterForRemoteEvent(akAddedTo, "OnItemAdded")
 		
@@ -294,7 +301,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		; Likely one of our temporary containers
 		int iWorkshopTargetContainerIndex = akAddedTo.GetValue(WorkshopTargetContainerHolderValue) as Int
 		
-		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
 		if(iWorkshopTargetContainerIndex > 0)
 			WorkshopTargetContainer WorkshopTargetData = GetWorkshopTargetContainerRecord(iWorkshopTargetContainerIndex)
 			
@@ -310,7 +317,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 				
 				ProducedList.AddRef(kRecord)
 				
-				;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
+				ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Added to ProducedList: " + kRecord + ", kRecord.TemporaryContainer: " + kRecord.TemporaryContainer)
 			endif
 		else
 			; 1.0.4 - This should never happen - but seems to be occasionally for some players. Just going to log this for now so we can attempt to debug it in the future
@@ -319,66 +326,16 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			ModTrace("[WSFW] XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
 		endif
 	else
-		;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
+		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Target container is a routing container. Redirecting items to final destination.")
 		
 		WorkshopScript thisWorkshop = ResourceManager.Workshops[iRouteContainerIndex]
 		ObjectReference kContainer = None
 		
 		if(thisWorkshop)
-			Keyword TargetContainerKeyword = None
+			; 1.0.8 - Changing the auto-classification to a function we can use externally
+			kContainer = GetContainerForItem(thisWorkshop, akBaseItem)
 			
-			; Try and auto-classify
-			if(akBaseItem as Potion)
-				if(akBaseItem.HasKeyword(ObjectTypeAlcohol))
-					TargetContainerKeyword = AlcoholContainerKeyword
-				elseif(akBaseItem.HasKeyword(ObjectTypeNukaCola))
-					TargetContainerKeyword = NukaColaContainerKeyword
-				elseif(akBaseItem.HasKeyword(ObjectTypeWater))
-					TargetContainerKeyword = WaterContainerKeyword
-				elseif(akBaseItem.HasKeyword(ObjectTypeDrink))
-					TargetContainerKeyword = DrinkContainerKeyword
-				elseif(akBaseItem.HasKeyword(ObjectTypeFood))
-					TargetContainerKeyword = FoodContainerKeyword
-				elseif(akBaseItem.HasKeyword(ObjectTypeChem))
-					TargetContainerKeyword = ChemContainerKeyword
-				else
-					TargetContainerKeyword = AidContainerKeyword
-				endif
-			elseif(akBaseItem as Component)
-				TargetContainerKeyword = ComponentContainerKeyword
-			elseif(akBaseItem == Caps001)
-				TargetContainerKeyword = CapsContainerKeyword
-			elseif(akBaseItem as Holotape)
-				TargetContainerKeyword = HolotapeContainerKeyword
-			elseif(akBaseItem as Book)
-				TargetContainerKeyword = NoteContainerKeyword
-			elseif(FertilizerList.Find(akBaseItem) >= 0)
-				TargetContainerKeyword = FertilizerContainerKeyword
-			elseif(akBaseItem as Ammo)
-				TargetContainerKeyword = AmmoContainerKeyword
-			elseif(akBaseItem as Armor)
-				TargetContainerKeyword = ArmorContainerKeyword
-			elseif(akBaseItem as ObjectMod)
-				TargetContainerKeyword = ModContainerKeyword
-			elseif(akBaseItem as Weapon)
-				TargetContainerKeyword = WeaponContainerKeyword
-			elseif(akBaseItem as MiscObject)
-				if(ScavengeList_BuildingMaterials.Find(akBaseItem) >= 0)
-					TargetContainerKeyword = ScavengeBuildingMaterialsContainerKeyword
-				elseif(ScavengeList_General.Find(akBaseItem) >= 0)
-					TargetContainerKeyword = ScavengeGeneralScrapContainerKeyword
-				elseif(ScavengeList_Parts.Find(akBaseItem) >= 0)
-					TargetContainerKeyword = ScavengePartsContainerKeyword
-				elseif(ScavengeList_Rare.Find(akBaseItem) >= 0)
-					TargetContainerKeyword = ScavengeRareContainerKeyword
-				else
-					TargetContainerKeyword = MiscContainerKeyword
-				endif
-			endif
-			
-			kContainer = GetContainer(thisWorkshop, TargetContainerKeyword)
-			
-			;ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Final destination: " + kContainer)
+			ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: Final destination: " + kContainer)
 			if(kContainer)
 				akAddedTo.RemoveAllItems(kContainer)
 			endif
@@ -450,6 +407,65 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+; 1.0.8 - Making single line function for grabbing the container based on the base item 
+ObjectReference Function GetContainerForItem(WorkshopScript akWorkshopRef, Form akBaseItem)
+	return GetContainer(akWorkshopRef, GetContainerKeyword(akBaseItem))
+EndFunction
+
+; 1.0.8 - Switched this code to a function so we can call it externally
+Keyword Function GetContainerKeyword(Form akBaseItem)
+	; Try and auto-classify
+	if(akBaseItem as Potion)
+		if(akBaseItem.HasKeyword(ObjectTypeAlcohol))
+			return AlcoholContainerKeyword
+		elseif(akBaseItem.HasKeyword(ObjectTypeNukaCola))
+			return NukaColaContainerKeyword
+		elseif(akBaseItem.HasKeyword(ObjectTypeWater))
+			return WaterContainerKeyword
+		elseif(akBaseItem.HasKeyword(ObjectTypeDrink))
+			return DrinkContainerKeyword
+		elseif(akBaseItem.HasKeyword(ObjectTypeFood))
+			return FoodContainerKeyword
+		elseif(akBaseItem.HasKeyword(ObjectTypeChem))
+			return ChemContainerKeyword
+		else
+			return AidContainerKeyword
+		endif
+	elseif(akBaseItem as Component)
+		return ComponentContainerKeyword
+	elseif(akBaseItem == Caps001)
+		return CapsContainerKeyword
+	elseif(akBaseItem as Holotape)
+		return HolotapeContainerKeyword
+	elseif(akBaseItem as Book)
+		return NoteContainerKeyword
+	elseif(FertilizerList.Find(akBaseItem) >= 0)
+		return FertilizerContainerKeyword
+	elseif(akBaseItem as Ammo)
+		return AmmoContainerKeyword
+	elseif(akBaseItem as Armor)
+		return ArmorContainerKeyword
+	elseif(akBaseItem as ObjectMod)
+		return ModContainerKeyword
+	elseif(akBaseItem as Weapon)
+		return WeaponContainerKeyword
+	elseif(akBaseItem as MiscObject)
+		if(ScavengeList_BuildingMaterials.Find(akBaseItem) >= 0)
+			return ScavengeBuildingMaterialsContainerKeyword
+		elseif(ScavengeList_General.Find(akBaseItem) >= 0)
+			return ScavengeGeneralScrapContainerKeyword
+		elseif(ScavengeList_Parts.Find(akBaseItem) >= 0)
+			return ScavengePartsContainerKeyword
+		elseif(ScavengeList_Rare.Find(akBaseItem) >= 0)
+			return ScavengeRareContainerKeyword
+		else
+			return MiscContainerKeyword
+		endif
+	endif
+	
+	return None
+EndFunction
 
 ; 1.0.4 - Integrating mods that have changed the WorkshopFoodTypes array on WorkshopParent
 Function UpdateFoodTypesData()
@@ -852,13 +868,23 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 	ModTrace("[WSFW]            Water Needs: " + iRequiredWater)
 		; Handle actual consumption
 	if(iRequiredFood > 0)
-		; 1.0.4a - Changed from = to -=
-		iRequiredFood -= ConsumeFromWorkshop(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+		; 1.0.7 - Adding option to change consumption to only use easily produced crops
+		if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
+			iRequiredFood -= ConsumeFromWorkshopV2(VanillaBuildableCropList, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+		else
+			; 1.0.4a - Changed from = to -=
+			iRequiredFood -= ConsumeFromWorkshopV2(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+		endif
 	endif
 	
 	if(iRequiredWater > 0)
-		; 1.0.4a - Changed from = to -=
-		iRequiredWater -= ConsumeFromWorkshop(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+		; 1.0.7 - Adding option to change consumption to only use easily produced PurifiedWater
+		if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
+			iRequiredWater -= ConsumeFromWorkshopV2(PurifiedWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+		else
+			; 1.0.4a - Changed from = to -=
+			iRequiredWater -= ConsumeFromWorkshopV2(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+		endif
 	endif
 	
 	
@@ -868,7 +894,6 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 	akWorkshopRef.SetValue(MissingFood, iRequiredFood)
 	akWorkshopRef.SetValue(MissingWater, iRequiredWater)
 	
-	
 	; Next handle custom registered consumption
 	int i = 0
 	while(i < ConsumptionList.GetCount())
@@ -877,7 +902,7 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 		int iRequired = akWorkshopRef.GetValue(thisConsumeType.ResourceAV) as Int
 		
 		if(iRequired > 0)
-			iRequired -= ConsumeFromWorkshop(thisConsumeType.ConsumeForm, iRequired, akWorkshopRef, thisConsumeType.SearchContainerKeyword, thisConsumeType.bIsComponentFormList)
+			iRequired -= ConsumeFromWorkshopV2(thisConsumeType.ConsumeForm, iRequired, akWorkshopRef, thisConsumeType.SearchContainerKeyword, thisConsumeType.bIsComponentFormList)
 			
 			if(iRequired > 0) ; Still some missing
 				; During production - we'll only check those that we know have a missing resource
@@ -902,7 +927,14 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 EndFunction
 
 
+; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false, Bool abLinkedWorkshopConsumption = false)
+	ConsumeFromWorkshopV2(aConsumeMe, aiCount, akWorkshopRef, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption, abCheckOnly = false)
+EndFunction
+
+
+; 1.0.8 - Adding ability to test if there is enough from this settlement without actually consuming
+Int Function ConsumeFromWorkshopV2(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false, Bool abLinkedWorkshopConsumption = false, Bool abCheckOnly = false)
 	if( ! akWorkshopRef || aiCount <= 0 || ! aConsumeMe)
 		return 0
 	endif
@@ -918,7 +950,7 @@ Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript ak
 		if(kContainers.Length > 0)
 			int i = 0
 			while(i < kContainers.Length && iRemainingToConsume > 0)
-				iRemainingToConsume -= ConsumeResource(kContainers[i], aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+				iRemainingToConsume -= ConsumeResourceV2(kContainers[i], aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
 				
 				i += 1
 			endWhile
@@ -930,7 +962,7 @@ Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript ak
 		ObjectReference workshopContainer = akWorkshopRef.GetContainer()
 		
 		if(kContainers.Find(workshopContainer) < 0)
-			iRemainingToConsume -= ConsumeResource(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList)
+			iRemainingToConsume -= ConsumeResourceV2(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
 		endif
 		
 		if(iRemainingToConsume > 0 && ! abLinkedWorkshopConsumption)
@@ -948,7 +980,7 @@ Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript ak
 						WorkshopScript thisWorkshop = ResourceManager.Workshops[iLinkedWorkshopID]
 						
 						if(thisWorkshop.bAllowLinkedConsumption)
-							iRemainingToConsume -= ConsumeFromWorkshop(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption = true) ; Send true to prevent an infinite loop
+							iRemainingToConsume -= ConsumeFromWorkshopV2(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList, true, abCheckOnly) ; Send true to second to last arg to prevent an infinite loop
 						endif
 					endif
 					
@@ -989,11 +1021,21 @@ Function ProcessSurplusResources()
 			if(kRecord.iWorkshopID == iWorkshopID)
 				; Can we fix any issues with food or water
 				if(iFoodMissing > 0)
-					iFoodMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
+					; 1.0.7 - New option to only consume easy to acquire crops
+					if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
+						iFoodMissing = ConsumeResourceV2(kRecord.TemporaryContainer, VanillaBuildableCropList, iFoodMissing)
+					else
+						iFoodMissing = ConsumeResourceV2(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
+					endif
 				endif
 				
 				if(iWaterMissing > 0)
-					iWaterMissing = ConsumeResource(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
+					; 1.0.7 - New option to only consume purified water
+					if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
+						iWaterMissing = ConsumeResourceV2(kRecord.TemporaryContainer, PurifiedWater, iWaterMissing)
+					else
+						iWaterMissing = ConsumeResourceV2(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
+					endif
 				endif
 				
 				; Check if any of our missing consumption records are searching for produced items
@@ -1071,7 +1113,7 @@ Function UpdateMissingConsumptionList(ObjectReference akContainerRef)
 	while(i < MissingConsumptionList.GetCount())
 		WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing thisMissingRecord = MissingConsumptionList.GetAt(i) as WorkshopFramework:Library:ObjectRefs:ResourceTypeConsumptionMissing
 		
-		int iConsumedCount = ConsumeResource(akContainerRef, thisMissingRecord.ResourceTypeConsumptionRecord.ConsumeForm, thisMissingRecord.iMissing, thisMissingRecord.ResourceTypeConsumptionRecord.bIsComponentFormList)
+		int iConsumedCount = ConsumeResourceV2(akContainerRef, thisMissingRecord.ResourceTypeConsumptionRecord.ConsumeForm, thisMissingRecord.iMissing, thisMissingRecord.ResourceTypeConsumptionRecord.bIsComponentFormList)
 		
 		if(iConsumedCount > 0)
 			if(thisMissingRecord.iMissing == iConsumedCount)
@@ -1094,7 +1136,14 @@ Function UpdateMissingConsumptionList(ObjectReference akContainerRef)
 EndFunction
 
 
+; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeResource(ObjectReference akContainerRef, Form aConsumeMe, Int aiCount, Bool abComponentFormList = false)
+	ConsumeResourceV2(akContainerRef, aConsumeMe, aiCount, abComponentFormList, abCheckOnly = false)
+EndFunction
+
+
+; 1.0.8 - Adding ability to test only without actually consuming
+Int Function ConsumeResourceV2(ObjectReference akContainerRef, Form aConsumeMe, Int aiCount, Bool abComponentFormList = false, Bool abCheckOnly = false)
 	Int iContainerItemCount
 	Bool bComponents = false
 	if(abComponentFormList || aConsumeMe as Component)
@@ -1112,10 +1161,12 @@ Int Function ConsumeResource(ObjectReference akContainerRef, Form aConsumeMe, In
 			iConsumedCount = iContainerItemCount
 		endif
 		
-		if(bComponents)
-			akContainerRef.RemoveItemByComponent(aConsumeMe, iConsumedCount)
-		else
-			akContainerRef.RemoveItem(aConsumeMe, iConsumedCount)
+		if( ! abCheckOnly)
+			if(bComponents)
+				akContainerRef.RemoveItemByComponent(aConsumeMe, iConsumedCount)
+			else
+				akContainerRef.RemoveItem(aConsumeMe, iConsumedCount)
+			endif
 		endif
 	endif
 	
@@ -1686,7 +1737,7 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 			; Monitor for the OnItemAdded event and add the additem
 		RegisterForRemoteEvent(kTempContainer, "OnItemAdded")
 		
-		ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer)
+		ModTrace("[WSFW]                       Creating " + aiCount + " items in temp container: " + kTempContainer + " with holding container index: " + iWorkshopTargetContainerIndex)
 		kTempContainer.AddItem(aProduceMe, aiCount)
 	endif		
 	

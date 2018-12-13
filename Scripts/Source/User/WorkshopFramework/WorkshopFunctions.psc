@@ -33,6 +33,81 @@ Keyword Function GetWorkshopItemKeyword() global
 EndFunction
 
 
+Keyword[] Function GetTerminalKeywords() global
+	Keyword[] TerminalKeywords = new Keyword[0]
+	
+	; Putting these in order of most to least common so checks for these can short as quickly as possible
+	
+		; AnimFurnDeskTerminal
+	Keyword tempKeyword = Game.GetFormFromFile(0x000286E6, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+		
+		; AnimFurnDeskTerminalNoChair
+	tempKeyword = Game.GetFormFromFile(0x000FCB12, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+	
+		; AnimFurnWallTerminal
+	tempKeyword = Game.GetFormFromFile(0x000C2022, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+	
+		; AnimFurnDeskTerminalWithChair
+	tempKeyword = Game.GetFormFromFile(0x0010F78B, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif	
+	
+		; AnimFurnWallTerminalInst
+	tempKeyword = Game.GetFormFromFile(0x001E5DC6, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+	
+		; AnimFurnWallTerminalInstFloor
+	tempKeyword = Game.GetFormFromFile(0x001E5DC5, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+	
+		; AnimFurnPCUseTerminal
+	tempKeyword = Game.GetFormFromFile(0x000C01A6, "Fallout4.esm") as Keyword
+	if(tempKeyword)
+		TerminalKeywords.Add(tempKeyword)
+	endif
+	
+	return TerminalKeywords
+EndFunction
+
+; -----------------------------------
+; IsTerminal
+;
+; Description: Tests item for various keywords that identify it as a terminal.
+; -----------------------------------
+
+Bool Function IsTerminal(ObjectReference akTestRef) global
+	if( ! akTestRef)
+		return false
+	endif
+	
+	Keyword[] TerminalKeywords = GetTerminalKeywords()
+	
+	int i = 0
+	while(i < TerminalKeywords.Length)
+		if(akTestRef.HasKeyword(TerminalKeywords[i]))
+			return true
+		endif
+		
+		i += 1
+	endWhile
+	
+	return false
+EndFunction
+
 ; -----------------------------------
 ; GetNearestWorkshop
 ;

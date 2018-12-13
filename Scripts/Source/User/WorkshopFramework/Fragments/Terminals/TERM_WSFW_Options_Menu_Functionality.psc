@@ -265,6 +265,40 @@ Setting_ShelterMechanic.SetValue(1.0)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_34
+Function Fragment_Terminal_34(ObjectReference akTerminalRef)
+;BEGIN CODE
+Setting_BasicConsumptionOnly.SetValue(0.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_35
+Function Fragment_Terminal_35(ObjectReference akTerminalRef)
+;BEGIN CODE
+Setting_BasicConsumptionOnly.SetValue(1.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_36
+Function Fragment_Terminal_36(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_MainQuest.DisableWorkshopTutorials()
+Setting_WorkshopTutorialsEnabled.SetValue(0.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_37
+Function Fragment_Terminal_37(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_MainQuest.EnableWorkshopTutorials()
+Setting_WorkshopTutorialsEnabled.SetValue(1.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property Setting_AdjustMaxNPCsByCharisma Auto Const
@@ -280,3 +314,9 @@ GlobalVariable Property Setting_RobotHappinessLevel Auto Const
 GlobalVariable Property Setting_AllowSettlementsToLeavePlayerControl Auto Const
 
 GlobalVariable Property Setting_ShelterMechanic Auto Const
+
+GlobalVariable Property Setting_BasicConsumptionOnly Auto Const
+
+WorkshopFramework:MainQuest Property WSFW_MainQuest Auto Const
+
+GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const

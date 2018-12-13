@@ -19,12 +19,20 @@ import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:WorkshopFunctions
 
 
+CustomEvent ResourceShortageResolved
+CustomEvent ResourceShortageExpired
+
 ; ---------------------------------------------
 ; Consts
 ; ---------------------------------------------
 int RecheckWithinSettlementTimerID = 100 Const
 int FixSettlerCountTimerID = 101 Const
 int iTimerID_DoubleCheckRemoteBuiltResources = 102 Const ; 1.0.5 - Switching remote resource management to a queue system
+
+int iTimerID_CheckResourceShortages = 103 ; 1.0.8 - Adding new ResourceShortage system
+float fTimerLength_CheckResourceShortages = 1.0 ; 1.0.8 - Checking daily
+
+float fResourceShortageExpirationPeriod = 2.0 ; 1.0.8 - The amount of time before a ResourceShortage expires (in game days), this should be longer than the daily check in case the daily check hasn't completed within the expiration period
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -238,7 +246,7 @@ Location[] Property WorkshopLocations Auto Hidden
 
 Bool bGatherRunningBlock = false
 Bool bHandleRemoteBuiltResourcesBlock = false
-
+Bool bUpdateResourceShortagesBlock = false
 
 ; ---------------------------------------------
 ; Events 
@@ -274,6 +282,15 @@ Event OnTimer(Int aiTimerID)
 		endif
 	elseif(aiTimerID == iTimerID_DoubleCheckRemoteBuiltResources)
 		HandleRemoteBuiltResources()
+	endif
+EndEvent
+
+
+Event OnTimerGameTime(Int aiTimerID)
+	if(aiTimerID == iTimerID_CheckResourceShortages)
+		UpdateAllResourceShortages()
+		
+		StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)
 	endif
 EndEvent
 
@@ -458,6 +475,28 @@ EndFunction
 ; ---------------------------------------------
 
 Function HandleInstallModChanges()
+	SetupAllWorkshopProperties() ; 1.0.8 - Confirm any new properties are configured each patch
+	
+	if(iInstalledVersion < 12)
+		; 1.0.8 - Starting resource shortage loop
+		StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)
+	endif
+	
+	
+	if(iInstalledVersion < 11)
+		; 1.0.7 - WSFW_Setting_AdjustMaxNPCsByCharisma was pointing to the wrong variable for people who started on versions earlier than 1.0.4
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			
+			thisWorkshop.WSFW_Setting_AdjustMaxNPCsByCharisma = WSFW_Setting_AdjustMaxNPCsByCharisma
+			
+			i += 1
+		endWhile		
+	endif
+	
 	if(iInstalledVersion < 10) 
 		; 1.0.5 - Adding new ShelterMechanic option
 		int i = 0
@@ -939,4 +978,112 @@ Function HandleRemoteBuiltResources()
 		; Some more resources were added while we were running, just in case a follow-up event doesn't trigger this, we'll check again shortly
 		StartTimer(3.0, iTimerID_DoubleCheckRemoteBuiltResources)
 	endif
+EndFunction
+
+
+; 1.0.8 - Loop through cleaning up resource shortages for all settlements
+Function UpdateAllResourceShortages()
+	if(bUpdateResourceShortagesBlock)
+		return
+	endif
+	
+	bUpdateResourceShortagesBlock = true
+	
+	int i = 0
+	while(i < Workshops.Length)
+		UpdateResourceShortages(Workshops[i])
+		
+		i += 1
+	endWhile
+	
+	bUpdateResourceShortagesBlock = false
+EndFunction
+
+; 1.0.8 - Clean up the resource shortages data, clearing out expired or untrue shortages
+Function UpdateResourceShortages(WorkshopScript akWorkshopRef)
+	if( ! akWorkshopRef)
+		return
+	endif
+	
+	int i = 0
+	Int[] iClear = new Int[0]
+	Float fExpiredTime = Utility.GetCurrentGameTime() - fResourceShortageExpirationPeriod
+	
+	while(i < akWorkshopRef.ShortResources.Length)
+		if(akWorkshopRef.ShortResources[i].fTimeLastReported < fExpiredTime)
+			iClear.Add(i)
+			
+			Var[] kArgs = new Var[3]
+			kArgs[0] = akWorkshopRef
+			kArgs[1] = akWorkshopRef.ShortResources[i].ResourceAV
+			kArgs[2] = akWorkshopRef.ShortResources[i].fAmountRequired
+			SendCustomEvent("ResourceShortageExpired", kArgs)
+		elseif(GetWorkshopValue(akWorkshopRef, akWorkshopRef.ShortResources[i].ResourceAV) >= akWorkshopRef.ShortResources[i].fAmountRequired)
+			iClear.Add(i)
+			
+			Var[] kArgs = new Var[3]
+			kArgs[0] = akWorkshopRef
+			kArgs[1] = akWorkshopRef.ShortResources[i].ResourceAV
+			kArgs[2] = akWorkshopRef.ShortResources[i].fAmountRequired
+			SendCustomEvent("ResourceShortageResolved", kArgs)
+		endif
+		
+		i += 1
+	endWhile
+	
+	i = iClear.Length
+	while(i > 0)
+		if(akWorkshopRef.ShortResources.Length >= i)
+			if(akWorkshopRef.ShortResources.Length == 1)
+				akWorkshopRef.ShortResources = new ResourceShortage[0]
+			else
+				akWorkshopRef.ShortResources.Remove(i)
+			endif
+		endif
+		
+		i -= 1
+	endWhile
+EndFunction
+
+
+
+Bool Function RegisterResourceShortage(WorkshopScript akWorkshopRef, ActorValue aResourceAV, Float afTargetWorkshopValue)
+	if( ! akWorkshopRef || ! aResourceAV || afTargetWorkshopValue <= GetWorkshopValue(akWorkshopRef, aResourceAV))
+		return false
+	endif
+	
+	int i = 0
+	bool bShortageFound = false
+	bool bNewShortage = false
+	while(i < akWorkshopRef.ShortResources.Length && ! bShortageFound)
+		if(akWorkshopRef.ShortResources[i].ResourceAV == aResourceAV)
+			bShortageFound = true
+			
+			if(akWorkshopRef.ShortResources[i].fAmountRequired <= afTargetWorkshopValue) ; <= so we can update the time
+				bNewShortage = true
+				; We just want to store the largest amount reported as needed
+				akWorkshopRef.ShortResources[i].fAmountRequired = afTargetWorkshopValue
+				akWorkshopRef.ShortResources[i].fTimeLastReported = Utility.GetCurrentGameTime()
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	if( ! bShortageFound)
+		bNewShortage = true
+		; New entry needed
+		ResourceShortage newShortage = new ResourceShortage
+		newShortage.ResourceAV = aResourceAV
+		newShortage.fAmountRequired = afTargetWorkshopValue
+		newShortage.fTimeLastReported = Utility.GetCurrentGameTime()
+		
+		if( ! akWorkshopRef.ShortResources)
+			akWorkshopRef.ShortResources = new ResourceShortage[0]
+		endif
+		
+		akWorkshopRef.ShortResources.Add(newShortage)
+	endif
+	
+	return bNewShortage
 EndFunction

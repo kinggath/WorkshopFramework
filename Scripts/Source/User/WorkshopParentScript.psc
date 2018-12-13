@@ -5,6 +5,8 @@ import CommonArrayFunctions
 import WorkshopDataScript
 ; WSFW - 1.0.4: Getting ModTrace function imported to monitor for some specific issues
 import WorkshopFramework:Library:UtilityFunctions
+; WSFW - 1.0.8: Getting structures needed for MessageManager quest integration
+import WorkshopFramework:Library:DataStructures 
 
 Group WorkshopRatingsGroup
 	WorkshopRatingKeyword[] Property WorkshopRatings Auto Const
@@ -889,7 +891,8 @@ GlobalVariable Property WSFW_Setting_happinessModifierMin Auto Hidden
 FormList Property ExcludeFromAssignmentRules Auto Hidden
 { Items in this list won't be auto-unassigned when a settler is assigned to them. Instead an event will be fired so the mod involved can act on the information. }
 WorkshopFramework:NPCManager Property WSFW_NPCManager Auto Hidden
-
+Keyword Property WSFW_DoNotAutoassignKeyword Auto Hidden
+WorkshopFramework:MessageManager Property WSFW_MessageManager Auto Hidden
 
 String sWSFW_Plugin = "WorkshopFramework.esm" Const
 
@@ -911,11 +914,22 @@ int iFormID_WSFW_Setting_happinessModifierMax = 0x000092AC Const
 int iFormID_WSFW_Setting_happinessModifierMin = 0x000092AD Const
 int iFormID_ExcludeFromAssignmentRules = 0x000092A8 Const
 int iFormID_WSFW_NPCManager = 0x000091E2 Const
-
+int iFormID_WSFW_DoNotAutoassignKeyword = 0x000082A5 Const ; WSFW 1.0.8
+int iFormID_WSFW_MessageManager = 0x000092C5 Const ; WSFW 1.0.8
 
 Function FillWSFWVars()
 	if( ! WSFW_NPCManager)
 		WSFW_NPCManager = Game.GetFormFromFile(iFormID_WSFW_NPCManager, sWSFW_Plugin) as WorkshopFramework:NPCManager
+	endif
+	
+	; WSFW 1.0.8
+	if( ! WSFW_MessageManager)
+		WSFW_MessageManager = Game.GetFormFromFile(iFormID_WSFW_MessageManager, sWSFW_Plugin) as WorkshopFramework:MessageManager
+	endif
+	
+	; WSFW 1.0.8
+	if( ! WSFW_DoNotAutoassignKeyword)
+		WSFW_DoNotAutoassignKeyword = Game.GetFormFromFile(iFormID_WSFW_DoNotAutoassignKeyword, sWSFW_Plugin) as Keyword
 	endif
 	
 	if( ! WSFW_Setting_AutoAssignBeds)
@@ -3963,12 +3977,15 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 				while objectIndex < ResourceObjects.Length && actorAssigned == false
 					ObjectReference theObjectRef = ResourceObjects [objectIndex]
 					WorkshopObjectScript theObject = theObjectRef as WorkshopObjectScript
-					if theObject == none
+					if(theObject == none)
 						wsTrace("	TryToAssignResourceType: Resource object " + theObjectRef + " has no WorkshopObjectScript")
 						ResourceObjects.Remove (objectIndex)
-					elseif theObject.IsActorAssigned() || theObject.HasKeyword (WorkshopWorkObject) == false
+					elseif(theObject.IsActorAssigned() || theObject.HasKeyword (WorkshopWorkObject) == false)
 						;Object is already assigned or doesn't require an actor -> remove
 						ResourceObjects.Remove (objectIndex)
+					elseif(theObject.HasKeyword(WSFW_DoNotAutoassignKeyword)) 
+						; WSFW - 1.0.8 - Allowing mod authors to prevent their objects from being auto-assigned
+						ResourceObjects.Remove(objectIndex)
 					elseif theObject.GetBaseValue (resourceValue) > theObject.GetValue (resourceValue)
 						;Unassigned damaged objects: the array that was initially created per GetResourceObjects won't contain any damaged
 						;objects, but it is possible that an object gets damaged after it has been stored in an UFO4P object array.
@@ -5412,21 +5429,36 @@ endFunction
 
 ; utility function to display a message with text replacement from an object reference name
 function DisplayMessage(Message messageToDisplay, ObjectReference refToInsert = NONE, Location locationToInsert = NONE)
-	wsTrace("DisplayMessage " + refToInsert + ", " + locationToInsert)
-	; insert ref into message alias - TODO - add more params as needed
-	if refToInsert
-		MessageRefAlias.ForceRefTo(refToInsert)
+	; WSFW 1.0.8 - Sending messages through a centralized manager so we can queue them under certain circumstances
+	if(refToInsert && locationToInsert)
+		LocationAndAliasMessage NewMessage = new LocationAndAliasMessage
+		
+		NewMessage.lamLocationAlias = MessageLocationAlias
+		NewMessage.lamLocation = locationToInsert
+		NewMessage.lamAlias = MessageRefAlias
+		NewMessage.lamObjectRef = refToInsert
+		NewMessage.lamMessage = messageToDisplay
+		
+		WSFW_MessageManager.ShowLocationAndAliasMessage(NewMessage)
+	elseif(refToInsert)
+		AliasMessage NewMessage = new AliasMessage
+		
+		NewMessage.amAlias = MessageRefAlias
+		NewMessage.amObjectRef = refToInsert
+		NewMessage.amMessage = messageToDisplay
+		
+		WSFW_MessageManager.ShowAliasMessage(NewMessage)
+	elseif(locationToInsert)
+		LocationMessage NewMessage = new LocationMessage
+		
+		NewMessage.lmLocationAlias = MessageLocationAlias
+		NewMessage.lmLocation = locationToInsert
+		NewMessage.lmMessage = messageToDisplay
+		
+		WSFW_MessageManager.ShowLocationMessage(NewMessage)
+	else
+		WSFW_MessageManager.ShowMessage(messageToDisplay)
 	endif
-
-	if locationToInsert
-		MessageLocationAlias.ForceLocationTo(locationToInsert)
-	endif
-	; display message
-	messageToDisplay.Show()
-
-	; clear aliases
-	MessageRefAlias.Clear()
-	MessageLocationAlias.Clear()
 endFunction
 
 

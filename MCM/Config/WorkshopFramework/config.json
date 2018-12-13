@@ -53,6 +53,16 @@
 		  }	  
 		},
 		{ 
+		  "id": "ConsumeBasicResourcesOnly:Options",
+		  "text": "Consume Basic Resources Only",
+		  "type": "switcher",
+		  "help": "[Default: OFF] Each day, settlers consume food and water, they will consume any available types. If this is set to ON, they will only consume the basic produced resources from the vanilla game: Purified Water and crops such as Tatos, Corn, etc.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|7B0A"
+		  }	  
+		},
+		{ 
 		  "id": "LinkedSettlementConsumption:Options",
 		  "text": "Linked Settlement Consumption",
 		  "type": "switcher",
@@ -93,6 +103,16 @@
 			"step": 5,
 			"sourceType": "GlobalValue",
 			"sourceForm": "WorkshopFramework.esm|35D8"
+		  }	  
+		},
+		{ 
+		  "id": "ShelterMechanic:Options",
+		  "text": "Shelter Mechanic",
+		  "type": "switcher",
+		  "help": "[Default: ON] Shelter is a buggy mechanic in the base game that penalizes your happiness if the game can't detect roofs over the settler beds. It often fails to detect roofs correctly, so this option will bypass the issue and eliminate the penalty.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|6B5D"
 		  }	  
 		},
 		{
@@ -154,6 +174,65 @@
 			"sourceType": "GlobalValue",
 			"sourceForm": "WorkshopFramework.esm|92B7"
 		  }	  
+		},
+		{
+		  "text": "Message Options",
+		  "type": "section"
+		},
+		{ 
+		  "id": "AutoplayMessages:Options",
+		  "text": "Autoplay Messages",
+		  "type": "switcher",
+		  "help": "[Default: OFF] All messages using this system that were queued, will begin displaying as soon as conditions are clear.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92C6"
+		  }
+		},
+		{ 
+		  "id": "SuppressAllMessages:Options",
+		  "text": "Suppress All Messages",
+		  "type": "switcher",
+		  "help": "[Default: OFF] All messages using this system should wait for you to read them via holotape activation.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92C8"
+		  }
+		},
+		{ 
+		  "id": "SuppressMessagesDuringCombat:Options",
+		  "text": "Suppress Messages During Combat",
+		  "type": "switcher",
+		  "help": "[Default: OFF] Messages using this system, that are sent during combat, will be queued until you have finished the fight.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92C9"
+		  }
+		},
+		{ 
+		  "id": "SuppressMessagesDuringConversation:Options",
+		  "text": "Suppress Messages During Conversation",
+		  "type": "switcher",
+		  "help": "[Default: OFF] Messages using this system, that are sent during conversations, will be queued until you have finished.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|92CA"
+		  }
+		},
+		{ 
+		  "id": "WorkshopTutorialMessages:Options",
+		  "text": "Workshop Tutorial Messages",
+		  "type": "switcher",
+		  "help": "[Default: ON] Toggle the tutorial messages that tell you about how to use the Workshop system.",
+		  "valueOptions": {
+			"sourceType": "GlobalValue",
+			"sourceForm": "WorkshopFramework.esm|7B0B"
+		  },
+		  "action": {
+				"type": "CallFunction",
+				"form": "WorkshopFramework.esm|F99", 
+				"function": "MCM_ToggleWorkshopTutorials"
+			}
 		}
 	]
 	},

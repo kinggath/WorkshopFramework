@@ -26,6 +26,8 @@ Group Controllers
 	WorkshopFramework:WorkshopResourceManager Property WorkshopResourceManager Auto Const Mandatory
 	WorkshopFramework:WorkshopProductionManager Property WorkshopProductionManager Auto Const Mandatory
 	WorkshopFramework:NPCManager Property NPCManager Auto Const Mandatory
+	WorkshopFramework:MessageManager Property MessageManager Auto Const Mandatory
+	{ 1.0.8 }
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory
 EndGroup

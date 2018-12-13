@@ -51,6 +51,120 @@ EndFunction
 
 
 ; -----------------------------------
+; GetGameDate
+;
+; Version: Added 1.0.8
+; 
+; Description: returns an array of integers representing the in-game day/month/year
+;
+; Parameters:
+; 
+; fSpecificGameTime - [Optional] If != 0 this time will be used instead of the current in-game time. If you want to use the day the game starts - which would be 0.0 exactly, just use something like 0.01 which will still translate to the same date
+;
+; Returns:
+; Array of ints - Int[0] = Year, Int[1] = Month, Int[2] = Day
+; -----------------------------------
+
+Int[] Function GetGameDate(Float fSpecificGameTime = 0.0) global
+	if(fSpecificGameTime == 0.0)
+		fSpecificGameTime = Utility.GetCurrentGameTime()
+	endif
+	
+	; 0 = 10/22/2287
+	Int iPrepassedGameDaysInYearOne = 294
+	Int iYearOne = 2287
+	Int iMonthOne = 10
+	Int iDayOne = 21 
+	
+	Int[] iDaysPerMonth = new Int[12]
+	iDaysPerMonth[0] = 31 ;Jan
+	iDaysPerMonth[1] = 28 ;Feb
+	iDaysPerMonth[2] = 31 ;Mar
+	iDaysPerMonth[3] = 30 ;Apr
+	iDaysPerMonth[4] = 31 ;May
+	iDaysPerMonth[5] = 30 ;Jun
+	iDaysPerMonth[6] = 31 ;Jul
+	iDaysPerMonth[7] = 31 ;Aug
+	iDaysPerMonth[8] = 30 ;Sep
+	iDaysPerMonth[9] = 31 ;Oct
+	iDaysPerMonth[10] = 30 ;Nov
+	iDaysPerMonth[11] = 31 ;Dec
+	
+	
+	Int iThisYear = iYearOne
+	Int iThisMonth = iMonthOne
+	Int iThisDay = iDayOne
+	
+	; Since we're just getting the date and the time is accessible via the GameHour global, we'll ceil the value
+	Int iDaysSinceStart = Math.Ceiling(fSpecificGameTime)
+	
+	; Let's shortcut the years
+	Int iYearsPassed = Math.Floor((iPrepassedGameDaysInYearOne as float + iDaysSinceStart as float)/365 as float)
+	Float fYearsPassed = (iPrepassedGameDaysInYearOne as float + iDaysSinceStart as float)/365 as float
+	
+	iThisYear += iYearsPassed
+	
+	Int iLeapDaysPassed = CountLeapDays(iYearsPassed)
+
+	Int iDaysRemaining = Math.Floor(((iDaysSinceStart as float/365 as float) - iYearsPassed) as Float * 365 as Float) - iLeapDaysPassed
+	
+	if(iDaysRemaining < 0) ; Leap years mean that our calculation using 365 was off
+		iYearsPassed -= 1
+		iDaysRemaining += 365
+	endif
+	
+	while(iDaysRemaining > 0)
+		iThisDay += 1
+		
+		int iDaysThisMonth = iDaysPerMonth[(iThisMonth - 1)]
+		if(iThisMonth == 2 && (iThisYear as Float/4.0 == Math.Floor(iThisYear as Float/4.0)))
+			iDaysThisMonth = 29
+		endif		
+		
+		if(iThisDay > iDaysThisMonth)
+			iThisDay = 1
+			iThisMonth += 1
+			
+			if(iThisMonth > 12)
+				iThisMonth = 1
+				iThisYear += 1
+			endif
+		endif
+		
+		iDaysRemaining -= 1
+	endWhile
+	
+	Int[] iGameDate = new Int[3]
+	iGameDate[0] = iThisYear
+	iGameDate[1] = iThisMonth
+	iGameDate[2] = iThisDay
+	
+	return iGameDate
+EndFunction
+
+Int Function CountLeapDays(Int aiYearsPassed) global
+	Int iFirstYear = 2287
+	Int iFirstLeapYear = 2288
+	
+	Int iCurrentYear = iFirstYear + aiYearsPassed
+	Int iLeapDays = 0
+	
+	if(iCurrentYear >= iFirstLeapYear)
+		iLeapDays = 1
+		
+		iCurrentYear -= iFirstLeapYear
+		
+		while(iCurrentYear > 4)
+			iLeapDays += 1
+			iCurrentYear -= 4
+		endWhile
+	endif
+	
+	return iLeapDays
+EndFunction
+
+
+; -----------------------------------
 ; GetWorldObjectForm 
 ;
 ; Description: Returns the form from a WorkshopFramework:Library:DataStructures:WorldObject struct
@@ -461,4 +575,94 @@ Bool Function IsModInstalled(String asBaseName, Bool abAlsoCheckForESL = false, 
 		
 		return bInstalled
 	endif
+EndFunction
+
+
+; ------------------------------
+; CopyWorldObject 
+; 
+; Description: Creates a new copy of a WorldObject. This is useful due to the way structs and arrays are passed by reference, so that you don't edit the original copy, if you just want to tweak the data itself
+;
+; Parmeters:
+; WorldObject aWorldObject: A WorldObject struct you want to make a copy of
+; 
+; Added: 1.0.7
+; ------------------------------
+WorldObject Function CopyWorldObject(WorldObject aWorldObject) global
+	WorldObject newObject = new WorldObject
+	
+	newObject.ObjectForm = aWorldObject.ObjectForm
+	newObject.iFormID = aWorldObject.iFormID
+	newObject.sPluginName = aWorldObject.sPluginName
+	newObject.fPosX = aWorldObject.fPosX
+	newObject.fPosY = aWorldObject.fPosY
+	newObject.fPosZ = aWorldObject.fPosZ
+	newObject.fAngleX = aWorldObject.fAngleX
+	newObject.fAngleY = aWorldObject.fAngleY
+	newObject.fAngleZ = aWorldObject.fAngleZ
+	newObject.fScale = aWorldObject.fScale
+	newObject.bForceStatic = aWorldObject.bForceStatic
+	
+	return newObject
+EndFunction
+
+
+; ------------------------------
+; RecordWorldObjectCoordinatesOnRef
+;
+; Description: Checks if a plugin is installed, including checking for alternate extension versions - provided a name without an extension is sent.
+; 
+; Parameters:
+; WorldObject aWorldObject: A WorldObject struct you want the position/rotation data stored in the form of AVs on a reference. This would be useful for recalculating coordinates of the item later on, especially after it was moved.
+;
+; ObjectReference akObjectRef: The ref to store the data on
+; 
+; Added: 1.0.7
+; ------------------------------
+Function RecordWorldObjectCoordinatesOnRef(WorldObject aWorldObject, ObjectReference akObjectRef) global
+	ActorValue PosX = Game.GetFormFromFile(0x00004502, "WorkshopFramework.esm") as ActorValue
+	ActorValue PosY = Game.GetFormFromFile(0x00004503, "WorkshopFramework.esm") as ActorValue
+	ActorValue PosZ = Game.GetFormFromFile(0x00004504, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngX = Game.GetFormFromFile(0x00004505, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngY = Game.GetFormFromFile(0x00004506, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngZ = Game.GetFormFromFile(0x00004507, "WorkshopFramework.esm") as ActorValue
+	
+	akObjectRef.SetValue(PosX, aWorldObject.fPosX)
+	akObjectRef.SetValue(PosY, aWorldObject.fPosY)
+	akObjectRef.SetValue(PosZ, aWorldObject.fPosZ)
+	akObjectRef.SetValue(AngX, aWorldObject.fAngleX)
+	akObjectRef.SetValue(AngY, aWorldObject.fAngleY)
+	akObjectRef.SetValue(AngZ, aWorldObject.fAngleZ)
+EndFunction
+
+; ------------------------------
+; GetWorldObjectCoordinatesFromRef
+;
+; Description: Checks if a plugin is installed, including checking for alternate extension versions - provided a name without an extension is sent.
+; 
+; Parameters:
+; ObjectReference akObjectRef: The ref to pulled stored data from
+; 
+; Returns: Array of 6 floats, Arr[0] = posX, Arr[1] = posY, Arr[2] = posZ, Arr[3] = angX, Arr[4] = angY, Arr[5] = angZ
+; 
+; Added: 1.0.7
+; ------------------------------
+Float[] Function GetWorldObjectCoordinatesFromRef(ObjectReference akObjectRef) global
+	ActorValue PosX = Game.GetFormFromFile(0x00004502, "WorkshopFramework.esm") as ActorValue
+	ActorValue PosY = Game.GetFormFromFile(0x00004503, "WorkshopFramework.esm") as ActorValue
+	ActorValue PosZ = Game.GetFormFromFile(0x00004504, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngX = Game.GetFormFromFile(0x00004505, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngY = Game.GetFormFromFile(0x00004506, "WorkshopFramework.esm") as ActorValue
+	ActorValue AngZ = Game.GetFormFromFile(0x00004507, "WorkshopFramework.esm") as ActorValue
+	
+	Float[] Coordinates = new Float[6]
+	
+	Coordinates[0] = akObjectRef.GetValue(PosX)
+	Coordinates[1] = akObjectRef.GetValue(PosY)
+	Coordinates[2] = akObjectRef.GetValue(PosZ)
+	Coordinates[3] = akObjectRef.GetValue(AngX)
+	Coordinates[4] = akObjectRef.GetValue(AngY)
+	Coordinates[5] = akObjectRef.GetValue(AngZ)
+	
+	return Coordinates
 EndFunction
