@@ -227,3 +227,39 @@ Struct LocationAndAliasMessage
 	Int iObjectiveID = -1 ; Objective of QuestRef to display
 	Int iStageCheck = -1 ; If this stage of QuestRef is complete, the objective won't be displayed
 EndStruct
+
+
+; 1.0.9 - Struct for new Control system
+Struct FactionControl
+	Faction FactionForm = None
+	{ Faction taking control. [Optional] Either this, or iFormID + sPluginName have to be set. }
+	Int iFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or FactionForm have to be set. }
+	String sPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or FactionForm have to be set. }
+	
+	ActorBase Guards = None
+	{ [Optional] Used, by the Assault system to spawn defending NPCs during assaults }
+	
+	ActorBase SettlerOverride = None
+	{ Pool of NPCs to replace the spawning of settlers, these should have the WorkshopNPCScript }
+	
+	GlobalVariable ControlledSettlementCount
+	{ Global to track the number of settlements this faction controls }
+	
+	Formlist FriendlyFactions = None
+	{ Factions this settlement should maintain supply lines with and allow to stay in the settlement. }
+	
+	Formlist EnemyFactions = None
+	{ Factions this settlement should cut supply lines with and force out of the settlement }
+	
+	Bool bTreatAllOtherFactionsAsEnemies = false
+	{ If true, all factions outside of these lists will be considered enemies. If false, all factions outside of these lists will be considered friendly. }
+EndStruct
+
+; 1.0.9 - Struct for new assault system
+Struct ReservedAssaultQuest
+	int iReserveID = -1
+	Quest kQuestRef
+	Bool bCompleteEventFired = false
+EndStruct

@@ -285,12 +285,17 @@ Group WSFW_AVs
 	ActorValue Property Caravan Auto Hidden
 	ActorValue Property Radio Auto Hidden
 	ActorValue Property WorkshopGuardPreference Auto Hidden
+EndGroup
+
+Group WSFW_Added
 	Keyword Property WorkshopType02 Auto Hidden
 	Keyword Property WorkshopCaravanKeyword Auto Hidden
 	Keyword Property ObjectTypeWater Auto Hidden
 	Keyword Property ObjectTypeFood Auto Hidden
 	Keyword Property WorkshopLinkContainer Auto Hidden
 	Faction Property FarmDiscountFaction Auto Hidden
+	Faction Property PlayerFaction Auto Hidden
+	{ 1.0.9 }
 EndGroup
 
 
@@ -350,6 +355,7 @@ int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A98D Const ; 1.0.4 - Fixed t
 int iFormID_Setting_ShelterMechanic = 0x00006B5D ; 1.0.5
 int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
 int iFormID_Setting_AllowSettlementsToLeavePlayerControl = 0x00004CF3 ; 1.0.4 - New setting
+int iFormID_ControlManger = 0x0000B137 Const ; 1.0.9
 int iFormID_AV_minProductivity = 0x00007338 Const
 int iFormID_AV_productivityHappinessMult = 0x00007339 Const
 int iFormID_AV_maxHappinessNoFood = 0x0000733A Const
@@ -439,6 +445,7 @@ int iFormID_ObjectTypeWater = 0x000F4AED Const
 int iFormID_ObjectTypeFood = 0x00055ECC Const
 int iFormID_WorkshopLinkContainer = 0x0002682F Const
 int iFormID_FarmDiscountFaction = 0x0019FFC4 Const
+int iFormID_PlayerFaction = 0x0001C21C Const ; 1.0.9
 
 Bool bWSFWVarsFilled = false ; 1.0.3 - this will allow us to update workshops that have already past the init phase when this was installed
 
@@ -1385,6 +1392,13 @@ Bool Property bAllowLinkedConsumption = true Auto Hidden ; WSFW - Allow flagging
 
 ResourceShortage[] Property ShortResources Auto Hidden ; WSFW 1.0.8 - Resources that mods have reported are lacking
 
+
+; WSFW 1.0.9 - Support for Control system - we don't want to use SettlementOwnershipFaction as it is used by the base game for another purpose
+Faction Property ControllingFaction Auto Hidden ; Non-WSFW specific for simple checks
+FactionControl Property FactionControlData Auto Hidden ; All WSFW data
+WorkshopFramework:WorkshopControlManager Property ControlManager Auto Hidden
+
+
 int VendorTopLevel = 2 ; WSFW - Copied from WorkshopParent
 
 Bool Property bPropertiesConfigured = false Auto Hidden ; Flag from WSFW ResourceManager after it has configured all AVs, etc.
@@ -1739,6 +1753,7 @@ Function TryRealDailyUpdate()
 EndFunction
 
 function SetOwnedByPlayer(bool bIsOwned)
+	Debug.TraceStack("[WSFW] Researching all places SetOwnedByPlayer is called.")
 	; is state changing?
 	if !bIsOwned && OwnedByPlayer
 		OwnedByPlayer = bIsOwned ; do this here so workshop is updated for UpdatePlayerOwnership check
@@ -1840,7 +1855,17 @@ function SetOwnedByPlayer(bool bIsOwned)
 endFunction
 
 Event OnWorkshopObjectPlaced(ObjectReference akReference)
-	if WorkshopParent.BuildObjectPUBLIC(akReference, self)
+	; WSFW 1.0.9 - Support for FactionControl system
+	if(ControllingFaction != None && akReference.GetBaseValue(Safety) > 0)
+		Actor TurretRef = akReference as Actor
+		
+		if(TurretRef && ControlManager)
+			WorkshopScript thisWorkshop = GetLinkedRef(WorkshopParent.WorkshopItemKeyword) as WorkshopScript
+			ControlManager.CaptureTurret(TurretRef, thisWorkshop, aFactionData = thisWorkshop.FactionControlData, abPlayerIsEnemy = (ControllingFaction.GetFactionReaction(Game.GetPlayer() as Actor) == 1), abForPlayer = thisWorkshop.OwnedByPlayer)
+		endif
+	endif
+	
+	if(WorkshopParent.BuildObjectPUBLIC(akReference, self))
 		; run timer for assigning resource objects
 		;UFO4P 2.0.4 Bug #24312: removed this line:
 		;AssignObjectToWorkshop (called from BuildObjectPUBLIC on WorkshopParentScript) now runs the assignment procedures directly on
@@ -2020,8 +2045,16 @@ function DailyUpdate(bool bRealUpdate = true)
 	if GetWorkshopID() == CurrentWorkshopID.GetValue() && WorkshopParent.UFO4P_IsWorkshopLoaded (self)
 		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
 		int i = 0
-		while i < WorkshopActors.Length
-			WorkshopParent.UpdateActorsWorkObjects(WorkshopActors[i] as WorkShopNPCScript, self)
+		while (i < WorkshopActors.Length)
+			;WorkshopParent.UpdateActorsWorkObjects(WorkshopActors[i] as WorkShopNPCScript, self)
+			;UFO4P 2.0.6 Bug #25195: replaced the previous line with the following code to check for invalid actors:
+			WorkShopNPCScript theActor = WorkshopActors[i] as WorkShopNPCScript
+			if theActor
+				WorkshopParent.UpdateActorsWorkObjects (theActor, self)
+			else
+				WorkshopParent.wsTrace(self + "		  WARNING - Invalid actor found: obj ref = " + WorkshopActors[i])
+			endif
+			
 			i += 1
 		endWhile
 	endif
@@ -3220,6 +3253,10 @@ Function FillWSFWVars()
 		WSFW_AV_RobotHappinessLevel = Game.GetFormFromFile(iFormID_AV_RobotHappinessLevel, sWSFW_Plugin) as ActorValue
 	endif
 	
+	if( ! ControlManager) ; 1.0.9
+		ControlManager = Game.GetFormFromFile(iFormID_ControlManger, sWSFW_Plugin) as WorkshopFramework:WorkshopControlManager
+	endif
+	
 	;
 	; Fallout4.esm
 	;
@@ -3365,6 +3402,11 @@ Function FillWSFWVars()
 
 	if( ! FarmDiscountFaction)
 		FarmDiscountFaction = Game.GetFormFromFile(iFormID_FarmDiscountFaction, sFO4_Plugin) as Faction
+	endif
+
+	; 1.0.9
+	if( ! PlayerFaction)
+		PlayerFaction = Game.GetFormFromFile(iFormID_PlayerFaction, sFO4_Plugin) as Faction
 	endif
 EndFunction
 

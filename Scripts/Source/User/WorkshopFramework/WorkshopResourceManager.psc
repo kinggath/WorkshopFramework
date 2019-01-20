@@ -406,7 +406,7 @@ EndEvent
 
 
 Event Quest.OnStageSet(Quest akSenderRef, Int aiStageID, Int aiItemID)
-	if(akSenderRef == WorkshopParent)
+	if(akSenderRef == WorkshopParent && aiStageID == iWorkshopParentInitializedStage) ; 1.1.0 - added specific stage check
 		SetupAllWorkshopProperties()
 	
 		UnregisterForRemoteEvent(akSenderRef, "OnStageSet")
@@ -591,6 +591,7 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 		WorkshopLocations.Add(akWorkshopRef.GetCurrentLocation())
 	endif
 	
+	ModTrace("Marking properties configured for workshop: " + akWorkshopRef)
 	akWorkshopRef.bPropertiesConfigured = true
 EndFunction
 

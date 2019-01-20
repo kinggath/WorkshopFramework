@@ -422,24 +422,32 @@ EndFunction
 WorkshopNPCScript Function CreateSettler(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
 	ActorBase thisActorBase
 
-	if(akWorkshopRef.CustomWorkshopNPC)
-		; Allow for things like special settler mix in Far Harbor
-		thisActorBase = akWorkshopRef.CustomWorkshopNPC
-	else
-		Float fRecruitmentGuardChance = akWorkshopRef.recruitmentGuardChance
-		
-		; roll for farmer vs. guard
-		if(Utility.RandomInt(1, 100) <= fRecruitmentGuardChance)
-			thisActorBase = SettlerGuardActorBase
-			
-			if(bOverrideInjectedSettlers)
-				thisActorBase = DefaultSettlerGuardRecord
-			endif
+	; 1.0.9 - Allow faction control to override settlers
+	FactionControl thisFactionControl = akWorkshopRef.FactionControlData
+	if(thisFactionControl != None && thisFactionControl.SettlerOverride != None)
+		thisActorBase = thisFactionControl.SettlerOverride
+	endif
+	
+	if(thisActorBase == None)
+		if(akWorkshopRef.CustomWorkshopNPC)
+			; Allow for things like special settler mix in Far Harbor
+			thisActorBase = akWorkshopRef.CustomWorkshopNPC
 		else
-			thisActorBase = SettlerActorBase
+			Float fRecruitmentGuardChance = akWorkshopRef.recruitmentGuardChance
 			
-			if(bOverrideInjectedSettlers)
-				thisActorBase = DefaultSettlerRecord
+			; roll for farmer vs. guard
+			if(Utility.RandomInt(1, 100) <= fRecruitmentGuardChance)
+				thisActorBase = SettlerGuardActorBase
+				
+				if(bOverrideInjectedSettlers)
+					thisActorBase = DefaultSettlerGuardRecord
+				endif
+			else
+				thisActorBase = SettlerActorBase
+				
+				if(bOverrideInjectedSettlers)
+					thisActorBase = DefaultSettlerRecord
+				endif
 			endif
 		endif
 	endif

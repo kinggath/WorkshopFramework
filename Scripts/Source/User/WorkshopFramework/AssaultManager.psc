@@ -1,0 +1,480 @@
+; ---------------------------------------------
+; WorkshopFramework:AssaultManager.psc - by kinggath
+; ---------------------------------------------
+; Reusage Rights ------------------------------
+; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below.
+; 
+; Warning !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+; Do not directly recompile this script for redistribution without first renaming it to avoid compatibility issues issues with the mod this came from.
+; 
+; IMPORTED SCRIPT CREDIT
+; N/A
+; ---------------------------------------------
+
+Scriptname WorkshopFramework:AssaultManager extends WorkshopFramework:Library:SlaveQuest
+{ 
+This will handle settlement assaults. Primarily, its goal is to act as a distributor of events for what are story-node triggered quests. Though will be expanded to offer more meta-controls.
+}
+
+import WorkshopFramework:Library:DataStructures
+import WorkshopFramework:Library:UtilityFunctions
+
+CustomEvent AssaultStarted
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+kArgs[2] = WorkshopScript
+kArgs[3] = iCurrentAssaultType
+kArgs[4] = AttackingFaction
+kArgs[5] = DefendingFaction
+/;
+
+CustomEvent AssaultCompleted
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+kArgs[2] = WorkshopScript
+kArgs[3] = iCurrentAssaultType
+kArgs[4] = AttackingFaction
+kArgs[5] = DefendingFaction
+kArgs[6] = bPlayerSideWon
+/;
+
+CustomEvent AssaultStopped
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+/;
+
+; ---------------------------------------------
+; Consts
+; ---------------------------------------------
+
+
+; ---------------------------------------------
+; Editor Properties 
+; ---------------------------------------------
+Group Controllers
+	Quest[] Property DefaultAssaultQuests Auto Const Mandatory
+EndGroup
+
+
+Group Aliases
+	ReferenceAlias Property SafeSpawnPoint Auto Const Mandatory
+	ReferenceAlias Property RemainPlayerEnemy Auto Const Mandatory
+EndGroup
+
+Group Assets
+	MiscObject Property QuestVerb_Assault Auto Const Mandatory
+	MiscObject Property QuestVerb_Defend Auto Const Mandatory
+EndGroup
+
+Group EventKeywords
+	Keyword Property Event_PlayerInvolvedAssault Auto Const Mandatory
+	Keyword Property Event_AutomatedAssault Auto Const Mandatory
+EndGroup
+
+; ---------------------------------------------
+; Properties
+; ---------------------------------------------
+
+int Property iType_Attack_Wipeout = 1 autoReadOnly
+int Property iType_Attack_Subdue = 2 autoReadOnly
+int Property iType_Defend = 3 autoReadOnly
+
+Int iNextReserveID = 0
+Int Property NextReserveID
+	Int Function Get()
+		iNextReserveID += 1
+		
+		if(iNextReserveID > 999999)
+			iNextReserveID = 1
+		endif
+		
+		return iNextReserveID
+	endFunction
+EndProperty
+
+; ---------------------------------------------
+; Vars
+; ---------------------------------------------
+
+ReservedAssaultQuest[] RunningQuests
+
+; ---------------------------------------------
+; Events 
+; ---------------------------------------------
+
+Event OnQuestInit()
+	HandleQuestInit()
+EndEvent
+
+
+Event Quest.OnReset(Quest akSenderRef)
+	Utility.Wait(0.1) ; Latent action to ensure everything happens in order - without this the calls to AssaultManager looking for the quest to match the reserve IDs are never resolved
+	
+	if( ! RunningQuests)
+		RunningQuests = new ReservedAssaultQuest[0]
+	endif
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	
+	WorkshopFramework:AssaultSettlement asAssault = akSenderRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssault)
+		if(iRunningIndex >= 0)
+			RunningQuests[iRunningIndex].iReserveID = asAssault.GetReserveID()
+		else
+			ReservedAssaultQuest newAssaultQuest = new ReservedAssaultQuest
+			
+			newAssaultQuest.iReserveID = asAssault.GetReserveID()
+			newAssaultQuest.kQuestRef = asAssault
+			
+			RunningQuests.Add(newAssaultQuest)
+		endif
+	endif
+EndEvent
+
+
+Event Quest.OnQuestShutdown(Quest akSenderRef)
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	
+	if(iRunningIndex >= 0)
+		if( ! RunningQuests[iRunningIndex].bCompleteEventFired)
+			AssaultStopped_Private(akSenderRef)
+		endif
+		
+		RunningQuests.Remove(iRunningIndex)
+	endif
+EndEvent
+
+; ---------------------------------------------
+; Extended Handlers
+; ---------------------------------------------
+
+Function HandleQuestInit()
+	Parent.HandleQuestInit()
+	
+	; init arrays
+	RunningQuests = new ReservedAssaultQuest[0]
+	
+	RegisterDefaultAssaultQuests()
+EndFunction
+
+
+Function HandleInstallModChanges()
+	; Make sure we are registered for any new assault quests
+	RegisterDefaultAssaultQuests()
+	
+	Parent.HandleInstallModChanges()
+EndFunction
+
+; ---------------------------------------------
+; Overrides
+; ---------------------------------------------
+
+
+; ---------------------------------------------
+; Functions
+; ---------------------------------------------
+
+Function RegisterDefaultAssaultQuests()
+	int i = 0
+	while(i < DefaultAssaultQuests.Length)
+		RegisterNewAssaultQuest(DefaultAssaultQuests[i])
+		
+		i += 1
+	endWhile
+EndFunction
+
+; If another mod wants to create a custom quest to act as an AssaultSettlement quest, they'll need to call this to ensure the manager can correctly relay the events
+Function RegisterNewAssaultQuest(Quest akQuestRef)
+	RegisterForRemoteEvent(akQuestRef, "OnReset")
+	RegisterForRemoteEvent(akQuestRef, "OnQuestShutdown")
+EndFunction
+
+
+Int Function SetupNewAssault(Location akTargetLocation, Int aiType, Bool abInvolvePlayer = true, ObjectReference akCustomVerb = None)
+	; Generate new reserve ID
+	Int iReserveID = NextReserveID
+	
+	if(akCustomVerb == None)
+		ObjectReference SpawnAt = SafeSpawnPoint.GetRef()
+		; Create object to act as the verb for this quest name
+		if(aiType == iType_Defend)
+			akCustomVerb = SpawnAt.PlaceAtMe(QuestVerb_Defend)
+		else
+			akCustomVerb = SpawnAt.PlaceAtMe(QuestVerb_Assault)
+		endif
+	endif
+	
+	if(abInvolvePlayer)
+		if(Event_PlayerInvolvedAssault.SendStoryEventAndWait(akTargetLocation, akRef1 = akCustomVerb, aiValue1 = aiType, aiValue2 = iReserveID))
+			while( ! FindAssaultQuest(iReserveID))
+				Utility.Wait(1.0) ; Give the quest time to start
+			endWhile
+			
+			return iReserveID
+		else
+			return -1
+		endif
+	else
+		Debug.MessageBox("This feature is still being developed. - kinggath")
+		
+		return -1
+		if(Event_AutomatedAssault.SendStoryEventAndWait(akTargetLocation, aiValue1 = aiType, aiValue2 = iReserveID))
+			while( ! FindAssaultQuest(iReserveID))
+				Utility.Wait(1.0) ; Give the quest time to start
+			endWhile
+			
+			return iReserveID
+		else
+			return -1
+		endif
+	endif
+	
+	return -1
+EndFunction
+
+
+Bool Function SetupComplete(Int aiReserveID)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if(kQuestRef)
+		WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+		if(asAssaultQuest)
+			asAssaultQuest.SetupAssault()
+			
+			return true
+		endif
+	endif
+	
+	return false
+EndFunction
+
+
+Bool Function SetupOptions(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.bDisableFastTravel = abDisableFastTravel
+		asAssaultQuest.bSettlersAreDefenders = abSettlersAreDefenders
+		asAssaultQuest.bRobotsAreDefenders = abRobotsAreDefenders
+		asAssaultQuest.bAutoStartAssaultOnLoad = abAutoStartAssaultOnLoad
+		asAssaultQuest.bAutoStartAssaultWhenPlayerReachesAttackFrom = abAutoStartAssaultWhenPlayerReachesAttackFrom
+		asAssaultQuest.bMoveAttackersToStartPoint = abMoveAttackersToStartPoint
+		asAssaultQuest.bMoveDefendersToCenterPoint = abMoveDefendersToCenterPoint
+		asAssaultQuest.bAttackersDeadFailsAssault = abAttackersDeadFailsAssault
+		asAssaultQuest.bAutoHandleObjectives = abAutoHandleObjectives
+		asAssaultQuest.bGuardsKillableEvenOnSubdue = abGuardsKillableEvenOnSubdue
+		asAssaultQuest.bAttackersKillableEvenOnSubdue = abAttackersKillableEvenOnSubdue
+		asAssaultQuest.bAlwaysSubdueUniques = abAlwaysSubdueUniques
+		asAssaultQuest.bChildrenFleeDuringAttack = abChildrenFleeDuringAttack
+	endif
+	
+	return true
+EndFunction
+
+
+Bool Function SetupAutoCompleteRules(int aiReserveID, Float afAutoEndTime = 2.0, Bool abAutoCalculateVictor = true, ActorValue aFighterStrengthAV = None, Bool abDamageDefenses = true, Bool abKillCombatants = false, Float afMaxAttackerCasualtyPercentBeforeRetreat = 1.0, Float afMaxDefenderCasualtyPercentBeforeSurrender = 1.0)
+	; Options for how an assault should end
+	
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.fAutoEndTime = afAutoEndTime
+		asAssaultQuest.bAutoCalculateVictor = abAutoCalculateVictor
+		asAssaultQuest.FighterStrengthAV = aFighterStrengthAV
+		asAssaultQuest.bDamageDefenses = abDamageDefenses
+		asAssaultQuest.bKillCombatants = abKillCombatants
+		asAssaultQuest.fMaxAttackerCasualtyPercentBeforeRetreat = afMaxAttackerCasualtyPercentBeforeRetreat
+		asAssaultQuest.fMaxDefenderCasualtyPercentBeforeSurrender = afMaxDefenderCasualtyPercentBeforeSurrender
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
+
+Bool Function SetupCleanup(int aiReserveID, Bool abSurvivingSpawnedAttackersMoveIn = false, Bool abSurvivingSpawnedDefendersRemain = false, Bool abEnemySurvivorsRemainEnemyToPlayer = true)
+	; Options for how an assault should end
+	
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.bSurvivingSpawnedAttackersMoveIn = abSurvivingSpawnedAttackersMoveIn
+		asAssaultQuest.bSurvivingSpawnedDefendersRemain = abSurvivingSpawnedDefendersRemain
+		asAssaultQuest.bEnemySurvivorsRemainEnemyToPlayer = abEnemySurvivorsRemainEnemyToPlayer
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
+
+Bool Function SetupCapture(int aiReserveID, FactionControl aAttackingFactionData = None, Bool abSeverEnemySupplyLines = true, Bool abRemoveEnemySettlers = true, Bool abKillEnemySettlers = false, Bool abCaptureTurrets = true, Bool abCaptureContainers = true, Bool abSettlersJoinFaction = false, Bool abTogglePlayerOwnership = false, Bool abPlayerIsEnemy = false, Int aiCreateInvadingSettlers = -1)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.bAutoCaptureSettlement = true
+		asAssaultQuest.AttackingFactionData = aAttackingFactionData
+		asAssaultQuest.bSeverEnemySupplyLines = abSeverEnemySupplyLines
+		asAssaultQuest.bRemoveEnemySettlers = abRemoveEnemySettlers
+		asAssaultQuest.bKillEnemySettlers = abKillEnemySettlers
+		asAssaultQuest.bCaptureTurrets = abCaptureTurrets
+		asAssaultQuest.bCaptureContainers = abCaptureContainers
+		asAssaultQuest.bSettlersJoinFaction = abSettlersJoinFaction
+		asAssaultQuest.bTogglePlayerOwnership = abTogglePlayerOwnership
+		asAssaultQuest.bPlayerIsEnemy = abPlayerIsEnemy
+		asAssaultQuest.iCreateInvadingSettlers = aiCreateInvadingSettlers
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
+Bool Function SetupAttackers(int aiReserveID, Faction aAttackingFaction = None, ActorBase akAttackerType = None, Int aiSpawnAttackers = 0, RefCollectionAlias aOtherAttackers = None)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.SpawnAttackerForm = akAttackerType
+		asAssaultQuest.iSpawnAttackers = aiSpawnAttackers
+		asAssaultQuest.OtherAttackers = aOtherAttackers
+		asAssaultQuest.AttackingFaction = aAttackingFaction
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
+Bool Function SetupDefenders(int aiReserveID, Faction aDefendingFaction = None, ActorBase akDefenderType = None, Int aiSpawnDefenders = 0, RefCollectionAlias aOtherDefenders = None)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.SpawnDefenderForm = akDefenderType
+		asAssaultQuest.iSpawnDefenders = aiSpawnDefenders
+		asAssaultQuest.OtherDefenders = aOtherDefenders
+		asAssaultQuest.DefendingFaction = aDefendingFaction
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
+
+; To be called by Assault quests themselves
+Function AssaultStarted_Private(Quest akSenderRef, ObjectReference akWorkshopRef, Int aiAssaultType, Faction akAttackingFaction, Faction akDefendingFaction)
+	Var[] kArgs = new Var[6]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+	endif
+	
+	kArgs[1] = iReserveID
+	kArgs[2] = akWorkshopRef
+	kArgs[3] = aiAssaultType
+	kArgs[4] = akAttackingFaction
+	kArgs[5] = akDefendingFaction
+		
+	SendCustomEvent("AssaultStarted", kArgs)
+EndFunction
+
+
+; To be called by Assault quests themselves
+Function AssaultCompleted_Private(Quest akSenderRef, ObjectReference akWorkshopRef, Int aiAssaultType, Faction akAttackingFaction, Faction akDefendingFaction, Bool abPlayerSideWon)
+	Var[] kArgs = new Var[7]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+		
+		RunningQuests[iRunningIndex].bCompleteEventFired = true
+	endif
+	
+	kArgs[1] = iReserveID
+	kArgs[2] = akWorkshopRef
+	kArgs[3] = aiAssaultType
+	kArgs[4] = akAttackingFaction
+	kArgs[5] = akDefendingFaction
+	kArgs[6] = abPlayerSideWon
+		
+	SendCustomEvent("AssaultCompleted", kArgs)
+EndFunction
+
+
+; To be called by Assault quests themselves, or will be called internally if the assault is shut down without calling AssaultCompleted_Private
+Function AssaultStopped_Private(Quest akSenderRef)
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+	endif
+	
+	kArgs[1] = iReserveID
+	
+	SendCustomEvent("AssaultStopped", kArgs)
+EndFunction
+
+
+Quest Function FindAssaultQuest(Int aiReserveID)
+	int iRunningIndex = RunningQuests.FindStruct("iReserveID", aiReserveID)
+	
+	if(iRunningIndex >= 0)
+		return RunningQuests[iRunningIndex].kQuestRef
+	endif
+	
+	return None
+EndFunction

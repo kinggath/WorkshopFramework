@@ -90,9 +90,8 @@ EndEvent
 
 
 Event Quest.OnStageSet(Quest akQuestRef, int auiStageID, int auiItemID)
-	if(akQuestRef == CheckQuest && auiStageID == iCheckQuestSafeToLaunchStage)
-		StartQuests()
-	endif
+	; 1.1.0 - Switching to event handler so we can override it
+	HandleStageSet(akQuestRef, auiStageID, auiItemID)
 EndEvent
 
 
@@ -101,6 +100,19 @@ Event OnTimer(Int aiTimerID)
 		TriggerLocationChange()
 	endif
 EndEvent
+
+
+
+; ---------------------------------------------
+; Handlers
+; ---------------------------------------------
+
+Function HandleStageSet(Quest akQuestRef, int auiStageID, int auiItemID)
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Quest event received on MasterQuest: " + akQuestRef + " reached stage " + auiStageID)
+	if(akQuestRef == CheckQuest && auiStageID == iCheckQuestSafeToLaunchStage)
+		StartQuests()
+	endif
+EndFunction
 
 
 ; ---------------------------------------------
@@ -117,10 +129,12 @@ EndFunction
 
 
 Function HandleGameLoaded()
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> GameLoaded called on MasterQuest")
 	if(iInstalledVersion < gCurrentVersion.GetValue())
 		bQuestStartupsComplete = false ; Make sure we confirm all necessary quests are running - including any new ones
 	endif
 	
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> Attempting to run StartQuests")
 	if( ! StartQuests())
 		return
 	endif
@@ -213,24 +227,33 @@ EndFunction
 
 Bool Function StartQuests()
 	if(bQuestStartupsComplete)
+		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Quest startup already complete.")
 		return true
 	endif
 	
 	; In case of new game, be sure to wait for initialization to complete
 	if( ! SafeToStartFrameworkQuests())
+		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Can't start quests yet, waiting for " + CheckQuest + " to hit stage " + iCheckQuestSafeToLaunchStage + ".")
+		
 		RegisterForRemoteEvent(CheckQuest, "OnStageSet")
 		return false
 	else
+		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Starting up " + FrameworkStartQuests.Length + " framework quests")
+		
 		UnRegisterForRemoteEvent(CheckQuest, "OnStageSet")
 		int i = 0
 		int iStartedQuests = 0
 		while(i < FrameworkStartQuests.Length)
 			if( ! FrameworkStartQuests[i].IsRunning() && ! FrameworkStartQuests[i].IsStarting())
+				Debug.Trace("attempting to start quest " + FrameworkStartQuests[i])
 				if(FrameworkStartQuests[i].Start())
 					iStartedQuests += 1
 				endif
 			elseif(FrameworkStartQuests[i].IsRunning())
+				Debug.Trace("Quest " + FrameworkStartQuests[i] + " is already running.")
 				iStartedQuests += 1
+			else
+				Debug.Trace("Failed to start quest " + FrameworkStartQuests[i])
 			endif
 			
 			i += 1

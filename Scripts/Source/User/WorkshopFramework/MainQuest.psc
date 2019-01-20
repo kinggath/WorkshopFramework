@@ -167,18 +167,21 @@ EndEvent
 
 
 ; 1.0.1 - Need to ensure FillWSFWVars is filled - will also update each time the game starts in case we needed to add additional properties
+;/
+1.1.0 - Removed this block as you can't override remote event blocks, instead we've switched to calling a handler function from the parent quest so we can override that
 Event Quest.OnStageSet(Quest akSenderRef, Int auiStageID, Int auiItemID)
 	if(akSenderRef == WorkshopParent)
 		WorkshopParent.FillWSFWVars()
-		UnregisterForRemoteEvent(akSenderRef, "OnStageSet")
 	endif
 EndEvent
+/;
 
 ; ---------------------------------------------
 ; Extended Handlers
 ; ---------------------------------------------
 
 Function HandleGameLoaded()
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> HandleGameLoaded called on WSFW MainQuest")
 	; Make sure our debug log is open
 	if(WorkshopParent.IsRunning())
 		WorkshopParent.FillWSFWVars() ; Patch 1.0.1 - Eliminating all vanilla form edits and switching to GetFormFromFile
@@ -188,6 +191,7 @@ Function HandleGameLoaded()
 	
 	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
 	
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> Calling HandleGameLoaded on Parent of WSFW MainQuest")
 	Parent.HandleGameLoaded()
 EndFunction
 
@@ -198,11 +202,23 @@ Function HandleQuestInit()
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 EndFunction
 
+
+Function HandleStageSet(Quest akQuestRef, int auiStageID, int auiItemID)
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Quest event received on WSFW Main: " + akQuestRef + " reached stage " + auiStageID)
+	if(akQuestRef == WorkshopParent)
+		WorkshopParent.FillWSFWVars()
+	endif
+	
+	Parent.HandleStageSet(akQuestRef, auiStageID, auiItemID)
+EndFunction
+
+
 ; ---------------------------------------------
 ; Overrides
 ; ---------------------------------------------
 
 Bool Function StartQuests()
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> WSFW MainQuest.StartQuests called.")
 	bFrameworkReady = Parent.StartQuests()
 	
 	
