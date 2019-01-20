@@ -534,11 +534,20 @@ int UFO4P_DailyUpdateResetHappinessTimerID = 99
 ;------------------------------------------------------
 
 ;Helper bool to delay any daily updates of the workshop scripts while an attack is physically running:
-bool Property UFO4P_AttackRunning = false auto hidden
+ ; UFO4P 2.0.6: made this a conditional property
+bool Property UFO4P_AttackRunning = false auto hidden conditional
 
 int UFO4P_DelayedResetTimerID = 96
 
 WorkshopScript UFO4P_WorkshopRef_ResetDelayed = none
+
+
+;------------------------------------------------------
+;	Added by UFO4P 2.0.6 for Bug #25230:
+;------------------------------------------------------
+
+;Needs to be checked by the overseer's job handling terminal
+bool Property UFO4P_ResetRunning = false auto hidden conditional
 
 ;------------------------------------------------------
 
@@ -2068,6 +2077,13 @@ endFunction
 ; bResetMode: TRUE means to skip trying to assign other resource objects of this type
 ; bAddActorCheck: TRUE is default; FALSE means to skip adding the actor - calling function guarantees that the actor is already assigned to this workshop (speed optimization)
 function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScript assignedObject, bool bResetMode = false, bool bAddActorCheck = true)
+	; WSFW 1.0.8a - Pointing to new signature needed for UFO4P 2.0.6
+	AssignActorToObjectV2(assignedActor, assignedObject, bResetMode, bAddActorCheck)	
+EndFunction
+
+; WSFW 1.0.8a - UFO4P 2.0.6 altered the original signature, we're making a V2 instead
+;UFO4P 2.0.6 Bug #25483: Added the new bool argument bUpdateObjectArray. This is used to skip some code when this function is called by TryToAssignResourceType()
+function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectScript assignedObject, bool bResetMode = false, bool bAddActorCheck = true, bool bUpdateObjectArray = true)
 	;/ ----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 		Performance optimizations required substantial modifications to this function. In order to maintain legibility, the code has been
@@ -2157,6 +2173,12 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 			; WSFW endif
 			wsTrace("		Assigning bed " + assignedObject + " to " + assignedActor)
 			assignedObject.AssignActor (assignedActor)
+			
+			;UFO4P 2.0.6 Bug #25483: added the following lines:
+			;If there was no previous owner, this bed must have been in the unassigned beds array, so it should be removed now.
+			if(previousOwner == none)
+				UFO4P_RemoveFromUnassignedBedsArray (assignedObject)
+			endif
 		endif
 
 	elseif assignedObject.HasKeyword (WorkshopWorkObject)
@@ -2227,7 +2249,9 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 			if(bExcludedFromAssignmentRules)
 				SendCustomEvent("AssignmentRulesOverriden", kExcludedArgs)
 			else
-				UnassignActorFromObject (assignedActor, assignedObject)
+				;UFO4P 2.0.6 Bug #25439: added a value for the new bool argument bResetMode:
+				; WSFW 1.0.8a - Preserving signature
+				UnassignActorFromObjectV2(assignedActor, assignedObject, bResetMode)
 				bShouldTryToAssignResources = true
 			endif
 		;Skip this if the actor doesn't owns anything else than a bed. Now that we have all data we need in handy arrays,
@@ -2247,7 +2271,9 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 		if previousOwner && previousOwner != assignedActor
 			wsTrace("		Unassigning previous owner " + previousOwner + " from object " + assignedObject)
 			; WSFW - This we have to allow because the game engine doesn't support multiple ref owners 
-			UnassignActorFromObject (previousOwner, assignedObject)
+			;UFO4P 2.0.6 Bug #25439: added a value for the new bool argument bSRsetMode:
+			; WSFW 1.0.8a - Preserving signature
+			UnassignActorFromObjectV2(previousOwner, assignedObject, bResetMode)
 		endif
 
 		assignedObject.AssignActor (assignedActor)
@@ -2307,6 +2333,14 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 				else
 					UFO4P_AddActorToWorkerArray (assignedActor, resourceIndex)
 					bShouldTryToAssignResources = true
+				endif
+				
+				;UFO4P 2.0.6 Bug #25483: added the following lines:
+				;If the object was not assigned already, it must have been in the list of unassigned objects and should be removed now. This should
+				;be skipped if bUpdateObjectArray = true, i.e. if this function was called by TryToAssignResources(), because that function will handle
+				;this anyway and does it faszer (it already knows the array position which this function would still need to evaluate).
+				if( ! bAlreadyAssigned && bUpdateObjectArray)
+					UFO4P_RemoveFromUnassignedObjectsArray(assignedObject, resourceIndex)
 				endif
 			endif
 		endif
@@ -2861,7 +2895,16 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 		if oldWorkshopID > -1 && oldWorkshopID != newWorkshopID
 			wsTrace("	AddActorToWorkshop: oldWorkshopID = " + oldWorkshopID)
 			; 89671: no need to remove actor from workshop completely when assigning to different workshop
-			UnassignActor_Private (assignedActor, false, bResetMode = bResetMode)
+			;UnassignActor_Private (assignedActor, false, bResetMode = bResetMode)
+
+			;UFO4P 2.0.6 Bug #25237: replaced the previous line with the following line:
+			;If an actor is sent to another workshops, we still need to run most of the removal process that is also required for actors that are
+			;completely removed from a workshop (e.g. his bed at the old workshop should be unassigned and the population rating values should be
+			;properly updated to reflect that the left the old workshop), but there also are a few operations that should not run on transferred
+			;settlers. To handle this, a new bool argument has been added to tell UnassignActor_Private that the actor is being transferred:
+			; WSFW 1.0.8a - Preserving signatures
+			UnassignActor_PrivateV2(assignedActor, bRemoveFromWorkshop = true, bSendUnassignEvent = true, bResetMode = bResetMode, bNPCTransfer = true)
+			
 			assignedActor.bNewSettler = false
 			; remember this, so we don't have to check the workshopIDs again
 			UFO4P_RecalcResourcesForOldWorkshop = true
@@ -3062,18 +3105,90 @@ function ApplyWorkshopAliasData(actor theActor)
 endFunction
 
 
+;UFO4P 2.0.6: Added this function:
+;A look at the workshop script framework published on GitHub (WSFW 1.0.8a - he's talking about us...) and specifically at the implementation of the UFO4P modifications to the vanilla scripts suggests
+;that both UnassignActor() and UnassignActorFromObject() are considered to be valid entry points for external scripts that want to unassign a single object.
+;However, both functions are private functions that do not pass a lock. External scripts must never call a private function on this script directly because this
+;leads to very unpleasant threading issues that quickly make a mess of the workshop data. The misbelief may be due to the lack of a public function to handle
+;the unassignment of single object, so we added this function to close this gap.
+;UnassignActorFromObject() does essentially the same as UnassignObject() but also provides the possibility to send a workshop event. Therefore, it is more
+;suitable to create a public entry point than UnassignObject(). Optionally, this function will run a resource reassignment after unassigning the specified
+;object since UnassignObject() does usually not handle this on its own,
+function UnassignActorFromObjectPUBLIC(WorkshopNPCScript theActor, WorkshopObjectScript theObject, bool bSendUnassignEvent = true, bool bTryToAssignResources = true)
+
+	int workshopID = theActor.GetWorkshopID()
+	if workshopID != currentWorkshopID
+		wsTrace("	UnassignActorFromObjectPUBLIC: Can't unassign now, returning ...")
+		return
+	endif
+
+	GetEditLock()
+
+	; WSFW 1.0.8a - preserving signature
+	UnassignActorFromObjectV2(theActor, theObject, bSendUnassignEvent, bResetMode = false)
+	if bTryToAssignResources
+		;If UFO4P_AttackRunning = true, we have delayed the workshop reset. This script will not be locked while the attack is running (i.e. the unassign call is
+		;still processed) but the resource object arrays are not yet created (this will be done by ResetWorkshop), so we cannot assign resources.
+		if UFO4P_AttackRunning
+			wsTrace("	UnassignActorFromObjectPUBLIC: Can't assign resources now, returning ...")
+		else
+			WorkshopScript workshopRef = GetWorkshop (workshopID)
+			; WSFW 1.0.8a - acknowledge auto assign settings
+			if(theObject.IsBed() && ( ! workshopRef.OwnedByPlayer || AutoAssignBeds))
+				TryToAssignBeds (workshopRef)
+			elseif(theObject.HasMultiResource())
+				int resourceIndex = theObject.GetResourceID()
+				bool bAllowAssign = true
+				
+				if(workshopRef.OwnedByPlayer)
+					if((resourceIndex == WorkshopRatingFood && ! AutoAssignFood) || (resourceIndex == WorkshopRatingSafety && ! AutoAssignDefense))
+						bAllowAssign = false
+					endif
+				endif
+				
+				if(bAllowAssign)
+					TryToAssignResourceType (workshopRef, WorkshopRatings[resourceIndex].resourceValue)
+				endif
+			endif
+		endif
+	endif
+
+	EditLock = false
+
+endFunction
+
+
 ; specialized function to unassign actor from one object - called during AssignActor process on former owner of newly assigned object
+;UFO4P 2.0.6 Bug #25439: Added the new bool argument bResetMode which will be passed by this function to the bUnassignActorMode bool on UnassignObject():
+;ResetWorkshop() sets the multi-resource production values of all actors assigned to food or safety objects to zero when it starts running, and subsequently
+;updates them while looping through the object arrays by adding the resource ratings of their owned objects back in, unless it finds that an object exedds an
+;actor's production limit and then unassigns him. Thus, the resource ratings of objects unassigned by ResetWorkshop() are not yet included in an actor's multi-
+;resource production value, but UnassignObject() silently assumes that they are and calculates new multi-resource production values by subtracting the resource
+;ratings of the unassigned objects from their current multi-resource production values. This conflicts with the operations carried out by ResetWorkshop() as
+;it leaves the actor with a wrong multi-resource production value and may even lead to objects exceeding his production limit being not properly unassigned.
+;Therefore, we need to skip the multi-resource production value update on UnassignObject() for all calss from ResetWorkshop(). UnassignObject() already has a
+;bool argument to handle this (bUnassignActorMode, if called by UnassignActor_Private, it skips those operations too), but ResetWorkshop(9 does not call that
+;function directly but calls this function instead, and this function had no argument to pass that information.
+;Note that this modification does not cause API issues because this function is a private function that must never be called directly by an external script.
+; WSFW 1.0.8a - Disagree with altering signatures and so created a V2
 function UnassignActorFromObject(WorkshopNPCScript theActor, WorkshopObjectScript theObject, bool bSendUnassignEvent = true)
+	UnassignActorFromObjectV2(theActor, theObject, bSendUnassignEvent)
+endfunction
+
+
+; WSFW 1.0.8a - Creating new version to avoid signature change caused by WSFW 2.0.6
+function UnassignActorFromObjectV2(WorkshopNPCScript theActor, WorkshopObjectScript theObject, bool bSendUnassignEvent = true, bool bResetMode = false)
 	wsTrace("	UnassignActorFromObject " + theActor + " from " + theObject)
-
-	WorkshopScript workshopRef = GetWorkshop(theActor.GetWorkshopID())
-
+	
 	; do I currently own this object?
 	if theObject.GetActorRefOwner() == theActor
 		wsTrace("		unassigning " + theObject)
 		; this will also add the actor to the unassigned actor list (when it unassigns the last object)
-		UnassignObject(theObject)
+		;UFO4P 2.0.6 Bug #25439: modified this line to pass the new bool argument to UnassignObject():
+		UnassignObject_Private(theObject, bUnassignActorMode = bResetMode)
 		if bSendUnassignEvent
+			;UFO4P 2.0.6 Bug #25215: moved the following line dwon here from above:
+			WorkshopScript workshopRef = GetWorkshop(theActor.GetWorkshopID())
 			; WSFW Event Edit - Adding actor to the end of event arguments 
 			;/
 			Var[] kargs = new Var[2]
@@ -3098,7 +3213,10 @@ function RemoveActorFromWorkshopPUBLIC(WorkshopNPCScript theActor)
 
 	;UFO4P 2.0 Bug #21900: Call UnassignActor_Private instead of UnassignActor here (see notes below for explanation)
 	;UFO4P 2.0.4 Bug #24312: added a value for the new bool argument (always false here because ResetWorkshop never calls this function).
-	UnassignActor_Private(theActor, true, true, bResetMode = false)
+	;UFO4P 2.0.6 Bug #25237: also added a value for the new bool argument bNPCTransfer (false here because it only applies to calls from AddActorToWorkshop
+	;and that function never calls one of the public versions).
+	; WSFW 1.0.8a - Calling V2 to preserve original signature
+	UnassignActor_PrivateV2(theActor, bRemoveFromWorkshop = true, bSendUnassignEvent = true, bResetMode = false, bNPCTransfer = false)
 
 	; unlock editing
 	EditLock = false
@@ -3113,7 +3231,10 @@ endFunction
 function UnassignActor(WorkshopNPCScript theActor, bool bRemoveFromWorkshop = false, bool bSendUnassignEvent = true)
 	GetEditLock()
 	;UFO4P 2.0.4 Bug #24312: added a value for the new bool argument (always false here because ResetWorkshop does not call the public version).
-	UnassignActor_Private(theActor, bRemoveFromWorkshop, bSendUnassignEvent, bResetMode = false)
+	;UFO4P 2.0.6 Bug #25237: also added a value for the new bool argument bNPCTransfer (false here because it only applies to calls from AddActorToWorkshop
+	;and that function never calls one of the public versions).
+	; WSFW 1.0.8a Using V2 to preserve signature
+	UnassignActor_PrivateV2(theActor, bRemoveFromWorkshop, bSendUnassignEvent, bResetMode = false, bNPCTransfer = false)
 	EditLock = false
 EndFunction
 
@@ -3123,6 +3244,11 @@ EndFunction
 ;UFO4P 2.0 Bug #21900: Renamed this function to UnassignActor_Private (for explantion see the comment on the UnassignActor function above).
 ;UFO4P 2.0.4 Bug #24312: Added the new bool argument bResetMode, to let this function know whether it was called by ResetWorkshop.
 function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorkshop = false, bool bSendUnassignEvent = true, bool bResetMode = false)
+	UnassignActor_PrivateV2(theActor, bRemoveFromWorkshop, bSendUnassignEvent, bResetMode)
+EndFunction
+
+; UFO4P 2.0.6, WSFW 1.0.8a, Added new arg, so versioning the function to maintain signatures
+function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWorkshop = false, bool bSendUnassignEvent = true, bool bResetMode = false, bool bNPCTransfer = false)
 	;/	-----------------------------------------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.4 Bug #24312:
 		UFO4P 2.0.5 Bugs #24637, #25128 & #25129:
@@ -3171,15 +3297,27 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 	Therefore, the following code has been modified to skip the handling of multi-resource objects if a workshop is not loaded. All other objects will still be
 	handled in any situation. In the worst case, some quest will react to a resource change with some delay every one in a while, but this is still acceptable.
 	It would be a problem only if it happened on a regualr basis.
+	
+	UFO4P 2.0.6 Bug #25238:
+	We are now unassigning all objects we find, even if the workshop is not loaded. To solve the problem of object tracking (we still can't send events if a
+	workshop is not loaded, as explained above, so ResetWorkshop must be able to identify them later on; we currently do this by their owning actors but this
+	will no longer be possible if we unassign them here), we use an unused bool property on WorkshopObjectScript, "bResetDone", to tag them.
 	/;
 	
-	bool bWorkshopLoaded = UFO4P_IsWorkshopLoaded (workshopRef)	
+	;bool bWorkshopLoaded = UFO4P_IsWorkshopLoaded (workshopRef)
+	;UFO4P 2.0.6 Bug #25215: replaced the previous line with the following line:
+	;This will eliminate cases where the workshop records as not being loaded because the player moved into a cell that is not part of the workshop location
+	;but still within the workshop's boundaries (many cells ar not properly set up in this respect).
+	bool bWorkshopLoaded = (workshopRef.GetWorkshopID() == currentWorkshopID)
+	
 	bool bShouldTryToAssignResources = false
 	bool bSendCollectiveEvent = false
 	
 	;UFO4P 2.0.5 Bug #25129: added this block of code:
 	;if workshop is not loaded, save the actor in a separate array, so the workshop reset can properly handle all objects that cannot be unassigned here
 	;and also can send the corresponding workshop events,
+	;UFO4P 2.0.6 Note: For clarification, this is needed for objects we DO NOT find because the workshop is not loaded. To handle objects we DO find although
+	;it is not loaded, we are now using the bResetDone flag (on WorkshopObjectScript), as explained above.
 	if bWorkshopLoaded == false
 		UFO4P_RegisterUnassignedActor (theActor)
 		;Also set a tracking bool on the actor's workshop:
@@ -3197,57 +3335,64 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 		else
 			wsTrace("		owned workshop object " + i + ": " + theObject)
 			if theObject.HasKeyword (WorkshopWorkObject)
-				bool bHasMultiResource = theObject.HasMultiResource()
-				if bWorkshopLoaded == false && bHasMultiResource
-					wsTrace("		can't unassign " + theObject + " now since workshop isn't loaded")
-					;Multi-resource objects (i.e. food and safety objects) will continue to contribute to the workshop ratings until these values
-					;have been racalculated, but this won't work if the workshop isn't loaded. It's therefore best to not touch them at all here
-					;and leave them to be properly unassigned by the next workshop reset.
-				else				
-					bool bIsBed = theObject.IsBed()
-					;don't remove the bed if the actor is not removed from the workshop:
-					if bIsBed == false || bRemoveFromWorkshop
-						wsTrace("		unassigning " + theObject)
-						;UFO4P 2.0.4 Bug #24273: calling this function with the new bool passed in as 'true':
-						;	UnassignObject (theObject, bUnassignActorMode = true)
-						; WSFW - Refactored version of UnassignObject
-						UnassignObject_Private(theObject, bUnassignActorMode = true)
-						
-						;If at least one object has beeen removed, we should run the resource assignment functions to find new owners: (setting this to
-						;bWorkshopLoaded to make sure that it remains 'false' if the workshop is not loaded, because resource assignment only works if the
-						;workshop is loaded):
-						bShouldTryToAssignResources = bWorkshopLoaded
-						;UFO4P 2.0.5 Bug #25128: added check for bIsBed:
-						;No need to send events on unassigned beds. The quests that deal with beds don't care whether they are assigned or not.
-						if bSendUnassignEvent && bIsBed == false
-							if bHasMultiResource
-								;UFO4P 2.0.5 Bug #25128: If this is a multi-resource object, the actor may own several objects of that kind, up to 12 crops or
-								;up to 3 guard posts. Quests that are monitoring the count of food and safety objects at a workshop do not care about the object
-								;reference sent with the event but only check the resource ratings values. This means that we do not have to send an event for
-								;each object but only need to send one for all objects, after all of them have beeen unassigned. This saves a fair bit of perfor-
-								;mance since it reduces the workload associated with event handling xonsiderably.
+				;/
+				UFO4P 2.0.6 Bug #25238: Removed a check for bWorkshopLoaded == false && bHasMultiResource:
+				Even if the workshop is not loaded, we unassign all objects we find now (for further details, see the general note above).
+				/;
+				bool bIsBed = theObject.IsBed()
+				;don't remove the bed if the actor is not removed from the workshop:
+				if bIsBed == false || bRemoveFromWorkshop
+					wsTrace("		unassigning " + theObject)
+					;UFO4P 2.0.4 Bug #24273: calling this function with the new bool passed in as 'true':
+					;	UnassignObject (theObject, bUnassignActorMode = true)
+					; WSFW - Refactored version of UnassignObject
+					UnassignObject_Private(theObject, bUnassignActorMode = true)
+					
+					;If at least one object has beeen removed, we should run the resource assignment functions to find new owners: (setting this to
+					;bWorkshopLoaded to make sure that it remains 'false' if the workshop is not loaded, because resource assignment only works if the
+					;workshop is loaded):
+					bShouldTryToAssignResources = bWorkshopLoaded
+					;UFO4P 2.0.5 Bug #25128: added check for bIsBed:
+					;No need to send events on unassigned beds. The quests that deal with beds don't care whether they are assigned or not.
+					if bSendUnassignEvent && bIsBed == false
+						;if bHasMultiResource
+						;UFO4P 2.0.6 Bug #25238: replaced the previous line with the following line:
+						if(theObject.HasMultiResource())
+							;UFO4P 2.0.5 Bug #25128: If this is a multi-resource object, the actor may own several objects of that kind, up to 12 crops or
+							;up to 3 guard posts. Quests that are monitoring the count of food and safety objects at a workshop do not care about the object
+							;reference sent with the event but only check the resource ratings values. This means that we do not have to send an event for
+							;each object but only need to send one for all objects, after all of them have beeen unassigned. This saves a fair bit of perfor-
+							;mance since it reduces the workload associated with event handling considerably.
+							
+							;bSendCollectiveEvent = true
+							;UFO4P 2.0.6 Bug #25238: replaced the previous line with the following code:
+							if(bWorkshopLoaded)
 								bSendCollectiveEvent = true
 							else
-								;UFO4P 2.0.5 Bug #25129: 
-								;If we send an event here, we must update the ratings first (and recalculate the workshop resources) because the quests that
-								;listen to the event may need the updated ratings values to process it:
-								UpdateWorkshopRatingsForResourceObject (theObject, workshopRef, bRecalculateResources = true)
-								;send the event:
-								; WSFW Event Edit - Adding actor to the end of event arguments 
-								;/
-								Var[] kargs = new Var[2]
-								kargs[0] = theObject
-								kargs[1] = workshopRef
-								/;
-									
-								Var[] kargs = new Var[0]
-								kargs.Add(theObject)
-								kargs.Add(workshopRef)
-								kargs.Add(theActor)
-								
-								wsTrace("		sending WorkshopActorUnassigned event")
-								SendCustomEvent("WorkshopActorUnassigned", kargs)
+								;using the bResetDone flag on WorkshopObjectScript to tag the object:
+								theObject.bResetDone = true
+								wsTrace("		Multi-resource object - event will be sent later")
 							endif
+						else
+							;UFO4P 2.0.5 Bug #25129: 
+							;If we send an event here, we must update the ratings first (and recalculate the workshop resources) because the quests that
+							;listen to the event may need the updated ratings values to process it:
+							UpdateWorkshopRatingsForResourceObject (theObject, workshopRef, bRecalculateResources = true)
+							;send the event:
+							; WSFW Event Edit - Adding actor to the end of event arguments 
+							;/
+							Var[] kargs = new Var[2]
+							kargs[0] = theObject
+							kargs[1] = workshopRef
+							/;
+								
+							Var[] kargs = new Var[0]
+							kargs.Add(theObject)
+							kargs.Add(workshopRef)
+							kargs.Add(theActor)
+							
+							wsTrace("		sending WorkshopActorUnassigned event")
+							SendCustomEvent("WorkshopActorUnassigned", kargs)
 						endif
 					endif
 				endif
@@ -3293,9 +3438,15 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 		wsTrace("   UnassignActor_Private: Removing " + theActor + " from workshop " + workshopRef)
 
 		theActor.SetLinkedRef (NONE, WorkshopItemKeyword)
-		WorkshopActorApply.RemoveFromRef (theActor)
-		PermanentActorAliases.RemoveRef (theActor)
-		theActor.SetValue (WorkshopPlayerOwnership, 0)	
+		;UFO4P 2.0.6 Bug #25237: also clear the home marker:
+		theActor.SetLinkedRef (NONE, WorkshopLinkHome)
+
+		;UFO4P 2.0.6 Bug #25237: don't run this on actors that are transferred between workshops:
+		if(bNPCTransfer == false)
+			WorkshopActorApply.RemoveFromRef (theActor)
+			PermanentActorAliases.RemoveRef (theActor)
+			theActor.SetValue (WorkshopPlayerOwnership, 0)
+		endif
 
 		; PATCH - remove workshop ID as well
 		theActor.SetWorkshopID (-1)
@@ -3303,7 +3454,10 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 		; update population rating on workshop's location
 		if workshopRef.RecalculateWorkshopResources() == false
 			;UFO4P 2.0.5 Bug #24643: ModifyResourceData instead of ModifyResourceData_Private
-			ModifyResourceData (WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, -1)
+			;UFO4P 2.0.6: added check to prevent brahmins, watch dogs etc. from temporarily increasing the population count:
+			if(theActor.bCountsForPopulation)
+				ModifyResourceData (WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, -1)
+			endif
 		endif
 
 		; WSFW New Event
@@ -3333,8 +3487,16 @@ function UnassignActor_Private(WorkshopNPCScript theActor, bool bRemoveFromWorks
 		SendCustomEvent("WorkshopActorUnassigned", kargs)
 	endif
 
-	;If not in reset mode, try to find new owners for unassigned objects:
-	if !bResetMode && bShouldTryToAssignResources
+	;/
+	UFO4P 2.0.6 Bug #25215 Resource assignment should not run if the actor is not removed from the workshop. Otherwise, it would needlessly run twice because the users
+	that call this function with bRemoveFromWorkshop = false run their own resource assignment subsequently.
+
+	UFO4P 2.0.6: Also added a check for UFO4P_AttackRunning: if this is true, an attack is currently running at this workshop and the workshop reset
+	has been delayed. If an external user calls this function within that small time window, it runs before the workshop reset and the helper arrays
+	would not be initialized. In all other situations, the reset will start running as soon as the workshop loads, and all external calls will have
+	to wait in the lock until it stops running (and the arrays are either initialized or the workshop has unloaded).
+	/;
+	if( ! bResetMode && bRemoveFromWorkshop && bShouldTryToAssignResources && !UFO4P_AttackRunning)
 		if(AutoAssignFood || ! workshopRef.OwnedByPlayer)
 			TryToAssignResourceType (workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 		endif
@@ -3415,6 +3577,10 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 
 	WorkshopNPCScript assignedActor = theObject.GetAssignedActor()
 
+	;UFo4P 2.0.6 Bug #25264: added these lines:
+	bool bShouldTryToAssignBeds = false
+	int iResourceIndexToAssign = -1
+	
 	if assignedActor
 
 		theObject.AssignActor(none)
@@ -3433,7 +3599,8 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 			bool bIsBed = theObject.IsBed()
 
 			;if workshop is currently loaded and object is a bed or multi-resource object, add it to the respective object array:
-			;NOTE: Not going to reassign them here. This will be handled by the functions that called this function.
+			;UFO4P 2.0.6 Note: Reassignment will be handled here only if this function was called by RemoveObjectFromWorkshop. All other callers of this
+			;function handled this on their own.
 			if UFO4P_WorkshopID == currentWorkshopID
 				if bRemoveObject && bIsBed
 					;If a bed is removed from the workshop, add the previous owner to the UFO4P_ActorsWithoutBeds array, so he can get a new one assigned.
@@ -3441,6 +3608,9 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 					;the array who is subsequently removed from the workshop.
 					; WSWF - Likely the UFO4P patch would have added this change as well, but hasn't done so yet
 					UFO4P_AddToActorsWithoutBedsArray (assignedActor)
+					
+					;UFo4P 2.0.6 Bug #25264: added this line:
+					bShouldTryToAssignBeds = true
 				elseif !bRemoveObject
 					if bIsBed
 						UFO4P_AddUnassignedBedToArray (theObject)
@@ -3450,8 +3620,11 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 				endif
 			endif
 
+			;UFO4P 2.0.6 Bug #25439 Note:
+			;This code will now also be skipped for calls from AssignActorToObject() during a workshop reset because ResetWorkshop() deliberately invalidates
+			;all actors' multi-resource production values when it starts running, so we cannot expect any meaningful results if we run checks on them.
 			;If object is a bed, this code can be skipped: removal of a bed has no impact on an actor's worker status
-			if bIsBed == false
+			if(bIsBed == false && ! bUnassignActorMode)
 
 				if IsObjectOwner (workshopRef, assignedActor) == false
 					assignedActor.SetValue (WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, 1)
@@ -3459,7 +3632,7 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 					assignedActor.SetWorker(false)
 					assignedActor.bWork24Hours = false
 					;if workshop is currently loaded, also make sure that the actor gets removed from the worker arrays:
-					if UFO4P_WorkshopID == currentWorkshopID
+					if(UFO4P_WorkshopID == currentWorkshopID)
 						UFO4P_RemoveActorFromWorkerArray (assignedActor)
 					endif
 				else
@@ -3470,8 +3643,11 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 						;(see the comment in AssignActorToObject for further explanation)
 						assignedActor.multiResourceProduction = previousProduction - theObject.GetBaseValue (multiResourceValue)
 						;if workshop is currently loaded, add actors who are below their production limit to the worker arrays:
-						if UFO4P_WorkshopID == currentWorkshopID
-							UFO4P_AddActorToWorkerArray (assignedActor, GetResourceIndex (multiResourceValue))
+						if(UFO4P_WorkshopID == currentWorkshopID)
+							;UFO4P_AddActorToWorkerArray (assignedActor, GetResourceIndex (multiResourceValue))
+							;UFO4P 2.0.6 Bug #25264: replaced the previous line with the following two lines:
+							iResourceIndexToAssign = GetResourceIndex (multiResourceValue)
+							UFO4P_AddActorToWorkerArray (assignedActor, iResourceIndexToAssign)
 						endif
 					endif
 				endif
@@ -3482,12 +3658,52 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 	
 	else
 		wsTrace("	UnassignObject: " + theObject + " is not assigned to any actor.")
+		
+		;UFO4P 2.0.6 Bug #25264: added this block of code:
+		;If a work object is removed that was not assigned to an actor, we have to make sure that it is no longer in the unassigned object arrays.
+		if(bRemoveObject)
+			if(theObject.IsBed())
+				UFO4P_RemoveFromUnassignedBedsArray (theObject)
+			elseif(theObject.HasMultiResource())
+				UFO4P_RemoveFromUnassignedObjectsArray (theObject, theObject.GetResourceID())
+			endif
+		endif
 	endif
 
 	if UFO4P_WorkshopID >= 0 && (assignedActor || bRemoveObject)
 		;UFO4P 2.0.5 Bug #24637: skip the resource recalculation if this function was called in unassign actor mode:
 		;UnassignActor_Private() will now run this once, after unassigning all objects. This saves us a number of superfluous calls to an external script.
 		UpdateWorkshopRatingsForResourceObject (theObject, workshopRef, bRemoveObject, bRecalculateResources = !bUnassignActorMode)
+		
+		;UFO4P 2.0.6 Bug #25264: added this block of code:
+		;If this function was called by RemoveObjectFromWorkshop (only then, bRemoveObject is true), we should try to assign resources if a bed or a
+		;multi-resource object has been removed. Unlike other callers of this function, RemoveObjectFromWorkshop does not handle this on its own.
+		if(bRemoveObject)
+			if(iResourceIndexToAssign >= 0)
+				; WSWF 1.0.8a - Check autoassign settings
+				bool bAllowAssign = true
+				if(iResourceIndexToAssign == WorkshopRatingFood)
+					if(workshopRef.OwnedByPlayer && ! AutoAssignFood)
+						wsTrace("[WSWF Override] Auto assign disabled for food.")
+						bAllowAssign = false
+					endif
+				elseif(iResourceIndexToAssign == WorkshopRatingSafety)
+					if(workshopRef.OwnedByPlayer && ! AutoAssignDefense)
+						wsTrace("[WSWF Override] Auto assign disabled for defense.")
+						bAllowAssign = false
+					endif
+				endif
+				
+				if(bAllowAssign)
+					TryToAssignResourceType (workshopRef, WorkshopRatings[iResourceIndexToAssign].resourceValue)
+				endif
+			endif
+			
+			; WSFW 1.0.8a - Check autoassign settings
+			if(bShouldTryToAssignBeds && AutoAssignBeds)
+				TryToAssignBeds (workshopRef)
+			endif
+		endif
 	endif
 	
 	wsTrace("	UnassignObject: DONE")
@@ -3512,23 +3728,22 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 
 		wsTrace("		Bed - check for ownership")
 		bool UFO4P_Owned = false
-		if workObject.IsActorAssigned()
-			WorkShopNPCScript owner = workObject.GetAssignedActor()
-			if owner
-				;UFO4P 2.0.4 Bug #24408: unassign any berds that are currently assigned to robots:
-				if owner.GetBaseValue(WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue) > 0
-					wsTrace("		assigned actor is robot - clearing assignment")
+		;UFO4P 2.0.6 Bug #25215. removed the check for IsActorAssigned(), GetAssignedActor() accomplishes the same
+		WorkShopNPCScript owner = workObject.GetAssignedActor()
+		if(owner)
+			;UFO4P 2.0.4 Bug #24408: unassign any berds that are currently assigned to robots:
+			if owner.GetBaseValue(WorkshopRatings[WorkshopRatingPopulationRobots].resourceValue) > 0
+				wsTrace("		assigned actor is robot - clearing assignment")
+				workObject.AssignActor(None)
+			else
+				ObjectReference[] WorkshopActors = GetWorkshopActors (workshopRef)
+				int actorIndex = WorkshopActors.Find (owner)
+				wsTrace("		check actor list: index = " + actorIndex)
+				if actorIndex == -1
+					wsTrace("		assigned actor not found - clearing assignment")
 					workObject.AssignActor(None)
 				else
-					ObjectReference[] WorkshopActors = GetWorkshopActors (workshopRef)
-					int actorIndex = WorkshopActors.Find (owner)
-					wsTrace("		check actor list: index = " + actorIndex)
-					if actorIndex == -1
-						wsTrace("		assigned actor not found - clearing assignment")
-						workObject.AssignActor(None)
-					else
-						UFO4P_Owned = true
-					endif
+					UFO4P_Owned = true
 				endif
 			endif
 		endif
@@ -3545,7 +3760,11 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 
 		bool UFO4P_ShouldUpdateRatings = true
 
-		if workObject.HasKeyword (WorkshopWorkObject) && workObject.IsActorAssigned()
+		;UFO4P 2.0.6 Bug #25215. removed the check for IsActorAssigned() (was superfluous with our followup check to GetAssignedActor)
+		if(workObject.HasKeyword (WorkshopWorkObject))
+			;UFO4P 2.0.6 Bug #25238: added this line:
+			bool UFO4P_ShouldSendEvent = false
+			
 			wsTrace("		Work object - check for ownership")
 			WorkShopNPCScript owner = workObject.GetAssignedActor()
 			wsTrace("		Assigned actor = " + owner)
@@ -3585,35 +3804,21 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 								owner.SetLinkedRef (NONE, actorLinkKeyword)
 							endif
 
-							;We must update the ratings (and recalculate the workshop resources) before sending the event because the quests that listen to
-							;this event may need the updated ratings values to process it:
-							UpdateWorkshopRatingsForResourceObject (workObject, workshopRef, bRecalculateResources = true)
-							;set this to false, so we won't run the update again:
-							UFO4P_ShouldUpdateRatings = false
-							;send the event:
-							; WSFW Event Edit - Adding actor to the end of event arguments 
-							;/
-							Var[] kargs = new Var[2]
-							kargs[0] = workObject
-							kargs[1] = workshopRef
-							/;
-								
-							Var[] kargs = new Var[3]
-							kargs[0] = workObject
-							kargs[1] = workshopRef
-							kargs[2] = owner
-							wsTrace("			sending WorkshopActorUnassigned event")
-							SendCustomEvent("WorkshopActorUnassigned", kargs)
+							;UFO4P 2.0.6 Bug #25238: added this line:
+							UFO4P_ShouldSendEvent = true
+						
 							;Store unassignedActorID in a separate array, so we know which actors to remove after ResetWorkshop() has finished looping through the
 							;resource object arrays (we can't remove him now because there may be other objects to handle).
 							UFO4P_StoreUnassignedActorID (unassignedActorID)
 						endif
 						
 						bObjectHandled = true
-
+						
+						;UFO4P 2.0.6 Bug #25238: added this line, just to make sure:
+						workObject.bResetDone = false
 					endif
 				endif
-				
+								
 				;UFO4P 2.0.5 Bug #25129: added check:
 				if bObjectHandled == false
 					ObjectReference[] WorkshopActors = GetWorkshopActors (workshopRef)
@@ -3631,6 +3836,35 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 						workObject.AssignActor(None)
 					endif
 				endif
+			;UFO4P 2.0.6 Bug #25238: added this branch:
+			;This is for objects that were found and unassigned even though their workshop was not loaded.
+			elseif(workObject.bResetDone)
+				UFO4P_ShouldSendEvent = true
+				workObject.bResetDone = false
+			endif
+			
+			
+			;UFO4P 2.0.6 Bug #25238: moved this code down here from above:
+			if(UFO4P_ShouldSendEvent)
+				;We must update the ratings (and recalculate the workshop resources) before sending the event because the quests that listen to
+				;this event may need the updated ratings values to process it:
+				UpdateWorkshopRatingsForResourceObject (workObject, workshopRef, bRecalculateResources = true)
+				;set this to false, so we won't run the update again:
+				UFO4P_ShouldUpdateRatings = false
+				;send the event:
+				; WSFW Event Edit - Adding actor to the end of event arguments 
+				;/
+				Var[] kargs = new Var[2]
+				kargs[0] = workObject
+				kargs[1] = workshopRef
+				/;
+					
+				Var[] kargs = new Var[3]
+				kargs[0] = workObject
+				kargs[1] = workshopRef
+				kargs[2] = owner
+				wsTrace("			sending WorkshopActorUnassigned event")
+				SendCustomEvent("WorkshopActorUnassigned", kargs)		
 			endif
 		endif
 		
@@ -3838,7 +4072,8 @@ function TryToAssignBeds(WorkshopScript workshopRef)
 	;Note: array lengths are going to change since we remove actors and beds once they have been assigned
 	while UFO4P_ActorsWithoutBeds.Length > 0 && UFO4P_UnassignedBeds.Length > 0
 		WorkshopNPCScript theActor = UFO4P_ActorsWithoutBeds[0]
-		if theActor
+		;UFO4P 2.0.6 Bug: Added check for IsBoundGameObjectAvailable() to work around reload bug issues:
+		if theActor && theActor.IsBoundGameObjectAvailable()
 			wsTrace("	TryToAssignBeds: " + theActor + " has no bed")
 			WorkshopObjectScript bedToAssign = UFO4P_UnassignedBeds[0]
 			UFO4P_UnassignedBeds.Remove(0)
@@ -3924,24 +4159,12 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 			return
 		endif
 
-		ObjectReference[] ResourceObjects
-		bool bInitialized = UFO4P_ObjectArrayInitialized (resourceIndex)
-		if bInitialized
-			ResourceObjects = UFO4P_GetObjectArray (resourceIndex)
-		else
-			;Creating the ResourceObjects array won't work if the workshop is not loaded. Only the first call of this function after a workshop has loaded
-			;will find the helper array uninitialized, and this is always the call from the ResetWorkshop function. If the workshop is not loaded at this
-			;point, we must reset currentWorkshopID because the reset that called this function is obviously unable to complete its tasks (which do not only
-			;include the resource assignment itself but also the creation of the helper array).
-			if UFO4P_IsWorkshopLoaded (workshopRef, bResetIfUnloaded = true) == false
-				wsTrace("	TryToAssignResourceType: Workshop is not loaded. Returning ...")
-				return
-			endif
-			; get resources of specified type, undamaged only (no point in auto-assigning damaged objects)
-			ResourceObjects = GetResourceObjects (workshopRef, resourceValue, 2)
-			; save this in the respective helper array, so we have an array now to work with even if there are currently no actors or objects to assign:
-			UFO4P_SaveObjectArray (ResourceObjects, resourceIndex)
-		endif
+		;/
+		UFO4P 2.0.6 Bug #25483: replaced UFO4P_SaveObjectArray code with the following line:
+		ResetWorkshop() makes sure now that both object arrays are initialized before this function is called for the first time.
+		/;	
+		ObjectReference[] ResourceObjects = UFO4P_GetObjectArray (resourceIndex)
+		
 
 		int countWorkers = workers.Length
 		wsTrace("		Found " + countWorkers + " actors to assign to " + resourceValue)
@@ -3965,7 +4188,8 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 		while workerIndex < workers.Length
 
 			WorkshopNPCScript theWorker = workers[workerIndex]
-			if theWorker == none
+			;UFO4P 2.0.6 added check for IsBoundGameObjectAvailable() to work around reload bug issues:
+			if theWorker == none || theWorker.IsBoundGameObjectAvailable() == false
 				workers.Remove (workerIndex)
 			else
 				float resourceTotal = theWorker.multiResourceProduction
@@ -3977,13 +4201,21 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 				while objectIndex < ResourceObjects.Length && actorAssigned == false
 					ObjectReference theObjectRef = ResourceObjects [objectIndex]
 					WorkshopObjectScript theObject = theObjectRef as WorkshopObjectScript
+					
+					;/
+					UFO4P 2.0.6 Bug #25483: removed this code:
+					Resource object arrays are now filtered upon creation, so we don't need to check this here again.
+					
 					if(theObject == none)
 						wsTrace("	TryToAssignResourceType: Resource object " + theObjectRef + " has no WorkshopObjectScript")
 						ResourceObjects.Remove (objectIndex)
 					elseif(theObject.IsActorAssigned() || theObject.HasKeyword (WorkshopWorkObject) == false)
 						;Object is already assigned or doesn't require an actor -> remove
 						ResourceObjects.Remove (objectIndex)
-					elseif(theObject.HasKeyword(WSFW_DoNotAutoassignKeyword)) 
+					else
+					/;
+					
+					if(theObject.HasKeyword(WSFW_DoNotAutoassignKeyword)) 
 						; WSFW - 1.0.8 - Allowing mod authors to prevent their objects from being auto-assigned
 						ResourceObjects.Remove(objectIndex)
 					elseif theObject.GetBaseValue (resourceValue) > theObject.GetValue (resourceValue)
@@ -3995,7 +4227,9 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 						if resourceTotal + resourceRating <= maxProduction
 							wsTrace("		 Found object " + theObject + ", resource rating = " + resourceRating + " - assign")
 							; NOTE: resetMode = TRUE (so it skips calling this function again); addActorCheck = FALSE (since we know this actor is assigned to this workshop)
-							AssignActorToObject (theWorker, theObject, bResetMode = true, bAddActorCheck = false)
+							; WSFW 1.0.8a - changing to V2 for UFO4P 2.0.6
+							; AssignActorToObject (theWorker, theObject, bResetMode = true, bAddActorCheck = false)
+							AssignActorToObjectV2(theWorker, theObject, bResetMode = true, bAddActorCheck = false, bUpdateObjectArray = false)
 							;object has been assigned -> remove:
 							ResourceObjects.Remove (objectIndex)
 							;update worker's production:
@@ -4022,7 +4256,17 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 		endWhile
 
 		; make sure the helper array is up to date (i.e. won't contain any invalid objects):
-		UFO4P_SaveObjectArray (ResourceObjects, resourceIndex)
+		;UFO4P 2.0.6 Bug #25483: Removed this line:
+		;This is no longer needed because the ResourceObjects array is no longer created by this function, so doesn't have to be passed to
+		;whichever object array corresponds to respurceIndex.
+		;UFO4P_SaveObjectArray (ResourceObjects, resourceIndex)
+		
+		;UFO4P 2.0.6 Bug #25483: added traces:
+		if resourceIndex == WorkshopRatingFood
+			wsTrace("	TryToAssignResourceType: unassigned food objects array contains " + UFO4P_UnassignedFoodObjects.Length + " items")
+		else
+			wsTrace("	TryToAssignResourceType: unassigned safety objects array contains " + UFO4P_UnassignedSafetyObjects.Length + " items")
+		endif
 	else
 		wsTrace("No resource type sent to assign. ResourceValue: " + resourceValue)
 	endif
@@ -4437,6 +4681,9 @@ function ResetWorkshop(WorkshopScript workshopRef)
 
 	
 	GetEditLock()
+	
+	;UFO4P 2.0.6 Bug #25230: added this line:
+	UFO4P_ResetRunning = true
 
 	UFO4P_WorkshopRef_ResetDelayed = none
 	UFO4P_AttackRunning = false
@@ -4477,17 +4724,30 @@ function ResetWorkshop(WorkshopScript workshopRef)
 
 	float currentDamage = workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageCurrent].resourceValue) / 100
 	wsTrace("	ResetWorkshop: " + workshopRef + "   Current damage % = " + currentDamage * 100)
-	float foodToDamage = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageFood].resourceValue))
-	float waterToDamage = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageWater].resourceValue))
-	float safetyToDamage = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageSafety].resourceValue))
-	float powerToDamage = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamagePower].resourceValue))
+	
+	;/
+	UFO4P 2.0.6 Bug #25215: Modified this:
+	The indixes of all resource rating values that are relevant for the damage calculations (i.e. 0 - food, 3 - safety, 4 - water, 5 - power)
+	are now stored in a property on WorkshopObjectScript, so the damage passes performed by this function while looping through the object
+	arrays do not need to check the objects for the corresponding actor values again and again. Though, this modification alone would only
+	save us the calls of HasResourceValue() on WorkshopObjectScript; we would still have to check the value of the resource index to attribute
+	it to the corresponding floats foodToDamage, foodToDamage, safetyToDamage and powerToDamage. To improve this, these floats are replaced by
+	an array that holds the individual resource damage values at the positions specified by the resource index (i.e. at the same positions as
+	the corresponding actor values in the WorkshopRatings array). This reduces the damage handling to a single line of code.
+	/;
+	float[] resourceToDamage = new float [6]
+	resourceToDamage[WorkshopRatingFood] = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageFood].resourceValue))
+	resourceToDamage[WorkshopRatingSafety] = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageSafety].resourceValue))
+	resourceToDamage[WorkshopRatingWater] = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamageWater].resourceValue))
+	resourceToDamage[WorkshopRatingPower] = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamagePower].resourceValue))
+	
 	int populationToDamage = math.Ceiling (workshopRef.GetValue (WorkshopRatings[WorkshopRatingDamagePopulation].resourceValue)) as int
 
-	wsTrace("	 Food to damage = " + foodToDamage)
-	wsTrace("	 Water to damage = " + waterToDamage)
-	wsTrace("	 Safety to damage = " + safetyToDamage)
-	wsTrace("	 Power to damage = " + powerToDamage)
-	wsTrace("	 Population to damage = " + populationToDamage)
+	; UFO4P 2.0.6 Bug #25215: Modified traces to use resourceToDamage array
+	wsTrace("	 Food to damage = " + resourceToDamage[WorkshopRatingFood])
+	wsTrace("	 Water to damage = " + resourceToDamage[WorkshopRatingWater])
+	wsTrace("	 Safety to damage = " + resourceToDamage[WorkshopRatingSafety])
+	wsTrace("	 Power to damage = " + resourceToDamage[WorkshopRatingPower])
 	
 	;If false, we can skip the second loop through the actor array.
 	;Getting this here because the damage value will be counted down, so we can't check it later on.
@@ -4511,7 +4771,8 @@ function ResetWorkshop(WorkshopScript workshopRef)
 			wsTrace("   ------------------------------------------------------------------------------ ")
 
 			if actorRef.IsDead()
-				UnassignActor_Private(actorRef, bRemoveFromWorkshop = true, bSendUnassignEvent = false, bResetMode = true)
+				;UFO4P 2.0.6 Bug #25237: added a value for the new bool argument bNPCTransfer
+				UnassignActor_PrivateV2(actorRef, bRemoveFromWorkshop = true, bSendUnassignEvent = false, bResetMode = true, bNPCTransfer = false)
 				;UFO4P 2.0.4 Bug #24274: Removing dead actors from the array, because this function does now pass the actor
 				;array when it calls SetUnassignedPopulationRating at the end. That function will calculate wrong results
 				;if the array contains actors that are no longer assigned to the workshop.
@@ -4647,23 +4908,25 @@ function ResetWorkshop(WorkshopScript workshopRef)
 
 			wsTrace("	------------------------------------------------------------------------------ ")
 			wsTrace("	" + i + ": Resource type: " + ResourceObjectsDamaged[i].GetBaseObject(), bNormalTraceAlso = true)
-			wsTrace("	Resource ref = " + resourceRef + ", owner = " + resourceRef.GetAssignedActor() + " damaged ? " + resourceRef.HasResourceDamage(), bNormalTraceAlso = true)
+			
+			;UFO4P 2.0.6 Bug #25215: replaced wsTrace code below:
+			;All objects in this array are damaged, so this doesn't need to be logged again. Saves one call of an external script per object if logging is turned on.
+			wsTrace("	Resource ref = " + resourceRef + ", owner = " + resourceRef.GetAssignedActor(), bNormalTraceAlso = true)
 			wsTrace("	------------------------------------------------------------------------------ ")
 
 			;Still faster to check whether resourceRef has a resource type that matches the resource damage instead of running all
 			;four damage passes on every object (three of these calls were always superfluous, because an object can only have one
 			;of these resource types). To save as many checks as possible, we perform the checks in the order of decreasing abundance
 			;of the respective object types:		
-			if resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingFood].resourceValue)
-				foodToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingFood].resourceValue, foodToDamage)
-			elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingSafety].resourceValue)
-				safetyToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingSafety].resourceValue, safetyToDamage)
-			elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingWater].resourceValue)
-				waterToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingWater].resourceValue, waterToDamage)
-			elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingPower].resourceValue)
-				powerToDamage = UpdateResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingPower].resourceValue, powerToDamage)
+			; UFO4P 2.0.6 Bug #25215: switched to resourceID stuff:
+						
+			int resourceID = resourceRef.GetResourceID()
+			wsTrace("	Resource index = " + resourceID)
+			if resourceID >= 0
+				resourceToDamage[resourceID] = UpdateResourceDamage(resourceRef, WorkshopRatings[resourceID].resourceValue, resourceToDamage[resourceID])
 			
-			;if we got no mtach, the object is not a food, water, safety or power object. If it also does not have the WorkshopWork
+			
+			;if we got no match, the object is not a food, water, safety or power object. If it also does not have the WorkshopWork
 			;Object keyword (i.e. does not requires an actor, so is no vendor stand or a scavenging station either) or is a bed, the
 			;scripts will never repair it and the player cannot repair it either, so it should not be damaged at all (logging has shown
 			;that damaged beds may pile up at workshops over time). In that case, repair it (otherwise, it does waste resources because
@@ -4701,7 +4964,17 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	
 	;If this is false, we can skip the damage pass on all undamaged objects entirely:
 	;Getting this here because the value may change while looping through the damaged objects.
-	bool UFO4P_ApplyDamageToResourceObjects = (foodToDamage + waterToDamage + safetyToDamage + powerToDamage > 0)
+	; bool UFO4P_ApplyDamageToResourceObjects = (foodToDamage + waterToDamage + safetyToDamage + powerToDamage > 0)
+	;UFO4P 2.0.6 Bug #25215: replaced the previous line with the following code:
+
+	i = 0
+	bool UFO4P_ApplyDamageToResourceObjects = false
+	while i < 6 && UFO4P_ApplyDamageToResourceObjects == false
+		if resourceToDamage[i] > 0
+			UFO4P_ApplyDamageToResourceObjects = true
+		endif
+		i += 1
+	endWhile
 	
 	; now we do another pass, looking at the rest of the objects in the list
 	maxIndex = ResourceObjectsUndamaged.Length
@@ -4721,7 +4994,9 @@ function ResetWorkshop(WorkshopScript workshopRef)
 
 			wsTrace("	------------------------------------------------------------------------------ ")
 			wsTrace("	" + i + ": Resource type: " + ResourceObjectsUndamaged[i].GetBaseObject(), bNormalTraceAlso = true)
-			wsTrace("	Resource ref = " + resourceRef + ", owner = " + resourceRef.GetAssignedActor() + " damaged ? " + resourceRef.HasResourceDamage(), bNormalTraceAlso = true)
+			;UFO4P 2.0.6 Bug #25215: Updated wsTrace data:
+			;All objects in this rray are damaged, so this doesn't need to be logged again. Saves one call of an external script per object if logging is turned on.
+			wsTrace("	Resource ref = " + resourceRef + ", owner = " + resourceRef.GetAssignedActor(), bNormalTraceAlso = true)
 			wsTrace("	------------------------------------------------------------------------------ ")
 
 			;No need to run this if there's no damage to apply:
@@ -4730,14 +5005,12 @@ function ResetWorkshop(WorkshopScript workshopRef)
 				;four damage passes on every object (three of these calls were always superfluous, because an object can only have one
 				;of these resource type). To save as many checks as possible, we perform the checks in the order of decreasing abundance
 				;of the respective object types:
-				if resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingFood].resourceValue)
-					foodToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingFood].resourceValue, foodToDamage)
-				elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingSafety].resourceValue)
-					safetyToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingSafety].resourceValue, safetyToDamage)
-				elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingWater].resourceValue)
-					waterToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingWater].resourceValue, waterToDamage)
-				elseif resourceRef.HasResourceValue (WorkshopRatings[WorkshopRatingPower].resourceValue)
-					powerToDamage = ApplyResourceDamage(resourceRef, WorkshopRatings[WorkshopRatingPower].resourceValue, powerToDamage)
+				
+				; UFO4P 2.0.6 Bug #25215: Using new resourceID setup
+				int resourceID = resourceRef.GetResourceID()
+				wsTrace("	Resource index = " + resourceID)
+				if resourceID >= 0
+					resourceToDamage[resourceID] = ApplyResourceDamage(resourceRef, WorkshopRatings[resourceID].resourceValue, resourceToDamage[resourceID])
 				endif
 			endif
 
@@ -4770,10 +5043,11 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	
 	wsTrace("------------------------------------------------------------------------------")
 	wstrace("	Damage pass done.")	
-	wstrace("		Removing " + foodToDamage + " extraneous food damage")
-	wstrace("		Removing " + waterToDamage + " extraneous water damage")
-	wstrace("		Removing " + safetyToDamage + " extraneous safety damage")
-	wstrace("		Removing " + powerToDamage + " extraneous power damage")
+		; UFO4P 2.0.6 Bug #25215: Modified the variables below and now use the resourceToDamage array
+	wstrace("		Removing " + resourceToDamage[WorkshopRatingFood] + " extraneous food damage")
+	wstrace("		Removing " + resourceToDamage[WorkshopRatingWater] + " extraneous water damage")
+	wstrace("		Removing " + resourceToDamage[WorkshopRatingSafety] + " extraneous safety damage")
+	wstrace("		Removing " + resourceToDamage[WorkshopRatingPower] + " extraneous power damage")
 	wsTrace("------------------------------------------------------------------------------")
 	
 	;WorkshopRatingDamageFood = 13
@@ -4793,6 +5067,8 @@ function ResetWorkshop(WorkshopScript workshopRef)
 		return
 	endif
 
+	;UFO4P 2.0.6 Bug #25483: added this line:
+	UFO4P_InitObjectArrays(workshopRef)
 	wsTrace("------------------------------------------------------------------------------ ")
 	wsTrace("	ResetWorkshop: " + workshopRef + "  ASSIGNING RESOURCES:")
 	wsTrace("------------------------------------------------------------------------------ ")
@@ -4835,6 +5111,8 @@ function ResetWorkshop(WorkshopScript workshopRef)
 
 	EditLock = false
 
+	;UFO4P 2.0.6 Bug #25230: added this line:
+	UFO4P_ResetRunning = false
 endFunction
 
 ; utility function to send custom destruction state change event (because it has to be sent from the defining script)
@@ -5105,7 +5383,8 @@ bool Function ActorOwnsBed(WorkshopScript workshopRef, WorkshopNPCScript actorRe
 	;actor in the UFO4P_ActorsWithoutBeds array to find out whether he owns a bed or not. This is significantly faster than looping
 	;through the actor's work objects.
 	if workshopRef.GetWorkshopID() == currentWorkshopID
-		return (UFO4P_ActorsWithoutBeds.Find (actorRef) < 0)
+		; UFO4P 2.0.6 Bug #25215: modified this:
+		return (UFO4P_ActorsWithoutBeds == none) || (UFO4P_ActorsWithoutBeds.Find (actorRef) < 0)
 	else
 		wsTrace("	ActorOwnsBed: workshop " + workshopRef + " is not loaded. Can't check bed ownership for actor " + actorRef)
 	endif
@@ -5804,6 +6083,11 @@ function UFO4P_StopWorkshopReset()
 	wsTrace("	ResetWorkshop: player left workshop. Aborting reset ... ")
 	UFO4P_UnassignedBeds = none
 	UFO4P_ActorsWithoutBeds = none
+	
+	;UFO4P 2.0.6 Bug #25230: added this line:
+	UFO4P_ResetRunning = false
+	;UFO4P 2.0.6 Bug #25221: added this line to make sure that another reset starts running once this workshop reloads:
+	UFO4P_PreviousWorkshopLocation = none
 endFunction
 
 ;--------------------------------------------------------------------------------------------------------------------------------------------
@@ -5813,6 +6097,8 @@ endFunction
 ;--------------------------------------------------------------------------------------------------------------------------------------------
 
 bool UFO4P_ClearBedArrays
+
+;UFO4P 2.0.6 Bug #25483 Note: These bools are obsolete now
 bool UFO4P_FoodObjectArrayInitialized
 bool UFO4P_SafetyObjectArrayInitialized
 
@@ -5836,8 +6122,10 @@ function UFO4P_InitCurrentWorkshopArrays()
 	UFO4P_UnassignedBeds = New WorkshopObjectScript[0]
 	UFO4P_UnassignedFoodObjects = New ObjectReference[0]
 	UFO4P_UnassignedSafetyObjects = New ObjectReference[0]
-	UFO4P_FoodObjectArrayInitialized = false
-	UFO4P_SafetyObjectArrayInitialized = false
+	
+	;UFO4P 2.0.6 Bug #25483: removed the following lines:
+	;UFO4P_FoodObjectArrayInitialized = false
+	;UFO4P_SafetyObjectArrayInitialized = false
 endFunction
 
 ;called by UFO4P_ResetCurrentWorkshop when the current workshop has unloaded
@@ -5847,8 +6135,10 @@ function UFO4P_ClearCurrentWorkshopArrays()
 	UFO4P_SafetyWorkers = none
 	UFO4P_UnassignedFoodObjects = none
 	UFO4P_UnassignedSafetyObjects = none
-	UFO4P_FoodObjectArrayInitialized = false
-	UFO4P_SafetyObjectArrayInitialized = false
+	
+	;UFO4P 2.0.6 Bug #25483:  removed the following lines:
+	;UFO4P_FoodObjectArrayInitialized = false
+	;UFO4P_SafetyObjectArrayInitialized = false
 
 	if UFO4P_ClearBedArrays
 		UFO4P_UnassignedBeds = none
@@ -5894,31 +6184,37 @@ endFunction
 			
 function UFO4P_AddObjectToObjectArray (WorkshopObjectScript objectRef)
 	if objectRef
-		actorValue multiResourceValue = objectRef.GetMultiResourceValue()
-		if multiResourceValue
-			int resourceIndex = GetResourceIndex (multiResourceValue)
-			if resourceIndex == WorkshopRatingFood && UFO4P_FoodObjectArrayInitialized
-				;Zero length obkectreference arrays may turn into 'none' arrays on reload. As long as UFO4P_FoodObjectArrayInitialized is 'true' however,
-				;the array was empty on purpose, so we can circumvent that issue by re-initializing it:
+		;UFO4P 2.0.6 for Bug #25215: removed this check:
+		;This function is not called if we don't know already that the object is a multi-resource object. To get the resource index, we don't need the 
+		;multi-resource value either, but can now simply call GetResourceID (see below). 
+		;actorValue multiResourceValue = objectRef.GetMultiResourceValue()
+		;if multiResourceValue
+		
+			;int resourceIndex = GetResourceIndex (multiResourceValue)
+			;UFO4P 2.0.6 for Bug #25215: replaced the previous line with the following line:
+			;The new function GetResourceID() (on WorkshopObjectScript) replaces subsequent calls of GetMultiResourceValue() and GetResourceIndex().
+			int resourceIndex = objectRef.GetResourceID()
+			
+			;UFO4P 2.0.6 Bug #25483: removed check for UFO4P_FoodObjectArrayInitialized:
+			if resourceIndex == WorkshopRatingFood; && UFO4P_FoodObjectArrayInitialized
 				if UFO4P_UnassignedFoodObjects == none
 					UFO4P_UnassignedFoodObjects = New ObjectReference[0]
+				elseif UFO4P_UnassignedFoodObjects.Find (objectRef) >= 0
+					return
 				endif
-				if UFO4P_UnassignedFoodObjects.Find (objectRef) < 0
-					UFO4P_UnassignedFoodObjects.Add (objectRef)
-					wsTrace("	UFO4P_AddObjectToObjectArray: added " + objectRef + " to unassigned food objects array.")
-				endif
-			elseif resourceIndex == WorkshopRatingSafety && UFO4P_SafetyObjectArrayInitialized
-				;Zero length obkectreference arrays may turn into 'none' arrays on reload. As long as UFO4P_SafetyObjectArrayInitialized is 'true' however,
-				;the array was empty on purpose, so we can circumvent that issue by re-initializing it:
+				UFO4P_UnassignedFoodObjects.Add (objectRef)
+				wsTrace("	UFO4P_AddObjectToObjectArray: added " + objectRef + " to unassigned food objects array.")
+			;UFO4P 2.0.6 Bug #25483: removed check for UFO4P_SafetyObjectArrayInitialized:
+			elseif resourceIndex == WorkshopRatingSafety; && UFO4P_SafetyObjectArrayInitialized
 				if UFO4P_UnassignedSafetyObjects == none
 					UFO4P_UnassignedSafetyObjects = New ObjectReference[0]
+				elseif UFO4P_UnassignedSafetyObjects.Find (objectRef) >= 0
+					return
 				endif
-				if UFO4P_UnassignedSafetyObjects.Find (objectRef) < 0
-					UFO4P_UnassignedSafetyObjects.Add (objectRef)
-					wsTrace("	UFO4P_AddObjectToObjectArray: added " + objectRef + " to unassigned safety objects array.")
-				endif
+				UFO4P_UnassignedSafetyObjects.Add (objectRef)
+				wsTrace("	UFO4P_AddObjectToObjectArray: added " + objectRef + " to unassigned safety objects array.")
 			endif
-		endif
+		;endif
 	endif
 endFunction
 
@@ -5936,6 +6232,9 @@ function UFO4P_UpdateActorsWithoutBedsArray (WorkshopScript workshopRef)
 				int actorIndex = UFO4P_ActorsWithoutBeds.Find (theOwner)
 				if actorIndex >= 0
 					UFO4P_ActorsWithoutBeds.Remove (actorIndex)
+				
+					;UFO4P 2.0.6 Bug #25483: added an else branch:
+					; WSFW 1.0.8a - this change UFO4P was making was flawed - it assumed that the loop was only iterating actors without beds, when in fact it's iterating all beds, meaning this would unassign anyone from a bed who was NOT in the UFO4P_ActorsWithoutBeds array
 				endif
 			endif
 		endif
@@ -5965,7 +6264,7 @@ function UFO4P_AddToActorsWithoutBedsArray (WorkshopNPCScript actorRef)
 	endif
 endFunction
 
-
+;UFO4P 2.0.6 Bug #25483 Note: This function is obsolete now.
 bool function UFO4P_ObjectArrayInitialized (int resourceIndex)
 	if resourceIndex == WorkshopRatingFood
 		return UFO4P_FoodObjectArrayInitialized
@@ -5983,7 +6282,7 @@ ObjectReference[] function UFO4P_GetObjectArray (int resourceIndex)
 	endif
 endFunction
 
-
+;UFO4P 2.0.6 Bug #25483: This function is obsolete now:
 function UFO4P_SaveObjectArray (objectReference[] ResourceObjects, int resourceIndex)
 	if resourceIndex == WorkshopRatingFood
 		UFO4P_UnassignedFoodObjects = ResourceObjects
@@ -6061,4 +6360,86 @@ function UFO4P_ForceWorkshopReset()
 			StartTimer(0.1, UFO4P_ForcedResetTimerID)
 		endif
 	endif
+endFunction
+
+
+;	Added by UFO4P 2.0.6 for Bug #25483:
+;Called by ResetWorkshop to make sure that both object arrays are initialized before TryToAssignResources() is called for the first time.
+;This also makes the tracking bools superfluous that were used to discern whether the individual arrays are initialized. Also note that we
+;remove all invalid objects now upon creation (this is done by UFO4P_BuildObjectArray, see below), so TryToAssignResourceType doesn't need
+;to run these checks again every time it is called.
+function UFO4P_InitObjectArrays (WorkshopScript workshopRef)
+	wsTrace("	UFO4P_InitObjectArrays: filling arrays ... ")
+	UFO4P_UnassignedFoodObjects = UFO4P_BuildObjectArray (workshopRef, WorkshopRatingFood)
+	wsTrace("	UFO4P_InitObjectArrays: unassigned food objects array contains " + UFO4P_UnassignedFoodObjects.Length + " items")
+	UFO4P_UnassignedSafetyObjects = UFO4P_BuildObjectArray (workshopRef, WorkshopRatingSafety)
+	wsTrace("	UFO4P_InitObjectArrays: unassigned safety objects array contains " + UFO4P_UnassignedSafetyObjects.Length + " items")
+endFunction
+
+
+;	Added by UFO4P 2.0.6 for Bug #25483:
+;Helper function to return an object array with all invalid objects removed:
+ObjectReference[] Function UFO4P_BuildObjectArray (WorkshopScript workshopRef, int resourceIndex)
+	ObjectReference[] ResourceObjects = GetResourceObjects (workshopRef, WorkshopRatings[resourceIndex].resourceValue, 2)
+	int i = 0
+	while i < ResourceObjects.Length	
+		ObjectReference theObjectRef = ResourceObjects [i]
+		WorkshopObjectScript theObject = theObjectRef as WorkshopObjectScript
+		if theObject == none
+			wsTrace("	  UFO4P_BuildObjectArray: Resource object " + theObjectRef + " has no WorkshopObjectScript")
+			ResourceObjects.Remove (i)
+		elseif theObject.IsActorAssigned() || theObject.HasKeyword (WorkshopWorkObject) == false
+			ResourceObjects.Remove (i)
+		else
+			i += 1
+		endif
+	endWhile
+	return ResourceObjects
+endFunction
+
+
+;	Added by UFO4P 2.0.6 for Bug #25264:
+function UFO4P_RemoveFromUnassignedObjectsArray (ObjectReference objectRef, int resourceIndex)
+	if resourceIndex == WorkshopRatingFood && UFO4P_UnassignedFoodObjects
+		int objectID = UFO4P_UnassignedFoodObjects.Find (objectRef)
+		if objectID >= 0
+			UFO4P_UnassignedFoodObjects.Remove (objectID)
+			wsTrace("	UFO4P_RemoveFromUnassignedObjectsArray: " + UFO4P_UnassignedFoodObjects.Length + " unassigned food objects remaining.")
+		endif
+	elseif resourceIndex == WorkshopRatingSafety && UFO4P_UnassignedSafetyObjects
+		int	objectID = UFO4P_UnassignedSafetyObjects.Find (objectRef)
+		if objectID >= 0
+			UFO4P_UnassignedSafetyObjects.Remove (objectID)
+			wsTrace("	UFO4P_RemoveFromUnassignedObjectsArray: " + UFO4P_UnassignedSafetyObjects.Length + " unassigned safety objects remaining.")
+		endif
+	endif
+endFunction
+
+;	Added by UFO4P 2.0.6 for Bug #25264:
+function UFO4P_RemoveFromUnassignedBedsArray (WorkshopObjectScript theObject)
+	if theObject && UFO4P_UnassignedBeds
+		int objectID = UFO4P_UnassignedBeds.Find (theObject)
+		if objectID >= 0
+			UFO4P_UnassignedBeds.Remove (objectID)
+			wsTrace("	UFO4P_RemoveFromUnassignedBedsArray: " + UFO4P_UnassignedBeds.Length + " unassigned beds remaining.")
+		endif
+	endif
+endFunction
+
+;	Added by UFO4P 2.0.6 for Bug #25215:
+int function InitResourceID (WorkshopObjectScript resourceRef)
+	if resourceRef.HasResourceValue (WorkshopRatings[0].resourceValue)
+		;0 - food
+		return 0
+	else
+		int i = 3
+		while i < 6
+			if resourceRef.HasResourceValue (WorkshopRatings[i].resourceValue)
+				;3 - safety, 4 - water, 5 - power
+				return i
+			endif
+			i += 1
+		endWhile
+	endif
+	return -1
 endFunction

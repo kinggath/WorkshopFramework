@@ -278,7 +278,7 @@ EndFunction
 ; Returns: 
 ; True if the message was sent immediately, false if the message was queued up
 ; -----------------------------------
-	
+; TODO: Add support for the quest objectives as well	
 Bool Function ShowMessage(Message aMessageToShow, float afArg1 = 0.0, float afArg2 = 0.0, float afArg3 = 0.0, float afArg4 = 0.0, float afArg5 = 0.0, float afArg6 = 0.0, float afArg7 = 0.0, float afArg8 = 0.0, float afArg9 = 0.0, ReferenceAlias aRefAlias = None, ObjectReference akObjectToAlias = None, LocationAlias aLocAlias = None, Location akLocationToAlias = None, Bool abAutoClearAliases = true) global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	

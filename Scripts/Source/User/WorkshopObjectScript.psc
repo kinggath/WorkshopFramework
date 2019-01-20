@@ -52,6 +52,13 @@ Keyword Property AssignedActorLinkKeyword auto conditional
 
 ; used by ResetWorkshop to indicate which objects it has finished with
 bool Property bResetDone = false auto hidden
+;UFO4P 2.0.6 Note:
+;The ResetWorkshop function once used this bool to flag objects that were handled while looping through the damaged objects, so they would
+;not be considered again when looping through the undamaged objects. However, because undamaged and damaged objects were filled in separate
+;arrays, this case did never occur and this bool was obsolete from the beginning. In the vanilla script, ResetWorkshop did still update it
+;but it was not used anymore since UFO4P 2.0.4. WorkshopParentScript is now reusing it to tag specific objects for tracking them, e.g. when
+;objects are unassigned while their workshop is not loaded, so we cannot send any events immediately but have to do it later.
+
 
 ; INTERNAL VARIABLES:
 	bool bHasMultiResource = false
@@ -143,6 +150,17 @@ EndProperty
 ObjectReference Property myIdleMarkerRef = none auto
 
 ;--------------------------------------------------------
+;	Added by UFO4P 2.0.6 for Bug #25215 
+;--------------------------------------------------------
+
+int resourceID = -2
+;This value stores the resource index of this object (i.e. the index of its resource rating value in the WorkshopRatingValues array of WorkshopParentScript):
+;0 - food, 3 - safety, 4 - water, 5 - power; additional values: -1 - none of these, and -2 - not initialized. This saves the ResetWorkshop() function the time
+;to check the four corresponding actor values every time it runs a damage pass on this object.
+;Note that this value can also be used for other purposes, e.g. to check in which helper array an object is stored. This saves subsequent calls of GetMulti
+;ResourceValue() (on this script) and GetResourceIndex() (on WorkshopParentScript).
+
+;--------------------------------------------------------
 
 Event OnInit()
 ;	;WorkshopParent.wsTrace(self + " OnInit")
@@ -159,6 +177,9 @@ Event OnInit()
 	;player's first visit to this workshop, and there's no need to run it twice.
 	if workshopID >= 0
 		HandleCreation(false)
+		
+		;UFO4P 2.0.6 Bug #25215: on pre-placed objects, also initialize the resourceID:
+		resourceID = WorkshopParent.InitResourceID (self)
 	endif
 EndEvent
 
@@ -853,7 +874,10 @@ function HandleCreation(bool bNewlyBuilt = true)
 			SetHarvested(true)
 			;UFO4P 2.0.5 Bug #24775: also initialize the related actor value:
 			SetValue (WorkshopParent.WorkshopFloraHarvestTime, Utility.GetCurrentGameTime())
-		endif		
+		endif	
+
+		;UFO4P 2.0.6 Bug #25215: also initialize the resourceID:
+		resourceID = WorkshopParent.InitResourceID (self)		
 	endif
 
 	; if unowned, give player ownership
@@ -1001,4 +1025,15 @@ endFunction
 ;helper function to return the value stored in myDamageHelperRef to an external script
 ObjectReference function UFO4P_GetMyDamageHelperRef()
 	return myDamageHelperRef
+endFunction
+
+;--------------------------------------------
+;    Added by UFO4P 2.0.6 for Bug #25215:
+;--------------------------------------------
+
+int function GetResourceID()
+	if resourceID == -2
+		resourceID = WorkshopParent.InitResourceID (self)
+	endif
+	return resourceID
 endFunction
