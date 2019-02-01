@@ -295,7 +295,7 @@ Group WSFW_Added
 	Keyword Property WorkshopLinkContainer Auto Hidden
 	Faction Property FarmDiscountFaction Auto Hidden
 	Faction Property PlayerFaction Auto Hidden
-	{ 1.0.9 }
+	{ 1.1.0 }
 EndGroup
 
 
@@ -355,7 +355,7 @@ int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A98D Const ; 1.0.4 - Fixed t
 int iFormID_Setting_ShelterMechanic = 0x00006B5D ; 1.0.5
 int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
 int iFormID_Setting_AllowSettlementsToLeavePlayerControl = 0x00004CF3 ; 1.0.4 - New setting
-int iFormID_ControlManger = 0x0000B137 Const ; 1.0.9
+int iFormID_ControlManger = 0x0000B137 Const ; 1.1.0
 int iFormID_AV_minProductivity = 0x00007338 Const
 int iFormID_AV_productivityHappinessMult = 0x00007339 Const
 int iFormID_AV_maxHappinessNoFood = 0x0000733A Const
@@ -445,7 +445,7 @@ int iFormID_ObjectTypeWater = 0x000F4AED Const
 int iFormID_ObjectTypeFood = 0x00055ECC Const
 int iFormID_WorkshopLinkContainer = 0x0002682F Const
 int iFormID_FarmDiscountFaction = 0x0019FFC4 Const
-int iFormID_PlayerFaction = 0x0001C21C Const ; 1.0.9
+int iFormID_PlayerFaction = 0x0001C21C Const ; 1.1.0
 
 Bool bWSFWVarsFilled = false ; 1.0.3 - this will allow us to update workshops that have already past the init phase when this was installed
 
@@ -1393,7 +1393,7 @@ Bool Property bAllowLinkedConsumption = true Auto Hidden ; WSFW - Allow flagging
 ResourceShortage[] Property ShortResources Auto Hidden ; WSFW 1.0.8 - Resources that mods have reported are lacking
 
 
-; WSFW 1.0.9 - Support for Control system - we don't want to use SettlementOwnershipFaction as it is used by the base game for another purpose
+; WSFW 1.1.0 - Support for Control system - we don't want to use SettlementOwnershipFaction as it is used by the base game for another purpose
 Faction Property ControllingFaction Auto Hidden ; Non-WSFW specific for simple checks
 FactionControl Property FactionControlData Auto Hidden ; All WSFW data
 WorkshopFramework:WorkshopControlManager Property ControlManager Auto Hidden
@@ -1855,7 +1855,7 @@ function SetOwnedByPlayer(bool bIsOwned)
 endFunction
 
 Event OnWorkshopObjectPlaced(ObjectReference akReference)
-	; WSFW 1.0.9 - Support for FactionControl system
+	; WSFW 1.1.0 - Support for FactionControl system
 	if(ControllingFaction != None && akReference.GetBaseValue(Safety) > 0)
 		Actor TurretRef = akReference as Actor
 		
@@ -3253,7 +3253,7 @@ Function FillWSFWVars()
 		WSFW_AV_RobotHappinessLevel = Game.GetFormFromFile(iFormID_AV_RobotHappinessLevel, sWSFW_Plugin) as ActorValue
 	endif
 	
-	if( ! ControlManager) ; 1.0.9
+	if( ! ControlManager) ; 1.1.0
 		ControlManager = Game.GetFormFromFile(iFormID_ControlManger, sWSFW_Plugin) as WorkshopFramework:WorkshopControlManager
 	endif
 	
@@ -3404,7 +3404,7 @@ Function FillWSFWVars()
 		FarmDiscountFaction = Game.GetFormFromFile(iFormID_FarmDiscountFaction, sFO4_Plugin) as Faction
 	endif
 
-	; 1.0.9
+	; 1.1.0
 	if( ! PlayerFaction)
 		PlayerFaction = Game.GetFormFromFile(iFormID_PlayerFaction, sFO4_Plugin) as Faction
 	endif
