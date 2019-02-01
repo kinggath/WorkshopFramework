@@ -19,6 +19,7 @@ import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:WorkshopFunctions
 
+CustomEvent WorkshopNPCSpawned ; 1.1.1
 
 ; ---------------------------------------------
 ; Consts
@@ -422,7 +423,7 @@ EndFunction
 WorkshopNPCScript Function CreateSettler(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
 	ActorBase thisActorBase
 
-	; 1.0.9 - Allow faction control to override settlers
+	; 1.1.0 - Allow faction control to override settlers
 	FactionControl thisFactionControl = akWorkshopRef.FactionControlData
 	if(thisFactionControl != None && thisFactionControl.SettlerOverride != None)
 		thisActorBase = thisFactionControl.SettlerOverride
@@ -512,6 +513,12 @@ WorkshopNPCScript Function CreateWorkshopNPC(ActorBase aActorForm, WorkshopScrip
 		endif
 
 		WorkshopNewSettlerAlias.ForceRefTo(asWorkshopNPC)
+		
+		; 1.1.1 - Add event when a new settler is spawned and added to workshop
+		Var[] kArgs = new Var[2]		
+		kArgs[0] = asWorkshopNPC
+		kArgs[1] = akWorkshopRef		
+		SendCustomEvent("WorkshopNPCSpawned", kArgs)
 		
 		return asWorkshopNPC
 	endif

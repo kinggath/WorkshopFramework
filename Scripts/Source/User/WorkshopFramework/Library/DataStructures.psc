@@ -229,7 +229,7 @@ Struct LocationAndAliasMessage
 EndStruct
 
 
-; 1.0.9 - Struct for new Control system
+; 1.1.0 - Struct for new Control system
 Struct FactionControl
 	Faction FactionForm = None
 	{ Faction taking control. [Optional] Either this, or iFormID + sPluginName have to be set. }
@@ -257,7 +257,7 @@ Struct FactionControl
 	{ If true, all factions outside of these lists will be considered enemies. If false, all factions outside of these lists will be considered friendly. }
 EndStruct
 
-; 1.0.9 - Struct for new assault system
+; 1.1.0 - Struct for new assault system
 Struct ReservedAssaultQuest
 	int iReserveID = -1
 	Quest kQuestRef

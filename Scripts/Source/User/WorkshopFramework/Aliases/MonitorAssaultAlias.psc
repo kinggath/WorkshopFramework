@@ -10,6 +10,7 @@ EndStruct
 Bool Property bOnBleedout = true Auto Const
 { Monitor for bleedout as well as death }
 Bool Property bDisableBleedoutRecovery = true Auto Const
+
 PercentStages[] Property StageTriggers Auto Const
 { Trigger stages based on percentage, in whole numbers, of the NPCs that are dead or in bleedout (depending on bOnBleedout setting) }
 Keyword Property BleedoutRecoveryStopped Auto Const Mandatory

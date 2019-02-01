@@ -1067,7 +1067,7 @@ Function ProcessSurplusResources()
 				kRecord.TemporaryContainer.Disable()
 				kRecord.TemporaryContainer.Delete()
 				
-				; 1.0.9 We no longer need this record, destroy it
+				; 1.1.0 We no longer need this record, destroy it
 				kRecord.Disable(false)
 				kRecord.Delete()
 			endif
@@ -1096,7 +1096,7 @@ Function ProcessSurplusResources()
 		
 		SendCustomEvent("NotEnoughResources", kArgs)
 		
-		; 1.0.9 - Destroy records once we're done with them
+		; 1.1.0 - Destroy records once we're done with them
 		if(Setting_MaintainDeficits.GetValue() == 0.0)
 			thisMissingRecord.Disable(false)
 			thisMissingRecord.Delete()

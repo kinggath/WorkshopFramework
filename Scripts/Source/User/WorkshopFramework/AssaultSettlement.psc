@@ -109,6 +109,7 @@ EndGroup
 Group Keywords
 	Keyword Property BleedoutRecoveryStopped Auto Const Mandatory
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
+	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
 EndGroup
 
 Group Settings
@@ -145,6 +146,9 @@ Bool Property bAlwaysSubdueUniques = true Auto Hidden
 Bool Property bAutoHandleObjectives = true Auto Hidden
 Bool Property bAutoCaptureSettlement = false Auto Hidden
 Bool Property bChildrenFleeDuringAttack = true Auto Hidden
+
+Bool Property bForceDefendersKillable = false Auto Hidden ; 1.1.1
+Bool Property bForceAttackersKillable = false Auto Hidden ; 1.1.1
 
 ; Auto complete conditions
 Float Property fAutoEndTime = 2.0 Auto Hidden
@@ -284,6 +288,15 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		endif
 	elseif(aiStageID == iStage_TriggerAI)
 		StartAIPackages()
+		
+		; 1.1.1 - Allow clearing protected status on NPCs
+		if(bForceAttackersKillable)
+			ClearProtectedStatusOnRefCollection(Attackers)
+		endif
+		
+		if(bForceDefendersKillable)
+			ClearProtectedStatusOnRefCollection(Defenders)
+		endif
 	elseif(aiStageID == iStage_MostEnemiesDown)
 		if(bAutoHandleObjectives)
 			if(iCurrentAssaultType == AssaultManager.iType_Defend)
@@ -397,6 +410,8 @@ EndEvent
 Event OnQuestShutdown()
 	UnregisterForAllEvents()
 	CleanupAssault()
+	
+	Reset() ; 1.1.1 - Reset quest to clear objectives from pipboy
 EndEvent
 
 Event Location.OnLocationLoaded(Location akLocationRef)
@@ -412,6 +427,7 @@ EndEvent
 Int Function GetReserveID()
 	return iReserveID
 EndFunction
+
 
 Bool Function TryToMarkSuccessful()
 	if( ! GetStageDone(iStage_Failed))
@@ -448,7 +464,7 @@ Function SetupAssault()
 			DefenderFactionAlias.AddRef(kLeaderRef)
 		endif
 		
-		if(iCurrentAssaultType != AssaultManager.iType_Defend)
+		if(iCurrentAssaultType != AssaultManager.iType_Defend) 
 			AddCollectionToCompleteAliases(Settlers, abDefenders = true)
 			AddCollectionToCompleteAliases(NonSpeakingSettlers, abDefenders = true)
 			
@@ -456,6 +472,7 @@ Function SetupAssault()
 				if(ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
 					SubdueToComplete.AddRef(kLeaderRef)
 				else
+					ClearProtectedStatus(kLeaderRef)
 					KillToComplete.AddRef(kLeaderRef)
 				endif
 			endif
@@ -507,6 +524,7 @@ Function SetupAssault()
 					if(ShouldForceSubdue(kDefenderRef))
 						SubdueToComplete.AddRef(kDefenderRef)
 					else
+						ClearProtectedStatus(kDefenderRef)
 						KillToComplete.AddRef(kDefenderRef)					
 					endif
 				endif
@@ -535,6 +553,10 @@ Function SetupAssault()
 					if(ShouldForceSubdue(kAttackerRef))
 						SubdueToComplete.AddRef(kAttackerRef)
 					else
+						if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
+							ClearProtectedStatus(kAttackerRef)
+						endif
+						
 						KillToComplete.AddRef(kAttackerRef)
 					endif
 				endif
@@ -554,26 +576,22 @@ Function SetupAssault()
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			AddCollectionToCompleteAliases(OtherAttackers)
 		else
-			; Just move OtherAttackers into position
-			if(bMoveAttackersToStartPoint && OtherAttackers.GetCount() > 0)
-				ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
-				int i = 0
-				int iCount = OtherAttackers.GetCount()
+			int i = 0
+			int iCount = OtherAttackers.GetCount()
+			ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
+			
+			while(i < iCount)
+				Actor thisActor = OtherAttackers.GetAt(i) as Actor
 				
-				while(i < iCount)
-					ObjectReference thisRef = OtherAttackers.GetAt(i)
-					
-					if(thisRef)
-						Actor thisActor = thisRef as Actor
-						
-						if(thisActor)							
-							thisActor.MoveTo(kAttackFromRef)
-						endif
+				if(thisActor)
+					; Move OtherAttackers into position
+					if(bMoveAttackersToStartPoint)
+						thisActor.MoveTo(kAttackFromRef)
 					endif
-					
-					i += 1
-				endWhile
-			endif
+				endif
+				
+				i += 1
+			endWhile			
 		endif
 	endif
 	
@@ -624,6 +642,19 @@ Function SetupAssault()
 			Stop()
 		endif		
 	endif
+EndFunction
+
+
+Function ClearProtectedStatusOnRefCollection(RefCollectionAlias aCollection)
+	int i = 0
+	while(i < aCollection.GetCount())
+		Actor thisActor = aCollection.GetAt(i) as Actor
+		if( ! ShouldForceSubdue(thisActor))
+			ClearProtectedStatus(thisActor)
+		endif
+		
+		i += 1
+	endWhile
 EndFunction
 
 
@@ -920,7 +951,10 @@ Function StartAIPackages()
 	endif
 	
 	Attackers.AddToFaction(ActivateAIFaction)
-	Children.AddToFaction(ActivateAIFaction)
+	if(bChildrenFleeDuringAttack) ; 1.1.1 - This hadn't been setup correctly before
+		Children.AddToFaction(ActivateAIFaction)
+	endif
+	
 	Attackers.EvaluateAll()	
 	Defenders.EvaluateAll()
 EndFunction
@@ -933,12 +967,12 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 	ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
 	
 	while(i < iCount)
-		ObjectReference thisRef = aCollection.GetAt(i)
+		Actor thisActor = aCollection.GetAt(i) as Actor
 		
-		if(thisRef)
+		if(thisActor)
 			Bool bSkipActor = false
 			if(aCollection == Settlers || aCollection == NonSpeakingSettlers)
-				if( ! (thisRef as Actor) as WorkshopNPCScript)
+				if( ! (thisActor as Actor) as WorkshopNPCScript)
 					bSkipActor = true
 				endif
 			endif
@@ -946,17 +980,21 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 			if( ! bSkipActor)
 				; Move units
 				if(abDefenders && bMoveDefendersToCenterPoint)
-					thisRef.MoveTo(kDefendFromRef)
+					thisActor.MoveTo(kDefendFromRef)
 				elseif( ! abDefenders && bMoveAttackersToStartPoint)
-					thisRef.MoveTo(kAttackFromRef)
+					thisActor.MoveTo(kAttackFromRef)
 				endif
+			endif 
+			
+			; 1.1.1 - adjusted function to ensure WorkshopNPCs are correctly added to the victory aliases, and so NPCs are killable when appropriate
 				
-				; Add to victory tracking aliases
-				if(ShouldForceSubdue(thisRef as Actor) || (iCurrentAssaultType == AssaultManager.iType_Attack_Subdue && abDefenders && ( ! abGuardNPCs || ! bGuardsKillableEvenOnSubdue)))
-					SubdueToComplete.AddRef(thisRef)
-				else
-					KillToComplete.AddRef(thisRef)					
-				endif
+			; Add to victory tracking aliases
+			if(ShouldForceSubdue(thisActor) || (iCurrentAssaultType == AssaultManager.iType_Attack_Subdue && abDefenders && ! bForceDefendersKillable && ( ! abGuardNPCs || ! bGuardsKillableEvenOnSubdue)))
+				SubdueToComplete.AddRef(thisActor)
+			else
+				ClearProtectedStatus(thisActor)
+													
+				KillToComplete.AddRef(thisActor)					
 			endif
 		endif
 		
@@ -964,6 +1002,13 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 	endWhile
 EndFunction
 
+
+Function ClearProtectedStatus(Actor akActorRef)
+	if( ! akActorRef.IsEssential())
+		akActorRef.AddKeyword(ProtectedStatusRemoved)
+		akActorRef.SetProtected(false)
+	endif
+EndFunction
 
 Bool Function ShouldForceSubdue(Actor akActorRef)
 	if(akActorRef.IsEssential() || (bAlwaysSubdueUniques && akActorRef.GetLeveledActorBase().IsUnique()))
@@ -1002,6 +1047,10 @@ Function CleanupAssault()
 	WorkshopScript thisWorkshop = WorkshopAlias.GetRef() as WorkshopScript
 	
 	Attackers.RemoveFromFaction(ActivateAIFaction) ; Clear attack AI
+	Children.RemoveFromFaction(ActivateAIFaction) ; Clear flee AI
+	
+	RestoreProtectedStatus()
+	RestoreBleedoutRecovery()
 	
 	if(bPlayerInvolved && bEnemySurvivorsRemainEnemyToPlayer)
 		; Only mark them enemies to the player if this settlement wasn't captured - otherwise the player will be stuck murdering everyone inthe settlement
@@ -1095,9 +1144,7 @@ Function CleanupAssault()
 	bSettlersJoinFaction = false
 	bTogglePlayerOwnership = false
 	bPlayerIsEnemy = false
-	iCreateInvadingSettlers = -1
-	
-	RestoreBleedoutRecovery()
+	iCreateInvadingSettlers = -1	
 	
 	SpawnAttackerForm = None
 	iSpawnAttackers = 0
@@ -1133,11 +1180,22 @@ EndFunction
 
 
 Function RestoreBleedoutRecovery()
+	ActorValue HealthAV = Game.GetHealthAV()
+	
 	int i = 0
 	while(i < Attackers.GetCount())
 		Actor thisActor = Attackers.GetAt(i) as Actor
 		
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
+			; First make sure they have some health or they will immediately drop dead
+			Float fCurrentHealth = thisActor.GetValue(HealthAV)
+			Float fRestore = 10.0
+			
+			if(fCurrentHealth < 0)
+				fRestore += fCurrentHealth * -1
+			endif
+			
+			thisActor.RestoreValue(HealthAV, fRestore)
 			thisActor.SetNoBleedoutRecovery(false)
 			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
 		endif
@@ -1149,8 +1207,46 @@ Function RestoreBleedoutRecovery()
 	while(i < SubdueToComplete.GetCount())
 		Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
+			; First make sure they have some health or they will immediately drop dead
+			Float fCurrentHealth = thisActor.GetValue(HealthAV)
+			Float fRestore = 10.0
+			
+			if(fCurrentHealth < 0)
+				fRestore += fCurrentHealth * -1
+			endif
+			
+			thisActor.RestoreValue(HealthAV, fRestore)
+			
 			thisActor.SetNoBleedoutRecovery(false)
 			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+
+; 1.1.1
+Function RestoreProtectedStatus()
+	int i = 0
+	while(i < Attackers.GetCount())
+		Actor thisActor = Attackers.GetAt(i) as Actor
+		
+		if(thisActor.HasKeyword(ProtectedStatusRemoved))
+			thisActor.SetProtected(true)
+			thisActor.RemoveKeyword(ProtectedStatusRemoved)
+		endif
+		
+		i += 1
+	endWhile
+	
+	i = 0
+	while(i < Defenders.GetCount())
+		Actor thisActor = Defenders.GetAt(i) as Actor
+		
+		if(thisActor.HasKeyword(ProtectedStatusRemoved))
+			thisActor.SetProtected(true)
+			thisActor.RemoveKeyword(ProtectedStatusRemoved)
 		endif
 		
 		i += 1
