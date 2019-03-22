@@ -136,11 +136,11 @@ Function CaptureSettlement(WorkshopScript akWorkshopRef, FactionControl aFaction
 	Faction thisFaction = GetFactionFromFactionData(aFactionData)
 	
 	if(thisFaction != PreviousControllingFaction)
-		if(aFactionData)
+		if(aFactionData && aFactionData.ControlledSettlementCount)
 			aFactionData.ControlledSettlementCount.Mod(1)
 		endif
 		
-		if(PreviousControllingFaction != None && PreviousControlData)
+		if(PreviousControllingFaction != None && PreviousControlData && PreviousControlData.ControlledSettlementCount)
 			PreviousControlData.ControlledSettlementCount.Mod(-1)
 		endif
 	endif
