@@ -30,11 +30,12 @@ CustomEvent PlayerExitedSettlement
 ; ---------------------------------------------
 
 Group Controllers
-	WorkshopParentScript Property WorkshopParent Auto Const
+	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
 	WorkshopTutorialScript Property TutorialQuest Auto Const
 	{ 1.0.7 - Adding ability to control this quest }
 	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
 	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
+	WorkshopFramework:AssaultManager Property AssaultManager Auto Const Mandatory
 EndGroup
 
 Group Aliases
@@ -210,6 +211,31 @@ Function HandleStageSet(Quest akQuestRef, int auiStageID, int auiItemID)
 	endif
 	
 	Parent.HandleStageSet(akQuestRef, auiStageID, auiItemID)
+EndFunction
+
+
+Function HandleInstallModChanges()
+	if(iInstalledVersion < 15) ; Patch 1.1.2
+		int i = 1
+		bool bStuckFound = false
+		while(i < AssaultManager.DefaultAssaultQuests.Length)
+			; Prior to this patch, we had only added the first quest to the default array, so any from index 1 on could be stuck
+			if(AssaultManager.DefaultAssaultQuests[i].IsRunning())
+				bStuckFound = true
+				AssaultManager.DefaultAssaultQuests[i].Stop()
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bStuckFound || AssaultManager.CountAssaultsRunning() == 0)
+			; Reboot AssaultManager quest
+			AssaultManager.Stop()
+			AssaultManager.Start()
+		endif
+	endif
+	
+	Parent.HandleInstallModChanges()
 EndFunction
 
 

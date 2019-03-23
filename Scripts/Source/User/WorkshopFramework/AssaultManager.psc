@@ -165,7 +165,7 @@ EndFunction
 Function HandleInstallModChanges()
 	; Make sure we are registered for any new assault quests
 	RegisterDefaultAssaultQuests()
-	
+		
 	Parent.HandleInstallModChanges()
 EndFunction
 
@@ -194,6 +194,10 @@ Function RegisterNewAssaultQuest(Quest akQuestRef)
 EndFunction
 
 
+Int Function CountAssaultsRunning()
+	return RunningQuests.Length
+EndFunction
+
 Int Function SetupNewAssault(Location akTargetLocation, Int aiType, Bool abInvolvePlayer = true, ObjectReference akCustomVerb = None)
 	; Generate new reserve ID
 	Int iReserveID = NextReserveID
@@ -210,9 +214,16 @@ Int Function SetupNewAssault(Location akTargetLocation, Int aiType, Bool abInvol
 	
 	if(abInvolvePlayer)
 		if(Event_PlayerInvolvedAssault.SendStoryEventAndWait(akTargetLocation, akRef1 = akCustomVerb, aiValue1 = aiType, aiValue2 = iReserveID))
-			while( ! FindAssaultQuest(iReserveID))
+			int iWaitCount = 0
+			int iMaxWaitCount = 10
+			while( ! FindAssaultQuest(iReserveID) && iWaitCount < iMaxWaitCount)
 				Utility.Wait(1.0) ; Give the quest time to start
+				iWaitCount += 1
 			endWhile
+			
+			if(iWaitCount >= iMaxWaitCount) ; Failed to retrieve quest - let's not get stuck here
+				return -1 
+			endif
 			
 			return iReserveID
 		else

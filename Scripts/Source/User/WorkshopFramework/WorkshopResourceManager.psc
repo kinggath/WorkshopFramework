@@ -477,6 +477,10 @@ EndFunction
 Function HandleInstallModChanges()
 	SetupAllWorkshopProperties() ; 1.0.8 - Confirm any new properties are configured each patch
 	
+	if(iInstalledVersion < 15)
+		WorkshopParent.WSFWPatch112Fix()
+	endif
+	
 	if(iInstalledVersion < 12)
 		; 1.0.8 - Starting resource shortage loop
 		StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)

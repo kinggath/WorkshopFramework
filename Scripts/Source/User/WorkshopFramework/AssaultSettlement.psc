@@ -104,6 +104,9 @@ Group Factions
 	Faction Property AssaultAttackersFaction Auto Const Mandatory
 	Faction Property AssaultDefendersFaction Auto Const Mandatory
 	Faction Property ActivateAIFaction Auto Const Mandatory
+	Faction Property WorkshopCaravanFaction Auto Const Mandatory ; 1.1.3
+	Faction Property WorkshopNPCFaction Auto Const Mandatory ; 1.1.3
+	Faction Property CaptiveFaction Auto Const Mandatory ; 1.1.3
 EndGroup
 
 Group Keywords
@@ -111,6 +114,7 @@ Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
 EndGroup
+
 
 Group Settings
 	Bool Property bPlayerInvolved = true Auto Const
@@ -449,18 +453,23 @@ Function SetupAssault()
 	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
 	
-	
 	; Add settlers to aliases
 	if(bSettlersAreDefenders)
+		RemoveInvalidSettlers() ; 1.1.3
 		Defenders.AddRefCollection(Settlers)
+		ClearCaravanNPCsFromDefenders() ; 1.1.3
 		DefenderFactionAlias.AddRefCollection(Settlers)
 		Defenders.AddRefCollection(NonSpeakingSettlers)
 		DefenderFactionAlias.AddRefCollection(NonSpeakingSettlers)
 		
 		Actor kLeaderRef = SettlementLeader.GetRef() as Actor
 		
-		if(kLeaderRef)
-			Defenders.AddRef(kLeaderRef)
+		if(kLeaderRef && kLeaderRef.IsInFaction(WorkshopNPCFaction) && ! kLeaderRef.IsInFaction(CaptiveFaction)) ; 1.1.3
+			if( ! kLeaderRef.IsInFaction(WorkshopCaravanFaction)) ; 1.1.3
+				; Since the caravan driver might be away, we don't want the player to have to count on them being their in order to finish the raid
+				Defenders.AddRef(kLeaderRef)
+			endif
+		
 			DefenderFactionAlias.AddRef(kLeaderRef)
 		endif
 		
@@ -573,6 +582,11 @@ Function SetupAssault()
 		Attackers.AddRefCollection(OtherAttackers)
 		AttackerFactionAlias.AddRefCollection(OtherAttackers)
 		
+		; 1.1.3 - Make sure attackers aren't in the settlement's ownership faction
+		if(kWorkshopRef.SettlementOwnershipFaction != None)
+			AttackerFactionAlias.RemoveFromFaction(kWorkshopRef.SettlementOwnershipFaction)
+		endif
+		
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			AddCollectionToCompleteAliases(OtherAttackers)
 		else
@@ -642,6 +656,34 @@ Function SetupAssault()
 			Stop()
 		endif		
 	endif
+EndFunction
+
+ ; 1.1.3
+Function RemoveInvalidSettlers()
+	int i = Settlers.GetCount() - 1
+	while(i > 0)
+		Actor thisActor = Settlers.GetAt(i) as Actor
+		
+		if(thisActor != None && ( ! thisActor.IsInFaction(WorkshopNPCFaction) || thisActor.IsInFaction(CaptiveFaction)))
+			Settlers.RemoveRef(thisActor)
+		endif
+		
+		i -= 1
+	endWhile
+EndFunction
+
+ ; 1.1.3
+Function ClearCaravanNPCsFromDefenders()
+	int i = Defenders.GetCount() - 1
+	while(i > 0)
+		Actor thisActor = Defenders.GetAt(i) as Actor
+		
+		if(thisActor != None && thisActor.IsInFaction(WorkshopCaravanFaction))
+			Defenders.RemoveRef(thisActor)
+		endif
+		
+		i -= 1
+	endWhile
 EndFunction
 
 
@@ -1058,7 +1100,7 @@ Function CleanupAssault()
 			int i = 0
 			while(i < PlayerEnemies.GetCount())
 				Actor thisActor = PlayerEnemies.GetAt(i) as Actor
-				if(thisActor && ! thisActor.IsEssential())
+				if(thisActor && ! thisActor.IsEssential()&& ! thisActor.IsDead())
 					AssaultManager.RemainPlayerEnemy.ApplyToRef(thisActor)
 				endif
 				
@@ -1154,6 +1196,29 @@ Function CleanupAssault()
 	iSpawnDefenders = 0
 	OtherDefenders = None
 	bMoveDefendersToCenterPoint = true
+	; 1.1.2 - Hide all objectives
+	HideAllObjectives()
+EndFunction
+
+
+; 1.1.2 - Override
+Function Stop()
+	; Hide objectives before stopping or they end up stuck displayed
+	if( ! GetStageDone(90) && ! GetStageDone(100))
+		HideAllObjectives()
+	endif
+	
+	Parent.Stop()
+EndFunction
+
+Function HideAllObjectives()
+	SetObjectiveDisplayed(10, false)
+	SetObjectiveDisplayed(15, false)
+	SetObjectiveDisplayed(16, false)
+	SetObjectiveDisplayed(17, false)
+	SetObjectiveDisplayed(20, false)
+	SetObjectiveDisplayed(21, false)
+	SetObjectiveDisplayed(22, false)
 EndFunction
 
 
