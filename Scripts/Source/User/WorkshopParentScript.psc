@@ -1032,6 +1032,20 @@ CustomEvent WorkshopRemoveActor
 ; kArgs[2] = objectRef
 CustomEvent WorkshopActorAssignedToBed ; TODO: Implement this
 
+; WSFW_LocationAddActor - 1.1.4
+; Event when an actor is transferred to a settlement not registered with the Workshops array
+; kArgs[0] = assignedActor
+; kArgs[1] = assignedLocation
+; kArgs[2] = assignedKeyword
+CustomEvent WSFW_LocationAddActor
+
+; WSFW_WorkshopNPCTransfer - 1.1.4
+; Event when an actor is transferred to a settlement
+; kArgs[0] = assignedActor
+; kArgs[1] = newWorkshop
+; kArgs[2] = assignedKeyword
+CustomEvent WSFW_WorkshopNPCTransfer
+
 ; AssignmentRulesOverriden
 ;
 ; Event when an actor would normally be unassigned due to assignment rules, but was overridden because the item was found in the ExcludeFromAssignmentRules formlist
@@ -3025,6 +3039,18 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	wsTrace("	AddActorToWorkshop: DONE")
 
 endFunction
+
+
+; WSFW: WARNING - This is not ready for use yet and the signature may change
+Function WSFW_AddActorToLocationPUBLIC(Actor assignedActor, Location assignedLocation, Keyword assignedKeyword)
+	; TODO: Implement actual AddActorToLocation function to handle work
+    wsTrace("    WSFW_AddActorToLocationPUBLIC: " + assignedActor)
+    var[] akArgs = new var[3]
+    akArgs[0] = assignedActor
+    akArgs[1] = assignedLocation
+    akArgs[2] = assignedKeyword
+    SendCustomEvent("WSFW_LocationAddActor", akArgs)
+EndFunction
 
 
 ;UFO4P 1.0.3 Bug #20775: The ResetHappiness function had to be split in two parts (the vanilla code is preserved below):
@@ -5145,6 +5171,18 @@ function SendPowerStateChangedEvent(WorkshopObjectScript workObject, WorkshopScr
 	SendCustomEvent("WorkshopObjectPowerStageChanged", kargs)		
 endFunction
 
+; WSFW 1.1.4 - Allow WorkshopNPCScript to send out an event that an NPC was transferred between settlements
+Function SendWorkshopNPCTransferEvent(WorkshopNPCScript akActorRef, WorkshopScript akNewWorkshopRef, Keyword akActionKeyword)
+	wsTrace(" SendWorkshopNPCTransferEvent " + akActorRef + " to " + akNewWorkshopRef + " on Keyword " + akActionKeyword)
+	
+	Var[] kArgs = new Var[3]
+	kArgs[0] = akActorRef
+	kArgs[1] = akNewWorkshopRef
+	kArgs[2] = akActionKeyword
+	
+	SendCustomEvent("WSFW_WorkshopNPCTransfer", kArgs)
+EndFunction
+
 ; helper function for ResetWorkshop
 ; pass in resourceRef, keyword, current damage
 ; return new damage (after applying damage to this resource)
@@ -6305,7 +6343,7 @@ int[] UFO4P_UnassignedActorIDs
 
 
 function UFO4P_RegisterUnassignedActor (actor actorRef)
-	if actorRef
+	if actorRef && ! actorRef.IsDead() ; WSFW 1.1.2 - Prevent persistence of dead NPCs
 		if UFO4P_UnassignedActors == none
 			UFO4P_UnassignedActors = new actor [0]
 		elseif UFO4P_UnassignedActors.Find (actorRef) >= 0
@@ -6341,6 +6379,20 @@ function UFO4P_UpdateUnassignedActorsArray (WorkshopScript workshopRef)
 		wsTrace("	UFO4P_UpdateUnassignedActorsArray: DONE")
 	endif
 endFunction
+
+Function WSFWPatch112Fix()
+	; Prior to this, the UFO4P code could end up persisting dead NPCs
+	int i = UFO4P_UnassignedActors.Length
+	while(i > 0)
+		int iIndex = i - 1
+		
+		if(UFO4P_UnassignedActors[i].IsDead())
+			UFO4P_UnassignedActors.Remove(iIndex)
+		endif
+		
+		i -= 1
+	endWhile
+EndFunction
 
 
 ;--------------------------------------------------------------------------------------------------------------------------------------------

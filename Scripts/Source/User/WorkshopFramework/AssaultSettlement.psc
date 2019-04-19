@@ -478,7 +478,7 @@ Function SetupAssault()
 			AddCollectionToCompleteAliases(NonSpeakingSettlers, abDefenders = true)
 			
 			if(kLeaderRef)
-				if(ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+				if(kLeaderRef.IsInFaction(WorkshopNPCFaction) && (ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue))
 					SubdueToComplete.AddRef(kLeaderRef)
 				else
 					ClearProtectedStatus(kLeaderRef)
