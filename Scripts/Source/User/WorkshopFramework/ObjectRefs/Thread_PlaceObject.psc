@@ -41,6 +41,8 @@ Keyword Property WorkshopItemKeyword Auto Const Mandatory
 { Autofill }
 Keyword Property WorkshopRadioObject Auto Const Mandatory
 { Autofill }
+Keyword Property WorkshopStartPoweredOn Auto Const Mandatory
+{ Autofill }
 Keyword Property WorkshopEventRadioBeacon Auto Const Mandatory
 { Found on WorkshopParent script property of same name }
 Scene Property WorkshopRadioScene01 Auto Const Mandatory
@@ -87,6 +89,9 @@ Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of thr
 Event ObjectReference.OnLoad(ObjectReference akSenderRef)
 	if(akSenderRef.HasKeyword(ForceStaticKeyword))
 		akSenderRef.SetMotionType(akSenderRef.Motion_Keyframed)
+	elseif(kResult.HasKeyword(WorkshopCanBePowered) || kResult.HasKeyword(WorkshopStartPoweredOn))
+		kResult.PlayAnimation("Reset")
+		kResult.PlayAnimation("Powered")
 	else
 		akSenderRef.SetAngle(fAngleX, fAngleY, fAngleZ)
 		akSenderRef.SetPosition(fPosX, fPosY, fPosZ)
@@ -255,8 +260,26 @@ Function RunCode()
 			if(kWorkshopRef)
 				kResult.SetLinkedRef(kWorkshopRef, WorkshopItemKeyword)
 				
-				if(bFauxPowered && kResult.HasKeyword(WorkshopCanBePowered))
-					FauxPowered(kResult)
+				if(kResult.HasKeyword(WorkshopCanBePowered))
+					if(bFauxPowered)
+						FauxPowered(kResult)
+					endif
+					
+					if(kResult.Is3dLoaded())
+						kResult.PlayAnimation("Reset")
+						kResult.PlayAnimation("Powered")
+					else
+						RegisterForRemoteEvent(kResult, "OnLoad")
+					endif
+				endif	
+
+				if(kResult.HasKeyword(WorkshopStartPoweredOn))
+					if(kResult.Is3dLoaded())
+						kResult.PlayAnimation("Reset")
+						kResult.PlayAnimation("Powered")
+					else
+						RegisterForRemoteEvent(kResult, "OnLoad")
+					endif
 				endif
 				
 				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
