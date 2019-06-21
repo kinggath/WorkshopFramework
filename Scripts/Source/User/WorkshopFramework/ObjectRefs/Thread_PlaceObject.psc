@@ -35,6 +35,10 @@ ActorValue Property PowerGenerated Auto Const Mandatory
 { Autofill }
 ActorValue Property WorkshopResourceObject Auto Const Mandatory
 { Autofill }
+ActorValue Property WorkshopCurrentDraws Auto Const Mandatory
+{ Autofill }
+ActorValue Property WorkshopCurrentTriangles Auto Const Mandatory
+{ Autofill }
 Keyword Property WorkshopCanBePowered Auto Const Mandatory
 { Autofill }
 Keyword Property WorkshopItemKeyword Auto Const Mandatory
@@ -72,12 +76,15 @@ Float Property fPosZ = 0.0 Auto Hidden
 Float Property fAngleX = 0.0 Auto Hidden 
 Float Property fAngleY = 0.0 Auto Hidden 
 Float Property fAngleZ = 0.0 Auto Hidden 
-Float Property fScale = 0.0 Auto Hidden
+Float Property fScale = 1.0 Auto Hidden ; 1.1.6 - Defaulting to 1
 Bool Property bFadeIn = false Auto Hidden ; 1.0.5 - Adding option to allow fading these items in instead of popping them in
 Bool Property bStartEnabled = true Auto Hidden
 Bool Property bForceStatic = false Auto Hidden ; 1.0.5 - Default to false
 Bool Property bFauxPowered = false Auto Hidden ; 1.0.5 - Default to false
 Bool Property bSelfDestructThreadAfterOnLoad = true Auto Hidden ; 1.0.5 - Added option to prevent the self destruct
+Bool Property bApplyDrawCount = false Auto Hidden ; 1.1.5 - Defaults to false - if WorkshopCurrentDraws is applied to the placed object, it will be added to the workshop for the sake of the build limit
+Bool Property bApplyTriCount = false Auto Hidden ; 1.1.5 - Defaults to false - if WorkshopCurrentTriangles is applied to the placed object, it will be added to the workshop for the sake of the build limit
+Bool Property bForceWorkshopItemLink = true Auto Hidden
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
@@ -89,7 +96,7 @@ Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of thr
 Event ObjectReference.OnLoad(ObjectReference akSenderRef)
 	if(akSenderRef.HasKeyword(ForceStaticKeyword))
 		akSenderRef.SetMotionType(akSenderRef.Motion_Keyframed)
-	elseif(kResult.HasKeyword(WorkshopCanBePowered) || kResult.HasKeyword(WorkshopStartPoweredOn))
+	elseif(kResult && (kResult.HasKeyword(WorkshopCanBePowered) || kResult.HasKeyword(WorkshopStartPoweredOn)))
 		kResult.PlayAnimation("Reset")
 		kResult.PlayAnimation("Powered")
 	else
@@ -157,14 +164,20 @@ Function ReleaseObjectReferences()
 	kMoveToWorldspaceRef = None
 EndFunction
 
-
+Bool Property bVerbose = false Auto Hidden
 Function RunCode()
+	if(bVerbose)
+		Debug.MessageBox("RunCode called")
+	endif
 	bAutoDestroy = false
 	kResult = None
 	; Place temporary object at player
 	ObjectReference kTempPositionHelper = kSpawnAt.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
 	
 	if(kTempPositionHelper)
+		if(bVerbose)
+			Debug.MessageBox("PositionHelper placed")
+		endif
 		if(kPositionRelativeTo != None)
 			; Calculate position
 			Float[] fPosition = new Float[3]
@@ -196,13 +209,16 @@ Function RunCode()
 			fAngleY = fNew3dData[4]
 			fAngleZ = fNew3dData[5]
 		endif
-				
+		
+		if(bVerbose)
+			Debug.MessageBox("Final position data: " + fPosX + ", " + fPosY + ", " + fPosZ)
+		endif		
 		; Rotation can only occur in the loaded area, so handle that immediately
 		kTempPositionHelper.SetAngle(fAngleX, fAngleY, fAngleZ)
 		
 		
 		; 1.0.8 - Added kMoveToWorldspaceRef to ensure objects end up in the correct worldspace before the coordinates are set
-		if( ! kMoveToWorldspaceRef && kWorkshopRef)
+		if( ! kMoveToWorldspaceRef && kWorkshopRef && ! kWorkshopRef.Is3dLoaded()) ; 1.1.6, skip moving to worldspace for workshop ref items if the player is there
 			kMoveToWorldspaceRef = kWorkshopRef
 		endif
 		
@@ -224,6 +240,9 @@ Function RunCode()
 		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = bInitiallyDisabled, abDeleteWhenAble = false)
 				
 		if(kResult)
+			if(bVerbose)
+				Debug.TraceAndBox("Object placed " + kResult)
+			endif
 			if(kResult as Actor)
 				; Actors must be enabled before they can be manipulated
 				kResult.Enable(false)
@@ -254,11 +273,26 @@ Function RunCode()
 			
 			; 1.0.5 - Prior to this, the item was either faded in, or left for the calling script to enable, the bFadeIn adds the possibility of popping in the object from here. We do it at this particular point because the OnLoad event is registered and all 3d data is set which all go quicker while disabled
 			if(bStartEnabled && ! bFadeIn)
+				if(bVerbose)
+					Debug.MessageBox("Object enabled")
+				endif
 				kResult.Enable(false)
 			endif
 			
+			if(bVerbose)
+				Debug.MessageBox("About to test for kWorkshopRef")
+			endif
+			
 			if(kWorkshopRef)
-				kResult.SetLinkedRef(kWorkshopRef, WorkshopItemKeyword)
+				if(bVerbose)
+					Debug.MessageBox("Object linking to workshop")
+				endif
+			
+				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
+				
+				if(bForceWorkshopItemLink || asWorkshopObject || kResult.GetValue(WorkshopResourceObject) > 0)
+					kResult.SetLinkedRef(kWorkshopRef, WorkshopItemKeyword)
+				endif
 				
 				if(kResult.HasKeyword(WorkshopCanBePowered))
 					if(bFauxPowered)
@@ -282,7 +316,7 @@ Function RunCode()
 					endif
 				endif
 				
-				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
+				
 				if(asWorkshopObject)
 					asWorkshopObject.workshopID = kWorkshopRef.GetWorkshopID()
 					
@@ -294,6 +328,10 @@ Function RunCode()
 					
 					; Instead of doing kWorkshopRef.RecalculateWorkshopResources, we'll allow our ResourceManager to handle it. This let's us remotely update the workshop so things like the pipboy data are correct even when the settlement is unloaded.
 					ResourceManager.ApplyObjectSettlementResources(asWorkshopObject, kWorkshopRef)
+				endif
+			else
+				if(bVerbose)
+					Debug.MessageBox("No workshop found")
 				endif
 			endif
 			
@@ -323,7 +361,29 @@ Function RunCode()
 					i += 1
 				endWhile
 			endif
+			
+			if(bApplyDrawCount)
+				Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
+				Float fItemDraws = kResult.GetValue(WorkshopCurrentDraws)
+				
+				if(fItemDraws > 0)
+					kWorkshopRef.SetValue(WorkshopCurrentDraws, (fCurrentDraws + fItemDraws))
+				endif
+			endif
+			
+			if(bApplyTriCount)
+				Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
+				Float fItemTris = kResult.GetValue(WorkshopCurrentDraws)
+				
+				if(fItemTris > 0)
+					kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
+				endif
+			endif
 		endif
+	endif
+	
+	if(bVerbose)
+		Debug.MessageBox("Thread_PlaceObject: Completed RunCode.")
 	endif
 EndFunction
 

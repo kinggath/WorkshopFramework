@@ -22,6 +22,8 @@ Float[] Property KeepAtCoords Auto Hidden
 
 Event OnInit()
 	if(KeepAtCoords.Length == 0)
+		KeepAtCoords = new Float[0]
+		
 		; Store starting position
 		KeepAtCoords.Add(GetPositionX())
 		KeepAtCoords.Add(GetPositionY())
