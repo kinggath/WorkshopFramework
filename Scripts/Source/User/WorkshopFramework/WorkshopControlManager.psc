@@ -56,6 +56,7 @@ EndGroup
 Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property WorkshopCaravanKeyword Auto Const Mandatory
+	Keyword Property ActorTypeTurret Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -361,7 +362,7 @@ Function CaptureTurrets(WorkshopScript akWorkshopRef, Faction aRemoveFaction, Bo
 		
 		int j = 0
 		while(j < LinkedRefs.Length)
-			if(LinkedRefs[j] as WorkshopObjectActorScript)
+			if(LinkedRefs[j].HasKeyword(ActorTypeTurret))
 				kDefenseObjects.Add(LinkedRefs[j])
 			endif
 			
@@ -373,7 +374,7 @@ Function CaptureTurrets(WorkshopScript akWorkshopRef, Faction aRemoveFaction, Bo
 		
 	int i = 0
 	while(i < kDefenseObjects.Length)
-		if(kDefenseObjects[i] as WorkshopObjectActorScript)
+		if(kDefenseObjects[i].HasKeyword(ActorTypeTurret))
 			if(aRemoveFaction)
 				(kDefenseObjects[i] as Actor).RemoveFromFaction(aRemoveFaction)
 			endif
@@ -426,7 +427,7 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 			akTurretRef.AddToFaction(akWorkshopRef.SettlementOwnershipFaction)
 			akTurretRef.SetCrimeFaction(akWorkshopRef.SettlementOwnershipFaction)
 		else
-			akTurretRef.SetCrimeFaction(None)
+			akTurretRef.SetCrimeFaction(None) ; TODO - SetCrimeFaction to none during combat with player so that they don't aggro people after combat is over
 		endif
 	endif
 	

@@ -360,6 +360,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		AssaultManager.AssaultCompleted_Private(Self, WorkshopAlias.GetRef(), iCurrentAssaultType, AttackingFaction, DefendingFaction, false)
 		
 		StopAllCombat()
+		ConfigureTurrets(abMakeDefenders = false)
 		
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			ProcessCapture()
@@ -372,6 +373,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		AssaultManager.AssaultCompleted_Private(Self, WorkshopAlias.GetRef(), iCurrentAssaultType, AttackingFaction, DefendingFaction, true)
 		
 		StopAllCombat()		
+		ConfigureTurrets(abMakeDefenders = false)
 		
 		if(iCurrentAssaultType != AssaultManager.iType_Defend)
 			ProcessCapture()
@@ -384,6 +386,8 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
 	elseif(aiStageID == iStage_NoVictor)
 		; Ended without a victor
+		StopAllCombat()
+		ConfigureTurrets(abMakeDefenders = false)
 		AssaultManager.AssaultStopped_Private(Self)
 		StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
 	elseif(aiStageID == iStage_AutoComplete)
@@ -706,12 +710,14 @@ Function StartAssault()
 		SetStage(iStage_TriggerAI)
 			
 		AssaultManager.AssaultStarted_Private(Self, WorkshopAlias.GetRef(), iCurrentAssaultType, AttackingFaction, DefendingFaction)
+		
+		ConfigureTurrets(abMakeDefenders = true)
 	endif
 EndFunction
 
 
 Function AutoResolveAssault()
-	if( ! GetStageDone(iStage_Shutdown))
+	if( ! GetStageDone(iStage_Shutdown))		
 		if( ! bAutoCalculateVictor)
 			; We're not going to mark this as a success or failure and instead are just going to end it
 			SetStage(iStage_NoVictor)
@@ -1316,4 +1322,35 @@ Function RestoreProtectedStatus()
 		
 		i += 1
 	endWhile
+EndFunction
+
+
+Function ConfigureTurrets(Bool abMakeDefenders = true)
+	; Grab all turrets
+	if(abMakeDefenders)
+		WorkshopScript thisWorkshop = WorkshopAlias.GetRef() as WorkshopScript
+		
+		if(thisWorkshop)
+			ObjectReference[] kLinkedObjects = thisWorkshop.GetLinkedRefChildren(WorkshopItemKeyword)
+			
+			int i = 0
+			while(i < kLinkedObjects.Length)
+				if(kLinkedObjects[i] as WorkshopObjectActorScript)
+					DefenderFactionAlias.AddRef(kLinkedObjects[i])
+				endif
+				
+				i += 1
+			endWhile
+		endif
+	else
+		int i = DefenderFactionAlias.GetCount() - 1
+		while(i > 0)
+			WorkshopObjectActorScript asTurret = DefenderFactionAlias.GetAt(i) as WorkshopObjectActorScript
+			if(asTurret)
+				DefenderFactionAlias.RemoveRef(asTurret)
+			endif
+			
+			i -= 1
+		endWhile
+	endif
 EndFunction
