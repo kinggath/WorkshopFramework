@@ -38,6 +38,10 @@ EndGroup
 
 Event OnQuestInit()
 	; Run one-time initialization tasks
+	while(PlayerRef == None)
+		Utility.Wait(0.1) ; 1.1.7 - If a large number of quests are looking for this ref, it can fail to populate, causing OnPlayerLoadGame to never fire and we lose control of our updates
+	endWhile
+	
 	RegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
 	
 	HandleQuestInit()

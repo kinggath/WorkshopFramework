@@ -255,6 +255,7 @@ Group WSFW_AVs
 	ActorValue Property WSFW_AV_maxDefenseStrength Auto Hidden	
 
 	ActorValue Property WSFW_AV_RobotHappinessLevel Auto Hidden
+	ActorValue Property WSFW_Safety Auto Hidden ; 1.1.7
 	; Replacing calls to WorkshopParent ratings vars
 	ActorValue Property Happiness Auto Hidden
 	ActorValue Property BonusHappiness Auto Hidden
@@ -407,6 +408,7 @@ int iFormID_AV_actorDeathHappinessModifier = 0x000091DD Const
 int iFormID_AV_maxAttackStrength = 0x000091DF Const
 int iFormID_AV_maxDefenseStrength = 0x000091E1 Const
 int iFormID_AV_RobotHappinessLevel = 0x000035D9 Const
+int iFormID_WSFW_Safety = 0x0000A9C2 Const
 
 	; Fallout4.esm
 int iFormID_CurrentWorkshopID = 0x0003E0CE Const
@@ -1659,13 +1661,15 @@ Event OnWorkshopMode(bool aStart)
 		;Var[] kargs = new Var[2]
 		;kargs[0] = NONE
 		;kargs[1] = self
-		Var[] kargs = new Var[0]
-		kargs.Add(NONE)
-		kargs.Add(Self)
-		kargs.Add(aStart)
-					
-		WorkshopParent.SendCustomEvent("WorkshopEnterMenu", kargs)		
 	endif
+	
+	; 1.1.7 - WSFW Moving outside of aStart block
+	Var[] kargs = new Var[0]
+	kargs.Add(NONE)
+	kargs.Add(Self)
+	kargs.Add(aStart)
+				
+	WorkshopParent.SendCustomEvent("WorkshopEnterMenu", kargs)		
 
 	; Dogmeat scene
 	if aStart && WorkshopParent.DogmeatAlias.GetRef()
@@ -2785,6 +2789,21 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	if bOnlyIfLocationLoaded == false || Game.GetPlayer().GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
 	
 		RecalculateResources()
+		
+		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
+		ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
+		Float fSafetyValue = 0.0
+		
+		int i = 0
+		while(i < SafetyObjects.Length)
+			Float fValue = SafetyObjects[i].GetValue(Safety)
+			fSafetyValue += fValue
+
+			i += 1
+		endWhile
+
+		SetValue(WSFW_Safety, fSafetyValue)
+		
 		return true
 	else
 		return false
@@ -3257,6 +3276,10 @@ Function FillWSFWVars()
 		ControlManager = Game.GetFormFromFile(iFormID_ControlManger, sWSFW_Plugin) as WorkshopFramework:WorkshopControlManager
 	endif
 	
+	if( ! WSFW_Safety)
+		WSFW_Safety = Game.GetFormFromFile(iFormID_WSFW_Safety, sWSFW_Plugin) as ActorValue
+	endif
+	
 	;
 	; Fallout4.esm
 	;
@@ -3410,6 +3433,64 @@ Function FillWSFWVars()
 	endif
 EndFunction
 
+
+; 1.1.7 - Low level override to fix an issue with Safety in unowned workshops
+Float Function GetValue(ActorValue akAV)
+	if(akAV == Safety && ! OwnedByPlayer && WSFW_Safety != None)
+		return Parent.GetValue(WSFW_Safety)
+	else
+		return Parent.GetValue(akAV)
+	endif
+EndFunction
+
+; 1.1.7 - Low level override to fix an issue with Safety in unowned workshops
+Function SetValue(ActorValue akAV, Float afValue)
+	Parent.SetValue(akAV, afValue)
+	
+	 ; Also set our version
+	if(akAV == Safety && WSFW_Safety != None)
+		Parent.SetValue(WSFW_Safety, afValue)
+	endif
+EndFunction
+
+; 1.1.7 - Low level ovveride to fix an issue with Safety in unowned workshops
+Float Function GetBaseValue(ActorValue akAV)
+	if(akAV == Safety && ! OwnedByPlayer && WSFW_Safety != None)
+		return Parent.GetBaseValue(WSFW_Safety)
+	else
+		return Parent.GetBaseValue(akAV)
+	endif
+EndFunction
+
+; 1.1.7 - Low level ovveride to fix an issue with Safety in unowned workshops
+Function DamageValue(ActorValue akAV, float afDamage)
+	Parent.DamageValue(akAV, afDamage)
+
+	; Also damage WSFW safety
+	if(akAV == Safety && WSFW_Safety != None)
+		Parent.DamageValue(WSFW_Safety, afDamage)
+	endif
+EndFunction
+
+; 1.1.7 - Low level ovveride to fix an issue with Safety in unowned workshops
+Function ModValue(ActorValue akAV, float afAmount)
+	Parent.ModValue(akAV, afAmount)
+
+	; Also mod WSFW safety
+	if(akAV == Safety && WSFW_Safety != None)
+		Parent.ModValue(WSFW_Safety, afAmount)
+	endif
+EndFunction
+
+; 1.1.7 - Low level ovveride to fix an issue with Safety in unowned workshops
+Function RestoreValue(ActorValue akAV, float afAmount)
+	Parent.RestoreValue(akAV, afAmount)
+
+	; Also mod WSFW safety
+	if(akAV == Safety && WSFW_Safety != None)
+		Parent.RestoreValue(WSFW_Safety, afAmount)
+	endif
+EndFunction
 
 
 ; WSFW 1.0.8 - Troubleshooting tool

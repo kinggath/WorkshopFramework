@@ -53,9 +53,11 @@ Group FormLists
 	{ Blank formlist for registered quests }
 EndGroup
 
-Group Aliases	
+Group Aliases
+	LocationAlias Property PreviousLocation Auto Const Mandatory
+	{ 1.1.7 Alias to store the previous player visited location }
 	LocationAlias Property LatestLocation Auto Const Mandatory
-	{ Alias to store the store the last player visited location }
+	{ Alias to store the last player visited location }
 EndGroup
 
 
@@ -175,6 +177,10 @@ Function HandleLocationChange(Location akNewLoc)
 	Location lastParentLocation = LatestLocation.GetLocation()
 	
 	if( ! akNewLoc.IsSameLocation(lastParentLocation))
+		if(lastParentLocation != None)
+			PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
+		endif
+		
 		LatestLocation.ForceLocationTo(akNewLoc)
 		StartTimer(fLocationChangeDelay, LocationChangeTimerID)	
 	endif

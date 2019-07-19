@@ -403,17 +403,17 @@ Function SendCustomMessage(Message akMessageToSend, float arg1 = 0.0, float arg2
 		return 
 	endif
 	
-	Var[] Args = new Var[11]
+	Var[] Args = new Var[10]
 	Args[0] = akMessageToSend
 	Args[1] = arg1
-	Args[3] = arg2
-	Args[4] = arg3
-	Args[5] = arg4
-	Args[6] = arg5
-	Args[7] = arg6
-	Args[8] = arg7
-	Args[9] = arg8
-	Args[10] = arg9
+	Args[2] = arg2
+	Args[3] = arg3
+	Args[4] = arg4
+	Args[5] = arg5
+	Args[6] = arg6
+	Args[7] = arg7
+	Args[8] = arg8
+	Args[9] = arg9
 	
 	HudInstance.CallFunction("SendCustomMessage", Args)
 EndFunction

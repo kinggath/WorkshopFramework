@@ -56,6 +56,7 @@ Group ActorValue
 	ActorValue Property Food Auto Const Mandatory
 	ActorValue Property Water Auto Const Mandatory
 	ActorValue Property Safety Auto Const Mandatory
+	ActorValue Property WSFW_Safety Auto Const Mandatory ; 1.1.7
 	ActorValue Property Scavenge Auto Const Mandatory
 	ActorValue Property PowerGenerated Auto Const Mandatory
 	ActorValue Property Income Auto Const Mandatory
@@ -477,6 +478,18 @@ EndFunction
 Function HandleInstallModChanges()
 	SetupAllWorkshopProperties() ; 1.0.8 - Confirm any new properties are configured each patch
 	
+	if(iInstalledVersion < 21) ; 1.1.7 - Update vars for new WSFW_Safety fix
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			thisWorkshop.FillWSFWVars()
+			
+			i += 1
+		endWhile
+	endif
+	
 	if(iInstalledVersion < 15)
 		WorkshopParent.WSFWPatch112Fix()
 	endif
@@ -704,8 +717,16 @@ EndFunction
 
 
 Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScript akWorkshopRef, Bool abRemoved = false, Bool abGetLock = false)
-	if( ! akObjectRef || ! akWorkshopRef || akWorkshopRef.Is3dLoaded()) 
+	if( ! akObjectRef || ! akWorkshopRef) 
+		return
+	endif
+	
+	if(akWorkshopRef.Is3dLoaded()) ; 1.1.7 - Changed to calling recalc on the workshopRef instead
 		; If the workshop is loaded, there's no need to run this manually - in fact doing so, will cause duplicate resource counts
+		if(akWorkshopRef.myLocation && akWorkshopRef.myLocation.IsLoaded())
+			akWorkshopRef.RecalculateWorkshopResources()
+		endif
+		
 		return
 	endif
 	
@@ -756,6 +777,7 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 			
 		int i = 0
 		if(bCountResources)
+			; TODO - This is way too slow, switch WorkshopTrackedAVs to a set of arrays intead of a formlist
 			while(i < WorkshopTrackedAVs.GetSize())
 				ActorValue thisAV = WorkshopTrackedAVs.GetAt(i) as ActorValue
 				if(thisAV)
