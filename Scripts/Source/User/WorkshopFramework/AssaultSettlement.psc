@@ -665,7 +665,7 @@ EndFunction
  ; 1.1.3
 Function RemoveInvalidSettlers()
 	int i = Settlers.GetCount() - 1
-	while(i > 0)
+	while(i >= 0)
 		Actor thisActor = Settlers.GetAt(i) as Actor
 		
 		if(thisActor != None && ( ! thisActor.IsInFaction(WorkshopNPCFaction) || thisActor.IsInFaction(CaptiveFaction)))

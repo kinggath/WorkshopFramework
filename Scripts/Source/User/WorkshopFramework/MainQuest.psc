@@ -30,12 +30,11 @@ CustomEvent PlayerExitedSettlement
 ; ---------------------------------------------
 
 Group Controllers
-	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
+	WorkshopParentScript Property WorkshopParent Auto Const
 	WorkshopTutorialScript Property TutorialQuest Auto Const
 	{ 1.0.7 - Adding ability to control this quest }
 	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
 	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
-	WorkshopFramework:AssaultManager Property AssaultManager Auto Const Mandatory
 EndGroup
 
 Group Aliases
@@ -77,8 +76,12 @@ Event OnTimer(Int aiTimerID)
 	Parent.OnTimer(aiTimerID)
 	
 	if(aiTimerID == LocationChangeTimerID)
+		Location kPreviousLoc = PreviousLocation.GetLocation()
 		Location kNewLoc = LatestLocation.GetLocation()
-		if(kNewLoc.HasKeyword(LocationTypeWorkshop))
+		Bool bEnteringWorkshopLocation = kNewLoc.HasKeyword(LocationTypeWorkshop)
+		Bool bLeavingWorkshopLocation = kPreviousLoc.HasKeyword(LocationTypeWorkshop)
+		
+		if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
 			Var[] kArgs
 			
 			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
@@ -86,8 +89,11 @@ Event OnTimer(Int aiTimerID)
 			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
-			endif
-			
+				
+				if(bLeavingWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+					currentWorkshop = None
+				endif
+			endif			
 			
 			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
 			Bool bCurrentWorkshopRefFound = true
@@ -102,8 +108,9 @@ Event OnTimer(Int aiTimerID)
 			
 			if( ! bLastWorkshopRefFound && bCurrentWorkshopRefFound) ; This should only happen once, after which there will always be a lastWorkshop stored in the alias
 				LastWorkshopAlias.ForceRefTo(currentWorkshop)
-			endif
-
+			endif			
+			
+			;Debug.Trace(">>>>>>>>>>>>>>>> bLastWorkshopRefFound: " + bLastWorkshopRefFound + ", kPreviousLoc: " + kPreviousLoc + ", kNewLoc: " + kNewLoc + ", lastWorkshop: " + lastWorkshop + ", currentWorkshop: " + currentWorkshop + ", bCurrentWorkshopRefFound: " + bCurrentWorkshopRefFound + ", bLastSettlementUnloaded: " + bLastSettlementUnloaded)
 			if(bLastWorkshopRefFound)
 				Bool bLastWorkshopLoaded = lastWorkshop.GetCurrentLocation().IsLoaded()
 				kArgs = new Var[2]
@@ -128,9 +135,8 @@ Event OnTimer(Int aiTimerID)
 				endif	
 			endif
 			
-			if(bCurrentWorkshopRefFound && (lastWorkshop != currentWorkshop || bLastSettlementUnloaded))
-				; Workshop changed or they are no longer in a settlement
-				
+			if(bCurrentWorkshopRefFound)
+				; Workshop changed or previous settlement unloaded
 				kArgs = new Var[3]
 				kArgs[0] = currentWorkshop
 				kArgs[1] = lastWorkshop
@@ -214,31 +220,6 @@ Function HandleStageSet(Quest akQuestRef, int auiStageID, int auiItemID)
 EndFunction
 
 
-Function HandleInstallModChanges()
-	if(iInstalledVersion < 15) ; Patch 1.1.2
-		int i = 1
-		bool bStuckFound = false
-		while(i < AssaultManager.DefaultAssaultQuests.Length)
-			; Prior to this patch, we had only added the first quest to the default array, so any from index 1 on could be stuck
-			if(AssaultManager.DefaultAssaultQuests[i].IsRunning())
-				bStuckFound = true
-				AssaultManager.DefaultAssaultQuests[i].Stop()
-			endif
-			
-			i += 1
-		endWhile
-		
-		if(bStuckFound || AssaultManager.CountAssaultsRunning() == 0)
-			; Reboot AssaultManager quest
-			AssaultManager.Stop()
-			AssaultManager.Start()
-		endif
-	endif
-	
-	Parent.HandleInstallModChanges()
-EndFunction
-
-
 ; ---------------------------------------------
 ; Overrides
 ; ---------------------------------------------
@@ -260,6 +241,7 @@ Function HandleLocationChange(Location akNewLoc)
 	Location lastParentLocation = LatestLocation.GetLocation()
 	
 	if( ! akNewLoc.IsSameLocation(lastParentLocation) || ! akNewLoc.IsSameLocation(lastParentLocation, LocationTypeSettlement))
+		PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
 		LatestLocation.ForceLocationTo(akNewLoc)
 		StartTimer(1.0, LocationChangeTimerID)	
 	endif	
