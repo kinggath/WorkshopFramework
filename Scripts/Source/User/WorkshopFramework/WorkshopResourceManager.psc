@@ -478,6 +478,18 @@ EndFunction
 Function HandleInstallModChanges()
 	SetupAllWorkshopProperties() ; 1.0.8 - Confirm any new properties are configured each patch
 	
+	if(iInstalledVersion < 22) ; 1.1.8 - Update vars for new WSFW_PowerRequired feature
+		int i = 0
+		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
+		
+		while(i < WorkshopsArray.Length)
+			WorkshopScript thisWorkshop = WorkshopsArray[i]
+			thisWorkshop.FillWSFWVars()
+			
+			i += 1
+		endWhile
+	endif
+	
 	if(iInstalledVersion < 21) ; 1.1.7 - Update vars for new WSFW_Safety fix
 		int i = 0
 		WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
@@ -763,16 +775,18 @@ Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScr
 		WorkshopObjectScript asWorkshopObject = akObjectRef as WorkshopObjectScript
 		
 		Bool bCountResources = true
-		if(asWorkshopObject)
-			; For assignable objects, confirm they have a worker
-			if(asWorkshopObject.RequiresActor() && ! asWorkshopObject.IsActorAssigned())
+		if( ! abRemoved)
+			if(asWorkshopObject)
+				; For assignable objects, confirm they have a worker
+				if(asWorkshopObject.RequiresActor() && ! asWorkshopObject.IsActorAssigned())
+					bCountResources = false
+				endif
+			endif
+			
+			if(bCountResources && akObjectRef.HasKeyword(WorkshopCanBePowered) && ! akObjectRef.IsPowered())
+				; For powered objects, confirm they have power
 				bCountResources = false
 			endif
-		endif
-		
-		if(bCountResources && akObjectRef.HasKeyword(WorkshopCanBePowered) && ! akObjectRef.IsPowered())
-			; For powered objects, confirm they have power
-			bCountResources = false
 		endif
 			
 		int i = 0

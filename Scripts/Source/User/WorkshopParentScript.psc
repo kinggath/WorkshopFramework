@@ -2105,7 +2105,6 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		function.
 	;-----------------------------------------------------------------------------------------------------------------------------------------
 	/;
-
 	wsTrace("	AssignActorToObject: actor = " + assignedActor + ", object = " + assignedObject + ", resetMode = " + bResetMode)
 
 	int workshopID = assignedObject.workshopID
@@ -2196,7 +2195,6 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		endif
 
 	elseif assignedObject.HasKeyword (WorkshopWorkObject)
-
 		assignedActor.bNewSettler = false
 	
 		bool bShouldUnassignAllObjects = true
@@ -2211,7 +2209,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 	
 		;UFO4P 2.0.4 Bug #24311: Multi-resource objects need to be handled separately, even if already assigned: this is to retro-
 		;actively correct a bug in the vanilla code that could lead to more objects being assigned to an actor than allowed.
-		if multiResourceValue
+		if(multiResourceValue)
 			if assignedObject.HasResourceValue (multiResourceValue)
 				wsTrace("		Actor already assigned to this resource type")
 				int resourceIndex = GetResourceIndex (multiResourceValue)
@@ -2268,9 +2266,10 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 				UnassignActorFromObjectV2(assignedActor, assignedObject, bResetMode)
 				bShouldTryToAssignResources = true
 			endif
-		;Skip this if the actor doesn't owns anything else than a bed. Now that we have all data we need in handy arrays,
-		;the IsObjectOwner check is very fast as it won't have to loop through the actor's work objects.
-		elseif bShouldUnassignAllObjects && IsObjectOwner (workshopRef, assignedActor)
+			
+			;Skip this if the actor doesn't own anything else than a bed. Now that we have all data we need in handy arrays,
+			;the IsObjectOwner check is very fast as it won't have to loop through the actor's work objects.
+		elseif(bShouldUnassignAllObjects && IsObjectOwner(workshopRef, assignedActor))
 			wsTrace("		Unassigning " + assignedActor + " from previous work object(s)")
 			;/
 			; WSFW - Calling our own version of this function. We don't want to change the original function 
@@ -2282,7 +2281,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		endif
 
 		; unassign current owner, if any (and different from new owner)
-		if previousOwner && previousOwner != assignedActor
+		if(previousOwner && previousOwner != assignedActor)
 			wsTrace("		Unassigning previous owner " + previousOwner + " from object " + assignedObject)
 			; WSFW - This we have to allow because the game engine doesn't support multiple ref owners 
 			;UFO4P 2.0.6 Bug #25439: added a value for the new bool argument bSRsetMode:
