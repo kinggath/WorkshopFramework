@@ -118,7 +118,6 @@ bool Property bRadioOn = true auto hidden		; for now only used on temp radio obj
 ; WSFW New Editor Properties
 ;
 
-
 Group WSFWSettings
 	Keyword Property WorkshopContainerType Auto Const
 	{ [Optional] If set, this will be linked to the workshop as a special sub-container for redirecting certain resources. See documentation for valid keywords. }

@@ -79,7 +79,11 @@ Event OnTimer(Int aiTimerID)
 		Location kPreviousLoc = PreviousLocation.GetLocation()
 		Location kNewLoc = LatestLocation.GetLocation()
 		Bool bEnteringWorkshopLocation = kNewLoc.HasKeyword(LocationTypeWorkshop)
-		Bool bLeavingWorkshopLocation = kPreviousLoc.HasKeyword(LocationTypeWorkshop)
+		Bool bLeavingWorkshopLocation = None
+		
+		if(kPreviousLoc != None)
+			kPreviousLoc.HasKeyword(LocationTypeWorkshop)
+		endif
 		
 		if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
 			Var[] kArgs
@@ -90,7 +94,7 @@ Event OnTimer(Int aiTimerID)
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 				
-				if(bLeavingWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					currentWorkshop = None
 				endif
 			endif			
@@ -152,7 +156,7 @@ EndEvent
 
 
 Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
-    if(asMenuName== "WorkshopMenu")
+    if(asMenuName == "WorkshopMenu")
 		if(abOpening)
 			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
 			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
@@ -241,7 +245,10 @@ Function HandleLocationChange(Location akNewLoc)
 	Location lastParentLocation = LatestLocation.GetLocation()
 	
 	if( ! akNewLoc.IsSameLocation(lastParentLocation) || ! akNewLoc.IsSameLocation(lastParentLocation, LocationTypeSettlement))
-		PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
+		if(lastParentLocation != None)
+			PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
+		endif
+		
 		LatestLocation.ForceLocationTo(akNewLoc)
 		StartTimer(1.0, LocationChangeTimerID)	
 	endif	

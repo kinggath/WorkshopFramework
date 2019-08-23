@@ -256,6 +256,7 @@ Group WSFW_AVs
 
 	ActorValue Property WSFW_AV_RobotHappinessLevel Auto Hidden
 	ActorValue Property WSFW_Safety Auto Hidden ; 1.1.7
+	ActorValue Property WSFW_PowerRequired Auto Hidden ; WSFW 1.1.8
 	; Replacing calls to WorkshopParent ratings vars
 	ActorValue Property Happiness Auto Hidden
 	ActorValue Property BonusHappiness Auto Hidden
@@ -268,6 +269,7 @@ Group WSFW_AVs
 	ActorValue Property FoodActual Auto Hidden
 	ActorValue Property MissingFood Auto Hidden
 	ActorValue Property Power Auto Hidden
+	ActorValue Property PowerRequired Auto Hidden ; WSFW 1.1.8
 	ActorValue Property Water Auto Hidden
 	ActorValue Property MissingWater Auto Hidden
 	ActorValue Property Safety Auto Hidden
@@ -294,6 +296,7 @@ Group WSFW_Added
 	Keyword Property ObjectTypeWater Auto Hidden
 	Keyword Property ObjectTypeFood Auto Hidden
 	Keyword Property WorkshopLinkContainer Auto Hidden
+	Keyword Property WorkshopCanBePowered Auto Hidden ; WSFW 1.1.8
 	Faction Property FarmDiscountFaction Auto Hidden
 	Faction Property PlayerFaction Auto Hidden
 	{ 1.1.0 }
@@ -409,6 +412,7 @@ int iFormID_AV_maxAttackStrength = 0x000091DF Const
 int iFormID_AV_maxDefenseStrength = 0x000091E1 Const
 int iFormID_AV_RobotHappinessLevel = 0x000035D9 Const
 int iFormID_WSFW_Safety = 0x0000A9C2 Const
+int iFormID_WSFW_PowerRequired = 0x0000B15D Const
 
 	; Fallout4.esm
 int iFormID_CurrentWorkshopID = 0x0003E0CE Const
@@ -423,6 +427,7 @@ int iFormID_DamageFood = 0x00127230 Const
 int iFormID_FoodActual = 0x00127236 Const
 int iFormID_MissingFood = 0x0012723C Const
 int iFormID_Power = 0x0000032E Const
+int iFormID_PowerRequired = 0x00000330 Const
 int iFormID_Water = 0x00000332 Const
 int iFormID_MissingWater = 0x0012723D Const
 int iFormID_Safety = 0x00000333 Const
@@ -446,6 +451,7 @@ int iFormID_WorkshopCaravanKeyword = 0x00061C0C Const
 int iFormID_ObjectTypeWater = 0x000F4AED Const
 int iFormID_ObjectTypeFood = 0x00055ECC Const
 int iFormID_WorkshopLinkContainer = 0x0002682F Const
+int iFormID_WorkshopCanBePowered = 0X0003037E Const
 int iFormID_FarmDiscountFaction = 0x0019FFC4 Const
 int iFormID_PlayerFaction = 0x0001C21C Const ; 1.1.0
 
@@ -2791,18 +2797,38 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		RecalculateResources()
 		
 		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
-		ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
-		Float fSafetyValue = 0.0
+		if( ! OwnedByPlayer)
+			ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
+			Float fSafetyValue = 0.0
+			
+			int i = 0
+			while(i < SafetyObjects.Length)
+				if( ! SafetyObjects[i].IsDisabled())
+					Float fValue = SafetyObjects[i].GetValue(Safety)
+					fSafetyValue += fValue
+				endif
+
+				i += 1
+			endWhile
+
+			SetValue(WSFW_Safety, fSafetyValue)
+		endif
 		
+		; WSFW 1.1.8 - Add up PowerRequired and store on workshop
+		ObjectReference[] PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+		Float fPowerRequired = 0.0
+		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
 		int i = 0
-		while(i < SafetyObjects.Length)
-			Float fValue = SafetyObjects[i].GetValue(Safety)
-			fSafetyValue += fValue
+		while(i < PowerReqObjects.Length)
+			if( ! PowerReqObjects[i].IsDisabled() && PowerReqObjects[i].GetLinkedRef(WorkshopItemKeyword) == Self)
+				Float fValue = PowerReqObjects[i].GetValue(PowerRequired)
+				fPowerRequired += fValue
+			endif
 
 			i += 1
 		endWhile
 
-		SetValue(WSFW_Safety, fSafetyValue)
+		SetValue(WSFW_PowerRequired, fPowerRequired)		
 		
 		return true
 	else
@@ -3280,6 +3306,10 @@ Function FillWSFWVars()
 		WSFW_Safety = Game.GetFormFromFile(iFormID_WSFW_Safety, sWSFW_Plugin) as ActorValue
 	endif
 	
+	if( ! WSFW_PowerRequired)
+		WSFW_PowerRequired = Game.GetFormFromFile(iFormID_WSFW_PowerRequired, sWSFW_Plugin) as ActorValue
+	endif
+	
 	;
 	; Fallout4.esm
 	;
@@ -3329,6 +3359,10 @@ Function FillWSFWVars()
 
 	if( ! Power)
 		Power = Game.GetFormFromFile(iFormID_Power, sFO4_Plugin) as ActorValue
+	endif
+	
+	if( ! PowerRequired)
+		PowerRequired = Game.GetFormFromFile(iFormID_PowerRequired, sFO4_Plugin) as ActorValue
 	endif
 
 	if( ! Water)
@@ -3422,6 +3456,10 @@ Function FillWSFWVars()
 	if( ! WorkshopLinkContainer)
 		WorkshopLinkContainer = Game.GetFormFromFile(iFormID_WorkshopLinkContainer, sFO4_Plugin) as Keyword
 	endif
+	
+	if( ! WorkshopCanBePowered)
+		WorkshopCanBePowered = Game.GetFormFromFile(iFormID_WorkshopCanBePowered, sFO4_Plugin) as Keyword
+	endif
 
 	if( ! FarmDiscountFaction)
 		FarmDiscountFaction = Game.GetFormFromFile(iFormID_FarmDiscountFaction, sFO4_Plugin) as Faction
@@ -3487,8 +3525,10 @@ Function RestoreValue(ActorValue akAV, float afAmount)
 	Parent.RestoreValue(akAV, afAmount)
 
 	; Also mod WSFW safety
-	if(akAV == Safety && WSFW_Safety != None)
-		Parent.RestoreValue(WSFW_Safety, afAmount)
+	if(akAV == Safety)
+		if(WSFW_Safety != None)
+			Parent.RestoreValue(WSFW_Safety, afAmount)
+		endif
 	endif
 EndFunction
 
