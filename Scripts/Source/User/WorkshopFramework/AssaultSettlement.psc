@@ -136,6 +136,7 @@ Int iReserveID = -1
 Int iCurrentAssaultType = -1
 
 ; Prep variables
+Bool Property bAutoShutdownQuest = true Auto Hidden
 Bool Property bDisableFastTravel = true Auto Hidden
 Bool Property bSettlersAreDefenders = true Auto Hidden
 Bool Property bRobotsAreDefenders = true Auto Hidden
@@ -361,12 +362,15 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		
 		StopAllCombat()
 		ConfigureTurrets(abMakeDefenders = false)
+		StopAllCombat()	
 		
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			ProcessCapture()
 		endif
-			
-		StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		
+		if(bAutoShutdownQuest)
+			StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		endif
 	elseif(aiStageID == iStage_Success)
 		CompleteAllObjectives()		
 			
@@ -374,6 +378,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		
 		StopAllCombat()		
 		ConfigureTurrets(abMakeDefenders = false)
+		StopAllCombat()	
 		
 		if(iCurrentAssaultType != AssaultManager.iType_Defend)
 			ProcessCapture()
@@ -383,13 +388,18 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			CompleteQuest()
 		endif
 		
-		StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		if(bAutoShutdownQuest)
+			StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		endif
 	elseif(aiStageID == iStage_NoVictor)
 		; Ended without a victor
 		StopAllCombat()
 		ConfigureTurrets(abMakeDefenders = false)
 		AssaultManager.AssaultStopped_Private(Self)
-		StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		
+		if(bAutoShutdownQuest)
+			StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
+		endif
 	elseif(aiStageID == iStage_AutoComplete)
 		; Player didn't show up to resolve this in time, resolve "off-camera"
 		ObjectReference kWorkshopRef = WorkshopAlias.GetRef()
@@ -417,6 +427,7 @@ EndEvent
 
 Event OnQuestShutdown()
 	UnregisterForAllEvents()
+	
 	CleanupAssault()
 	
 	Reset() ; 1.1.1 - Reset quest to clear objectives from pipboy
@@ -1098,8 +1109,7 @@ Function CleanupAssault()
 	Children.RemoveFromFaction(ActivateAIFaction) ; Clear flee AI
 	
 	RestoreProtectedStatus()
-	RestoreBleedoutRecovery()
-	
+		
 	if(bPlayerInvolved && bEnemySurvivorsRemainEnemyToPlayer)
 		; Only mark them enemies to the player if this settlement wasn't captured - otherwise the player will be stuck murdering everyone inthe settlement
 		if( ! bAutoCaptureSettlement || GetStageDone(iStage_Failed))
@@ -1204,6 +1214,9 @@ Function CleanupAssault()
 	bMoveDefendersToCenterPoint = true
 	; 1.1.2 - Hide all objectives
 	HideAllObjectives()
+	
+	; 1.1.9 - Moved this to the last thing
+	RestoreBleedoutRecovery()
 EndFunction
 
 
@@ -1344,7 +1357,7 @@ Function ConfigureTurrets(Bool abMakeDefenders = true)
 		endif
 	else
 		int i = DefenderFactionAlias.GetCount() - 1
-		while(i > 0)
+		while(i >= 0)
 			WorkshopObjectActorScript asTurret = DefenderFactionAlias.GetAt(i) as WorkshopObjectActorScript
 			if(asTurret)
 				DefenderFactionAlias.RemoveRef(asTurret)

@@ -146,6 +146,13 @@ Function CaptureSettlement(WorkshopScript akWorkshopRef, FactionControl aFaction
 		endif
 	endif
 	
+	; Capture turrets
+	if(abCaptureTurrets)
+		CaptureTurrets(akWorkshopRef, PreviousControllingFaction, abPlayerIsEnemy)
+	else
+		CaptureTurrets(akWorkshopRef, PreviousControllingFaction, abPlayerIsEnemy, ! abPlayerIsEnemy)
+	endif
+	
 	; Sever provisioners between enemy settlements
 	if(abSeverEnemySupplyLines && aFactionData)
 		SeverSupplyLines(akWorkshopRef)
@@ -156,12 +163,6 @@ Function CaptureSettlement(WorkshopScript akWorkshopRef, FactionControl aFaction
 		RemoveEnemyFaction(akWorkshopRef, abRemoveEnemySettlers, abKillEnemySettlers, abSettlersJoinFaction, abPlayerIsEnemy)
 	endif
 	
-	; Capture turrets
-	if(abCaptureTurrets)
-		CaptureTurrets(akWorkshopRef, PreviousControllingFaction, abPlayerIsEnemy)
-	else
-		CaptureTurrets(akWorkshopRef, PreviousControllingFaction, abPlayerIsEnemy, ! abPlayerIsEnemy)
-	endif
 	
 	if(abTogglePlayerOwnership)
 		if(abPlayerIsEnemy)
@@ -397,6 +398,9 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 		thisFaction = GetControllingFaction(akWorkshopRef)
 	endif
 	
+	akTurretRef.RemoveFromAllFactions()
+	akTurretRef.StopCombat()
+	
 	if(abForPlayer)
 		akTurretRef.AddToFaction(PlayerFaction)
 	endif
@@ -409,7 +413,7 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 		
 		akTurretRef.AddToFaction(thisFaction)
 		akTurretRef.SetCrimeFaction(thisFaction)
-		
+		;/
 		; Remove from enemy factions
 		if(aFactionData && aFactionData.EnemyFactions)
 			int i = 0
@@ -418,7 +422,7 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 				
 				i += 1
 			endWhile
-		endif		
+		endif	/;	
 	else
 		akTurretRef.AddToFaction(WorkshopNPCFaction)
 		akTurretRef.AddToFaction(PlayerFaction)
