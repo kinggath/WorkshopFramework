@@ -24,6 +24,8 @@ CustomEvent PlayerExitedSettlement
 ; Consts
 ; ---------------------------------------------
 
+Int iTimerID_BuildableAreaCheck = 100
+Float fTimerLength_BuildableAreaCheck = 3.0
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -78,17 +80,25 @@ Event OnTimer(Int aiTimerID)
 	if(aiTimerID == LocationChangeTimerID)
 		Location kPreviousLoc = PreviousLocation.GetLocation()
 		Location kNewLoc = LatestLocation.GetLocation()
-		Bool bEnteringWorkshopLocation = kNewLoc.HasKeyword(LocationTypeWorkshop)
-		Bool bLeavingWorkshopLocation = None
+		Bool bEnteringWorkshopLocation = false
+		Bool bLeavingWorkshopLocation = false
+		
+		if(kNewLoc != None)
+			if(kNewLoc.HasKeyword(LocationTypeWorkshop))
+				bEnteringWorkshopLocation = true
+			endif
+		endif
 		
 		if(kPreviousLoc != None)
-			kPreviousLoc.HasKeyword(LocationTypeWorkshop)
+			if(kPreviousLoc.HasKeyword(LocationTypeWorkshop))
+				bLeavingWorkshopLocation = true
+			endif
 		endif
 		
 		if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
 			Var[] kArgs
 			
-			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
+			WorkshopScript currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
 			; 1.0.4 - Added sanity check
 			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
@@ -96,6 +106,17 @@ Event OnTimer(Int aiTimerID)
 				
 				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					currentWorkshop = None
+				else
+					if(currentWorkshop.myLocation != None)
+						; Player is in limbo area - it is not flagged as part of a specific location (likely just the overworld location - ie. Commonwealth) and so another LocationChange event isn't likely to fire - so instead we'll do a 5 second repeating loop to check if they returned to the location tagged part of the settlement or are out of the build area
+						StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
+						
+						; Update Latest Location so the next change will correctly be aware the player was previously in a settlement
+						LatestLocation.ForceLocationTo(currentWorkshop.myLocation)
+					else
+						; Player is not in limbo area
+						CancelTimer(iTimerID_BuildableAreaCheck)
+					endif
 				endif
 			endif			
 			
@@ -151,6 +172,25 @@ Event OnTimer(Int aiTimerID)
 				bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
 			endif
 		endif
+	elseif(aiTimerID == iTimerID_BuildableAreaCheck)
+		WorkshopScript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+		Location PlayerLocation = PlayerRef.GetCurrentLocation()
+		
+		if(currentWorkshop && PlayerRef.IsWithinBuildableArea(currentWorkshop))
+			if(currentWorkshop.myLocation && currentWorkshop.myLocation != PlayerLocation)
+				; Player is in a limbo area of a settlement not flagged as part of the settlement - repeat this loop
+				StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
+			endif
+		else
+			LatestLocation.ForceLocationTo(PlayerLocation)
+			; Player probably exited settlement
+			Bool bLastWorkshopLoaded = currentWorkshop.GetCurrentLocation().IsLoaded()
+			Var[] kArgs = new Var[2]
+			kArgs[0] = currentWorkshop
+			kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
+			
+			SendCustomEvent("PlayerExitedSettlement", kArgs)
+		endif			
 	endif
 EndEvent
 
@@ -238,18 +278,22 @@ EndFunction
 
 ; Override parent function - to check for same location on the settlement type
 Function HandleLocationChange(Location akNewLoc)
-	if( ! akNewLoc)
-		return
-	endif
-	
 	Location lastParentLocation = LatestLocation.GetLocation()
 	
-	if( ! akNewLoc.IsSameLocation(lastParentLocation) || ! akNewLoc.IsSameLocation(lastParentLocation, LocationTypeSettlement))
-		if(lastParentLocation != None)
-			PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
+	; Always proceed if buildable area check is running - as that indicates the player entered a limbo zone where they were within settlement bounds that were not tagged with the correct location
+	if(akNewLoc == None || lastParentLocation == None || ! akNewLoc.IsSameLocation(lastParentLocation) || ! akNewLoc.IsSameLocation(lastParentLocation, LocationTypeSettlement))
+		if(lastParentLocation == None)
+			PreviousLocation.Clear() ; 1.1.9
+		else
+			PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7			
 		endif
 		
-		LatestLocation.ForceLocationTo(akNewLoc)
+		if(akNewLoc == None)
+			LatestLocation.Clear()
+		else
+			LatestLocation.ForceLocationTo(akNewLoc)
+		endif
+		
 		StartTimer(1.0, LocationChangeTimerID)	
 	endif	
 EndFunction

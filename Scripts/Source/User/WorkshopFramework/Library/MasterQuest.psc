@@ -170,18 +170,21 @@ EndFunction
 
 
 Function HandleLocationChange(Location akNewLoc)
-	if( ! akNewLoc)
-		return
-	endif
-	
 	Location lastParentLocation = LatestLocation.GetLocation()
 	
-	if( ! akNewLoc.IsSameLocation(lastParentLocation))
+	if(akNewLoc == None || lastParentLocation == None || ! akNewLoc.IsSameLocation(lastParentLocation))
 		if(lastParentLocation != None)
 			PreviousLocation.ForceLocationTo(lastParentLocation) ; 1.1.7
+		else
+			PreviousLocation.Clear()
 		endif
 		
-		LatestLocation.ForceLocationTo(akNewLoc)
+		if(akNewLoc != None)
+			LatestLocation.ForceLocationTo(akNewLoc)
+		else
+			LatestLocation.Clear()
+		endif
+		
 		StartTimer(fLocationChangeDelay, LocationChangeTimerID)	
 	endif
 EndFunction
