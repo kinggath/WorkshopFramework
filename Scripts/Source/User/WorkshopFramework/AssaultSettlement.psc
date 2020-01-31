@@ -43,10 +43,12 @@ int iTimerID_AutoRunSetup = 100 Const
 int iTimerID_Shutdown = 101 Const
 int iTimerID_AutoComplete = 102 Const
 int iTimerID_FailsafeNoSetup = 103 Const
+int iTimerID_EnemyMonitor = 104 Const ; Added in 1.1.10 to periodically double-check if all enemies are dealt with in case an alias death script fails to register
 
 float fTimerLength_AutoRunSetup = 30.0 Const ; If it takes longer than this, the requesting script can cancel the timer and call SetupAssault manually
 float fTimerLength_Shutdown = 10.0 Const ; This is just designed to give other scripts a chance to react to the results before the aliases are cleared
 float fTimerLength_FailsafeNoSetup = 300.0 Const ; After 5 minutes, quests are considered abandoned and shut down
+float fTimerLength_EnemyMonitor = 30.0 Const
 
 ; -------------------------------------------
 ; Editor Properties
@@ -219,7 +221,15 @@ EndEvent
 
 
 Event OnTimer(Int aiTimerID)
-	if(aiTimerID == iTimerID_AutoRunSetup)
+	if(aiTimerID == iTimerID_EnemyMonitor)
+		if( ! GetStageDone(iStage_EnemiesDown))
+			if(CheckForEnemiesDown())
+				SetStage(iStage_EnemiesDown)
+			else
+				RunEnemyMonitor()
+			endif
+		endif
+	elseif(aiTimerID == iTimerID_AutoRunSetup)
 		SetupAssault()
 	elseif(aiTimerID == iTimerID_Shutdown)
 		SetStage(iStage_Shutdown)
@@ -302,6 +312,9 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		if(bForceDefendersKillable)
 			ClearProtectedStatusOnRefCollection(Defenders)
 		endif
+		
+		; 1.1.10 - Loop a timer to ensure enemy deaths are caught
+		RunEnemyMonitor()
 	elseif(aiStageID == iStage_MostEnemiesDown)
 		if(bAutoHandleObjectives)
 			if(iCurrentAssaultType == AssaultManager.iType_Defend)
@@ -316,11 +329,11 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			endif
 		endif
 	elseif(aiStageID == iStage_AllEnemiesSubdued)
-		if(GetStageDone(iStage_AllEnemiesDead))
+		if(GetStageDone(iStage_AllEnemiesDead) || KillToComplete.GetCount() == 0)
 			SetStage(iStage_EnemiesDown)
 		endif
 	elseif(aiStageID == iStage_AllEnemiesDead)
-		if(GetStageDone(iStage_AllEnemiesSubdued))
+		if(GetStageDone(iStage_AllEnemiesSubdued) || SubdueToComplete.GetCount() == 0)
 			SetStage(iStage_EnemiesDown)
 		endif
 	elseif(aiStageID == iStage_EnemiesDown)
@@ -1366,4 +1379,44 @@ Function ConfigureTurrets(Bool abMakeDefenders = true)
 			i -= 1
 		endWhile
 	endif
+EndFunction
+
+
+Function RunEnemyMonitor() ; 1.1.10
+	StartTimer(fTimerLength_EnemyMonitor, iTimerID_EnemyMonitor)
+EndFunction
+
+; Added in 1.1.10 to ensure an assault doesn't get stuck if an Alias script fails to register a death/subdue
+Bool Function CheckForEnemiesDown()
+	int iCount = SubdueToComplete.GetCount()
+	
+	if(iCount > 0)
+		int i = 0
+		while(i < iCount)
+			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
+			
+			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+				return false
+			endif
+						
+			i += 1
+		endWhile
+	endif
+	
+	iCount = KillToComplete.GetCount()
+	
+	if(iCount > 0)
+		int i = 0
+		while(i < iCount)
+			Actor thisActor = KillToComplete.GetAt(i) as Actor
+			
+			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+				return false
+			endif
+						
+			i += 1
+		endWhile
+	endif
+	
+	return true
 EndFunction

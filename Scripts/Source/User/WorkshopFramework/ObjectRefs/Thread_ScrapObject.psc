@@ -141,7 +141,7 @@ Bool Function ScrapSafetyCheck(ObjectReference akScrapMe)
 	if(akScrapMe as Actor && (akScrapMe as Actor).GetActorBase() == CovenantTurret)
 		return true
 	endif
-	
+	; TODO- Change as WorkshopObjectActorScript check to HasKeyword(TurretKeyword)
 	if((akScrapMe as WorkshopNPCScript) || \
 		((akScrapMe as Actor) && ! (akScrapMe as WorkshopObjectActorScript)) || \
 		(akScrapMe as WorkshopScript) || \

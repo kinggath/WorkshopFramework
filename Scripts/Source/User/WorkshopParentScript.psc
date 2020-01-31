@@ -550,6 +550,13 @@ WorkshopScript UFO4P_WorkshopRef_ResetDelayed = none
 bool Property UFO4P_ResetRunning = false auto hidden conditional
 
 ;------------------------------------------------------
+;	Added by UFO4P 2.1.0 for Bug #27621:
+;------------------------------------------------------
+
+faction Property WorkshopEnemyFaction auto Hidden ; WSFW - Changed to hidden so we can populate it on start
+
+;------------------------------------------------------
+
 
 
 ; WSFW - Leaving these as straight variables for backwards compatibility, but moving the functional versions to workshop level variables
@@ -925,6 +932,7 @@ int iFormID_ExcludeFromAssignmentRules = 0x000092A8 Const
 int iFormID_WSFW_NPCManager = 0x000091E2 Const
 int iFormID_WSFW_DoNotAutoassignKeyword = 0x000082A5 Const ; WSFW 1.0.8
 int iFormID_WSFW_MessageManager = 0x000092C5 Const ; WSFW 1.0.8
+int iFormID_WorkshopEnemyFaction = 0x001357E7 Const ; WSFW 1.1.10
 
 Function FillWSFWVars()
 	if( ! WSFW_NPCManager)
@@ -1007,6 +1015,10 @@ Function FillWSFWVars()
 	
 	if( ! ExcludeFromAssignmentRules)
 		ExcludeFromAssignmentRules = Game.GetFormFromFile(iFormID_ExcludeFromAssignmentRules, sWSFW_Plugin) as Formlist
+	endif
+	
+	if( ! WorkshopEnemyFaction)
+		WorkshopEnemyFaction = Game.GetFormFromFile(iFormID_WorkshopEnemyFaction, "Fallout4.esm") as Faction
 	endif
 Endfunction
 
@@ -1846,7 +1858,9 @@ function HandleActorDeath(WorkShopNPCScript deadActor, Actor akKiller)
 	
 		; consequences of death:
 	; for people, count this as negative to happiness (blame player since they're all protected)
-	if deadActor.bCountsForPopulation
+	;UFO4P 2.1.0 Bug #27621: added a check for WorkshopEnemyFaction:
+	;The happiness malus should not apply to synth infiltrators since they had their protected status removed by the synth attack quests (those quests also add them to WorkshopEnemyFaction).
+	if deadActor.bCountsForPopulation && deadActor.IsInFaction (WorkshopEnemyFaction) == false
 		; WSFW - Using workshop local version
 		;ModifyHappinessModifier(workshopRef, actorDeathHappinessModifier)
 		ModifyHappinessModifier(workshopRef, workshopRef.actorDeathHappinessModifier)
@@ -3482,6 +3496,13 @@ function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWor
 			;UFO4P 2.0.6: added check to prevent brahmins, watch dogs etc. from temporarily increasing the population count:
 			if(theActor.bCountsForPopulation)
 				ModifyResourceData (WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, -1)
+			;UFO4P 2.1.0 Bug #27622: added an else branch:
+			;Also update the brahmin resource value. Otherwise, WorkshopScript will continue to create free brahmins with every new settler that is not a guard until the player
+			;visits the workshop again (this is a problem for small workshops such as Hangman's Alley). Note that WorkshopScript checks for the brahmin rating and will not create
+			;a brahmin if that value is higher than zero, so it was never intended to create more than one free brahmin. Unfortunately though, the workshop resource values get not
+			;updated if a workshop is not loaded, so the brahmin rating remained at zero, no matter how many brahmins were created.
+			elseif theActor.GetActorBase() == WorkshopBrahmin
+				ModifyResourceData (WorkshopRatings[WorkshopRatingBrahmin].resourceValue, workshopRef, 1)
 			endif
 		endif
 
@@ -3927,8 +3948,16 @@ function UpdateRadioObject(WorkshopObjectScript radioObject)
 		if workshopRef.WorkshopRadioRef
 			workshopRef.WorkshopRadioRef.Enable() ; enable in case this is a unique station
 			radioObject.MakeTransmitterRepeater(workshopRef.WorkshopRadioRef, workshopRef.workshopRadioInnerRadius, workshopRef.workshopRadioOuterRadius)
-			if workshopRef.WorkshopRadioScene.IsPlaying() == false
-				workshopRef.WorkshopRadioScene.Start()
+			;UFO4P 2.1.0 Bug #27562: added sanity check and an else branch:
+			;If no radio scene override is specified on the workshop, play the generic scene specified on this script. This case applies to the Nuka-World red rocket station workshop which
+			;needlessly has a WorkshopRadioRef specified (needlessly because the property is set to the same value as WorkshopRadioRef on this script, so there is actually no override, but
+			;this fact alone did let this code look for a scene override that doesn't exist and the beacon at that workshop never played any radio scene).
+			if workshopRef.WorkshopRadioScene
+				if workshopRef.WorkshopRadioScene.IsPlaying() == false
+					workshopRef.WorkshopRadioScene.Start()
+				endif
+			elseif WorkshopRadioScene01.IsPlaying() == false
+				WorkshopRadioScene01.Start()
 			endif
 		else 
 			radioObject.MakeTransmitterRepeater(WorkshopRadioRef, workshopRadioInnerRadius, workshopRadioOuterRadius)
