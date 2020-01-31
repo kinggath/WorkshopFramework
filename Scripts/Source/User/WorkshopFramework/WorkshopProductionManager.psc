@@ -501,8 +501,8 @@ Function UpdateFoodTypesData()
 			i += 1
 		endWhile
 		
-		i = RemoveIndexes.Length ; Go through this in reverse so we don't screw up the index order 
-		while(i > 0)
+		i = RemoveIndexes.Length - 1 ; Go through this in reverse so we don't screw up the index order 
+		while(i >= 0)
 			ModTrace("[WSFW] Abandoned mod left empty entry in KnownWorkshopFoodTypes, clearing out index " + i)
 			KnownWorkshopFoodTypes.Remove(RemoveIndexes[i])
 		

@@ -87,3 +87,8 @@ Function HandleGameLoaded()
 	
 	; Extend me
 EndFunction
+
+
+Function GameLoaded()
+	; Do Nothing - HandleGameLoaded will be triggered by the MasterQuest
+EndFunction
