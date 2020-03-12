@@ -1408,6 +1408,10 @@ function InitializeLocation(WorkshopScript workshopRef, RefCollectionAlias Settl
 	kargs[0] = workshopRef
 	wsTrace(" 	sending WorkshopInitializeLocation event")
 	SendCustomEvent("WorkshopInitializeLocation", kargs)		
+		; WSFW - 1.1.11: Yagisan - When added to an existing save, this will be called rapidly by us, leading to a CTD with enough
+		; existing settlements. To avoid this, we will throttle our calls to give the system time to process them.
+		debug.trace(" 	WSFW: pausing 1.5 seconds to allow existing workshop " + workshopRef.myLocation + " time to process")
+		utility.wait(1.5)
 endFunction
 
 int initializationIndex = 0
@@ -1537,6 +1541,10 @@ bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form in
 		kargs[0] = lastInitializedWorkshop
 		debug.trace(" 	sending WorkshopInitializeLocation event for " + lastInitializedWorkshop)
 		SendCustomEvent("WorkshopInitializeLocation", kargs)		
+		; WSFW - 1.1.11: Yagisan - When added to an existing save, at the same time as new settlements, this will be called rapidly by us,
+		; leading to a CTD with enough new settlements. To avoid this, we will throttle our calls to give the system time to process them.
+		debug.trace(" 	WSFW: pausing 1.5 seconds to allow new workshop " + lastInitializedWorkshop + " time to process")
+		utility.wait(1.5)
 	endif
 
 	debug.trace(" ReinitializeLocationsPUBLIC DONE")
