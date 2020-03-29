@@ -67,6 +67,22 @@ Struct QuestStageSet
 	{ If set to true, this will instead look to see that this stage is NOT complete }
 EndStruct
 
+; 1.1.12 - Expanding common structure options
+Struct QuestObjectiveSet
+	Quest QuestForm = None
+	{ Quest form. [Optional] Either this, or iFormID + sPluginName have to be set. }
+	Int iFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or ObjectForm have to be set. }
+	String sPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or ObjectForm have to be set. }
+	
+	Int iObjective = 0
+	{ The objective to check on this quest }
+
+	Int iCompareMethod = 1
+	{ 1 means the objective must be completed, 0 means the objective most not be failed and must not be completed, -1 means the objective must be failed }
+EndStruct
+
 ; 1.0.4 - Expanding common structure options
 Struct PluginCheck
 	String PluginName

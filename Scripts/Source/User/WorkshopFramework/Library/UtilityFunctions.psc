@@ -424,6 +424,33 @@ EndFunction
 
 
 ; -----------------------------------
+; GetQuestObjectiveSetForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:QuestStageSet struct
+;
+; Added: 1.1.12
+; -----------------------------------
+
+Quest Function GetQuestObjectiveSetForm(QuestObjectiveSet aQuestSet) global
+	if( ! aQuestSet)
+		return None
+	endif
+	
+	Quest thisForm
+	
+	if(aQuestSet.QuestForm)
+		thisForm = aQuestSet.QuestForm
+	elseif(aQuestSet.iFormID > 0 && aQuestSet.sPluginName != "" && Game.IsPluginInstalled(aQuestSet.sPluginName))
+		thisForm = Game.GetFormFromFile(aQuestSet.iFormID, aQuestSet.sPluginName) as Quest
+	else
+		return None
+	endif
+	
+	return thisForm
+EndFunction
+
+
+; -----------------------------------
 ; CheckQuestStageSet
 ; 
 ; Description: Checks if a QuestStageSet passes
@@ -441,6 +468,33 @@ Bool Function CheckQuestStageSet(QuestStageSet aQuestSet) global
 			return ! bIsStageDone ; Return the opposite as this check wants this stage to NOT be complete
 		else
 			return bIsStageDone
+		endif
+	endif
+	
+	; Quest not found
+	return false
+EndFunction
+
+
+
+; -----------------------------------
+; CheckQuestObjectiveSet
+; 
+; Description: Checks if a QuestObjectiveSet passes
+;
+; Added: 1.1.12
+; -----------------------------------
+
+Bool Function CheckQuestObjectiveSet(QuestObjectiveSet aQuestObjectiveSet) global
+	Quest thisForm = GetQuestObjectiveSetForm(aQuestObjectiveSet)
+	
+	if(thisForm)
+		if(aQuestObjectiveSet.iCompareMethod == -1)
+			return thisForm.IsObjectiveFailed(aQuestObjectiveSet.iObjective)
+		elseif(aQuestObjectiveSet.iCompareMethod == 0)
+			return !thisForm.IsObjectiveFailed(aQuestObjectiveSet.iObjective) && !thisForm.IsObjectiveCompleted(aQuestObjectiveSet.iObjective)
+		elseif(aQuestObjectiveSet.iCompareMethod == 1)
+			return thisForm.IsObjectiveCompleted(aQuestObjectiveSet.iObjective)
 		endif
 	endif
 	
