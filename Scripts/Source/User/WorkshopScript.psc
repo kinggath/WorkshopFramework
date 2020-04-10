@@ -451,7 +451,7 @@ int iFormID_WorkshopCaravanKeyword = 0x00061C0C Const
 int iFormID_ObjectTypeWater = 0x000F4AED Const
 int iFormID_ObjectTypeFood = 0x00055ECC Const
 int iFormID_WorkshopLinkContainer = 0x0002682F Const
-int iFormID_WorkshopCanBePowered = 0X0003037E Const
+int iFormID_WorkshopCanBePowered = 0x0003037E Const
 int iFormID_FarmDiscountFaction = 0x0019FFC4 Const
 int iFormID_PlayerFaction = 0x0001C21C Const ; 1.1.0
 
@@ -1406,6 +1406,11 @@ Faction Property ControllingFaction Auto Hidden ; Non-WSFW specific for simple c
 FactionControl Property FactionControlData Auto Hidden ; All WSFW data
 WorkshopFramework:WorkshopControlManager Property ControlManager Auto Hidden
 
+; WSFW 1.2.0 - Support for Settlement Layout system
+WorkshopFramework:Weapons:SettlementLayout[] Property AppliedLayouts Auto Hidden
+Bool[] Property LayoutScrappingComplete Auto Hidden
+Bool[] Property LayoutPlacementComplete Auto Hidden
+Bool Property bHasEnteredWorkshopModeHere = false Auto Hidden ; F4SE cannot wire up settlements until this is true
 
 int VendorTopLevel = 2 ; WSFW - Copied from WorkshopParent
 
@@ -1662,6 +1667,9 @@ Event OnWorkshopMode(bool aStart)
 			; make this the current workshop
 			WorkshopParent.SetCurrentWorkshop(self)
 		endif
+		
+		; WSFW 1.2.0 - The player must have entered workshop mode in a settlement for the F4SE wire functions to work - this way we can check for it
+		bHasEnteredWorkshopModeHere = true
 		
 		; WSFW Event Edit - Adding aStart to the end of event arguments 
 		;Var[] kargs = new Var[2]

@@ -32,15 +32,21 @@ Float fTimerLength_BuildableAreaCheck = 3.0
 ; ---------------------------------------------
 
 Group Controllers
-	WorkshopParentScript Property WorkshopParent Auto Const
-	WorkshopTutorialScript Property TutorialQuest Auto Const
+	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
+	WorkshopTutorialScript Property TutorialQuest Auto Const Mandatory
 	{ 1.0.7 - Adding ability to control this quest }
-	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
+	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const Mandatory
 	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
+	PluginInstalledGlobal[] Property PluginFlags Auto Const Mandatory
+	WorkshopFramework:SettlementLayoutManager Property SettlementLayoutManager Auto Const Mandatory
 EndGroup
 
 Group Aliases
-	ReferenceAlias Property LastWorkshopAlias Auto Const
+	ReferenceAlias Property LastWorkshopAlias Auto Const Mandatory
+EndGroup
+
+Group Assets
+	Perk Property ActivationPerk Auto Const Mandatory
 EndGroup
 
 Group FormLists
@@ -48,14 +54,17 @@ Group FormLists
 	{ Point to the same list as WorkshopParent.ParentExcludeFromAssignmentRules }
 EndGroup
 
+
 Group Keywords
-	Keyword Property LocationTypeWorkshop Auto Const
-	Keyword Property LocationTypeSettlement Auto Const
+	Keyword Property LocationTypeWorkshop Auto Const Mandatory
+	Keyword Property LocationTypeSettlement Auto Const Mandatory
 EndGroup
 
 Group Messages
 	; 1.0.4 - Adding new message to explain why ClaimSettlement isn't working 
-	Message Property CannotFindSettlement Auto Const
+	Message Property CannotFindSettlement Auto Const Mandatory
+	Message Property ManageSettlementMenu Auto Const Mandatory
+	Message Property ScrapConfirmation Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -231,16 +240,26 @@ EndEvent
 ; Extended Handlers
 ; ---------------------------------------------
 
+Function HandleInstallModChanges()
+	if(iInstalledVersion < 26)
+		PlayerRef.AddPerk(ActivationPerk)
+	endif
+EndFunction
+
+
 Function HandleGameLoaded()
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> HandleGameLoaded called on WSFW MainQuest")
-	; Make sure our debug log is open
+	
 	if(WorkshopParent.IsRunning())
 		WorkshopParent.FillWSFWVars() ; Patch 1.0.1 - Eliminating all vanilla form edits and switching to GetFormFromFile
 	else
 		RegisterForRemoteEvent(WorkshopParent as Quest, "OnStageSet")
 	endif
 	
+	; Make sure our debug log is open
 	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
+	
+	UpdatePluginFlags()
 	
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> Calling HandleGameLoaded on Parent of WSFW MainQuest")
 	Parent.HandleGameLoaded()
@@ -251,6 +270,7 @@ Function HandleQuestInit()
 	Parent.HandleQuestInit()
 	
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
+	PlayerRef.AddPerk(ActivationPerk) ; 1.2.0 - Allow for alternate activations
 EndFunction
 
 
@@ -296,6 +316,45 @@ Function HandleLocationChange(Location akNewLoc)
 		
 		StartTimer(1.0, LocationChangeTimerID)	
 	endif	
+EndFunction
+
+
+; ---------------------------------------------
+; Functions
+; ---------------------------------------------
+
+; 1.2.0 - Adding a new manage pop-up menu to workbenches to avoid the player needing to use MCM or holotape for some things
+Function PresentManageSettlementMenu(WorkshopScript akWorkshopRef)
+	int iChoice = ManageSettlementMenu.Show()
+	
+	if(iChoice == 0)
+		; PresentLayoutManagementMenu triggers a series of menus that loop, let's not get this main quest caught up in the thread - so instead trigger a new thread via CallFunctionNoWait
+		Var[] kArgs = new Var[1]
+		kArgs[0] = akWorkshopRef
+		
+		SettlementLayoutManager.CallFunctionNoWait("PresentLayoutManagementMenu", kArgs)
+	elseif(iChoice == 1)
+		; Scrap Settlement
+		int iConfirm = ScrapConfirmation.Show()
+		
+		if(iConfirm == 1)
+			; Clear all layouts
+			int i = 0
+			while(i < akWorkshopRef.AppliedLayouts.Length)
+				akWorkshopRef.AppliedLayouts[i].Remove(akWorkshopRef)
+				
+				i += 1
+			endWhile
+			
+			; Scrap entire settlement
+			SettlementLayoutManager.ScrapSettlement(akWorkshopRef, abScrapLinkedAndCollectLootables = true)
+		endif
+	elseif(iChoice == 2)
+		; Cancel
+	endif
+	
+	; TODO - Adjust build limit menu (reset/increase/increaseLots/increaseTons)
+	; TODO - Claim/Unclaim workshop option  (Force take or give up control of workshop)
 EndFunction
 
 
@@ -347,10 +406,36 @@ Function EnableWorkshopTutorials()
 	endWhile
 EndFunction
 
+; 1.1.11 - Setting up plugin installed globals
+Function UpdatePluginFlags()
+	int i = 0
+	while(i < PluginFlags.Length)
+		if(Game.IsPluginInstalled(PluginFlags[i].sPluginName))
+			PluginFlags[i].GlobalForm.SetValueInt(1)
+		else
+			PluginFlags[i].GlobalForm.SetValueInt(0)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
 
 ; MCM Can't send None, so we're adding a wrapper
 Function MCM_ClaimSettlement()
 	ClaimSettlement(None)
+EndFunction
+
+
+; MCM Wrapper
+Function MCM_PresentManageSettlementMenu()
+	WorkshopScript thisWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+	
+	if(thisWorkshop)
+		PresentManageSettlementMenu(thisWorkshop)
+	else
+		CannotFindSettlement.Show()
+	endif
 EndFunction
 
 

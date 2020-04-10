@@ -98,34 +98,117 @@ EndFunction
 
 
 ObjectReference[] Function GetConnectedObjects(ObjectReference akObjectRef)
-	if( ! F4SECheck())
-		return None
-	endif
-	
 	return akObjectRef.GetConnectedObjects()
+EndFunction
+
+String Function GetFormName(Form aForm)
+	String sName = aForm.GetName()
+	
+	return sName
+EndFunction
+
+String Function GetDisplayName(ObjectReference akObjectRef)
+	String sName = akObjectRef.GetDisplayName()
+	
+	return sName
+EndFunction
+
+; Provided by WSFWIdentifier.dll, created by cdante
+String Function GetReferenceName(ObjectReference akObjectRef)
+	String sName = WSFWIdentifier.GetReferenceName(akObjectRef)
+	
+	return sName
 EndFunction
 
 
 ObjectReference Function AttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
-	if( ! F4SECheck())
-		return None
-	endif
-	
 	return akOriginRef.AttachWire(akTargetRef, akSpline)
 EndFunction
 
 ObjectReference Function CreateWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
-	if( ! F4SECheck())
-		return None
-	endif
-	
 	return akOriginRef.CreateWire(akTargetRef, akSpline)
 EndFunction
 
 Bool Function TransmitConnectedPower(ObjectReference akObjectRef)
-	if( ! F4SECheck())
-		return false
+	return akObjectRef.TransmitConnectedPower()
+EndFunction
+
+
+Function CountPluginsPopup()
+	Debug.MessageBox("Plugins: " + Game.GetInstalledPlugins().Length + "\nLight Plugins: " + Game.GetInstalledLightPlugins().Length)
+EndFunction
+
+Int Function GetLoadOrderAgnosticFormID(Int aiFormID)
+	return Math.LogicalAnd(aiFormID, 0x00FFFFFF)
+EndFunction
+
+String Function GetInstalledPluginsString(String sDelimiter = ",")
+	String sPlugins = ""
+	
+	Game:PluginInfo[] Plugins = Game.GetInstalledPlugins()
+	
+	int i = 0
+	while(i < Plugins.length)
+		sPlugins += Plugins[i].Name + ","
+		
+		i += 1
+	endWhile
+	
+	return sPlugins
+EndFunction
+
+String Function GetInstalledLightPluginsString(String sDelimiter = ",")
+	String sLightPlugins = ""
+	
+	Game:PluginInfo[] LightPlugins = Game.GetInstalledLightPlugins()
+	
+	int i = 0
+	while(i < LightPlugins.length)
+		sLightPlugins += LightPlugins[i].Name + ","
+		
+		i += 1
+	endWhile
+	
+	return sLightPlugins
+EndFunction
+
+String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPluginsOnly = false)
+	if(aFormOrReference != None)
+		int iFormID = aFormOrReference.GetFormID()
+		Game:PluginInfo[] Plugins = Game.GetInstalledPlugins()
+		Game:PluginInfo[] LightPlugins = Game.GetInstalledLightPlugins()
+		
+		if( ! abCheckLightPluginsOnly)
+			int i = 0
+			while(i < Plugins.Length)
+				Form FetchForm = Game.GetFormFromFile(iFormID, Plugins[i].Name)
+				
+				if(FetchForm != None && FetchForm == aFormOrReference)
+					return Plugins[i].Name
+				endif
+				
+				i += 1
+			endWhile
+		endif
+		
+		iFormID = GetLoadOrderAgnosticFormID(iFormID)
+		int i = 0
+		while(i < LightPlugins.Length)
+			Form FetchForm = Game.GetFormFromFile(iFormID, LightPlugins[i].Name)
+			
+			if(FetchForm != None)
+				if(FetchForm == aFormOrReference)
+					return LightPlugins[i].Name
+				else
+					;ModTrace("LightPlugin: Form " + FetchForm + " found, but doesn't match requested form " + aFormOrReference)
+				endif
+			else
+				;ModTrace("LightPlugin: [" + LightPlugins[i].Index + "] " + LightPlugins[i].Name + " doesn't have a form matching: " + iFormID)
+			endif
+			
+			i += 1
+		endWhile
 	endif
 	
-	return akObjectRef.TransmitConnectedPower()
+	return ""
 EndFunction

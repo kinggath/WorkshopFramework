@@ -22,12 +22,14 @@ Scriptname WorkshopFramework:ObjectRefs:Thread_ScrapObject extends WorkshopFrame
 ; Editor Properties
 ; -
 
+WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 WorkshopParentScript Property WorkshopParent Auto Const Mandatory
 Keyword Property WorkshopKeyword Auto Const Mandatory
 Keyword Property PowerArmorKeyword Auto Const Mandatory
 Keyword Property WorkshopItemKeyword Auto Const Mandatory
 ActorBase Property CovenantTurret Auto Const Mandatory
 Keyword Property WorkshopStackedItemParentKEYWORD Auto Const Mandatory ; 1.0.2 - Clear links
+Keyword Property TurretKeyword Auto Const Mandatory
 
 Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
 ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
@@ -37,6 +39,9 @@ ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Us
 ; -
 Bool Property bWasRemoved = false Auto Hidden
 ObjectReference Property kScrapMe Auto Hidden
+Bool Property bWithinBuildableAreaCheck = false Auto Hidden ; 1.1.11
+WorkshopScript Property kWorkshopRef Auto Hidden ; 1.1.11
+Bool Property bStoreContainerItemsInWorkshop = true Auto Hidden
 
 ; -
 ; Events
@@ -48,6 +53,7 @@ ObjectReference Property kScrapMe Auto Hidden
 	
 Function ReleaseObjectReferences()
 	kScrapMe = None
+	kWorkshopRef = None
 EndFunction
 
 
@@ -73,18 +79,26 @@ Function RunCode()
 			i += 1
 		endWhile
 		
+		if( ! kWorkshopRef)
+			kWorkshopRef = kScrapMe.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		endif
 		
-		WorkshopScript thisWorkshop = kScrapMe.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
-		if(thisWorkshop)
+		if(kWorkshopRef)
 			; Remove from workshop
 			WorkshopObjectScript workObject = kScrapMe as WorkshopObjectScript
 			
 			if(workObject)
-				WorkshopParent.RemoveObjectPUBLIC(workObject, thisWorkshop)
+				workObject.OnWorkshopObjectDestroyed(kWorkshopRef) ; 1.2.0 - Ensure secondary cleanup occurs from the workshop object's scripts
+				WorkshopParent.RemoveObjectPUBLIC(workObject, kWorkshopRef)
 			endif
 			
 			; Clear WorkshopItemKeyword link
 			kScrapMe.SetLinkedRef(None, WorkshopItemKeyword)
+			
+			; 1.1.11 - Move objects inside to workshop
+			if(bStoreContainerItemsInWorkshop)
+				kScrapMe.RemoveAllItems(akTransferTo = kWorkshopRef)
+			endif
 		endif
 		
 		; 1.0.7 RemoveObjectPUBLIC will handle this for WorkshopObjectScript objects, but let's make sure it's cleared from general ownership - this may not be necessary - but we want to avoid persistence at all costs
@@ -93,7 +107,7 @@ Function RunCode()
 		; 1.0.6 - Switching to safe scrapping method to avoid power grid corruption
 		SafeDelete(kScrapMe)
 		
-		bWasRemoved = true
+		bWasRemoved = true		
 	endif
 EndFunction
 
@@ -119,6 +133,11 @@ Function SafeDelete(ObjectReference akDeleteMe)
 		endif
 	endif
 	
+	; Check for wires connected to this and remove them
+	if(F4SEManager.IsF4SERunning)
+		ScrapConnectedWires(akDeleteMe)
+	endif
+	
 	; Disable
 	if( ! bIsDisabled)
 		akDeleteMe.Disable(false)
@@ -135,15 +154,44 @@ Function SafeDelete(ObjectReference akDeleteMe)
 EndFunction
 
 
+Function ScrapConnectedWires(ObjectReference akObjectToCheck)
+	ObjectReference[] kConnected = F4SEManager.GetConnectedObjects(akObjectToCheck)
+	int i = 0
+	while(i < kConnected.Length)
+		if(kConnected[i].GetBaseObject().GetFormID() == 0x0001D971) ; Vanilla wire spline
+			; Wires themselves are not stored in power grids, just delete
+			kConnected[i].Disable(false)
+			kConnected[i].Delete()
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+
 
 Bool Function ScrapSafetyCheck(ObjectReference akScrapMe)
-	; Special handling for Covenant turrets - which are actors but not WorkshopObjectActorScripts
-	if(akScrapMe as Actor && (akScrapMe as Actor).GetActorBase() == CovenantTurret)
-		return true
+	if(akScrapMe as Actor)
+		Keyword DLC05ArmorRackKeyword = None
+		if(Game.IsPluginInstalled("DLCWorkshop02.esm"))
+			DLC05ArmorRackKeyword = Game.GetFormFromFile(0x000008B2, "DLCWorkshop02.esm") as Keyword
+		endif
+		
+		if((akScrapMe as Actor).GetActorBase() == CovenantTurret)
+			; Special handling for Covenant turrets - which are actors but not WorkshopObjectActorScripts
+			return true
+		elseif(DLC05ArmorRackKeyword != None && akScrapMe.HasKeyword(DLC05ArmorRackKeyword))
+			; Special handling for armor racks
+			return true
+		endif
 	endif
-	; TODO- Change as WorkshopObjectActorScript check to HasKeyword(TurretKeyword)
+	
+	if(bWithinBuildableAreaCheck && ! akScrapMe.IsWithinBuildableArea(kWorkshopRef))
+		return false
+	endif
+	
 	if((akScrapMe as WorkshopNPCScript) || \
-		((akScrapMe as Actor) && ! (akScrapMe as WorkshopObjectActorScript)) || \
+		((akScrapMe as Actor) && ! akScrapMe.HasKeyword(TurretKeyword)) || \
 		(akScrapMe as WorkshopScript) || \
 		akScrapMe.HasKeyword(WorkshopKeyword) || \
 		akScrapMe.HasKeyword(PowerArmorKeyword))

@@ -74,7 +74,7 @@ Int[] Function GetGameDate(Float fSpecificGameTime = 0.0) global
 	Int iPrepassedGameDaysInYearOne = 294
 	Int iYearOne = 2287
 	Int iMonthOne = 10
-	Int iDayOne = 21 
+	Int iDayOne = 22 
 	
 	Int[] iDaysPerMonth = new Int[12]
 	iDaysPerMonth[0] = 31 ;Jan
@@ -233,6 +233,33 @@ EndFunction
 
 
 ; -----------------------------------
+; GetIndexMappedUniversalForm
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:IndexMappedUniversalForm  ableSet struct
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Form Function GetIndexMappedUniversalForm(IndexMappedUniversalForm aUniversalForm) global
+	if( ! aUniversalForm)
+		return None
+	endif
+	
+	Form thisForm
+	
+	if(aUniversalForm.BaseForm)
+		thisForm = aUniversalForm.BaseForm
+	elseif(aUniversalForm.iFormID > 0 && aUniversalForm.sPluginName != "" && Game.IsPluginInstalled(aUniversalForm.sPluginName))
+		thisForm = Game.GetFormFromFile(aUniversalForm.iFormID, aUniversalForm.sPluginName) as Form
+	else
+		return None
+	endif
+	
+	return thisForm
+EndFunction
+
+
+; -----------------------------------
 ; GetActorValueSetForm 
 ;
 ; Description: Returns the form from a WorkshopFramework:Library:DataStructures:ActorValueSet struct
@@ -323,6 +350,44 @@ Bool Function CheckActorValueSet(ObjectReference akCheckRef, ActorValueSet aAVSe
 	endif
 	
 	return bCheckPassed
+EndFunction
+
+
+; -----------------------------------
+; CheckForPlugin
+; 
+; Description: Checks if a plugin is installed, even if the plugin is available as multiple types
+;
+; Parameters:
+; String asPluginBaseName = Plugin file name WITHOUT the extension
+; Bool abAvailableAsESP = Whether or not to check for .esp
+; Bool abAvailableAsESL = Whether or not to check for .esl
+; Bool abAvailableAsESM = Whether or not to check for .esm
+;
+; Added: 1.1.11
+; -----------------------------------
+
+Bool Function CheckForPlugin(String asPluginBaseName, Bool abAvailableAsESP = true, Bool abAvailableAsESL = true, Bool abAvailableAsESM = true) global
+	if( ! abAvailableAsESP && ! abAvailableAsESL && ! abAvailableAsESM)
+		; This should never happen, so we'll just fall back and check for esp
+		if(Game.IsPluginInstalled(asPluginBaseName + ".esp"))
+			return true
+		endif
+	else
+		if(abAvailableAsESP && Game.IsPluginInstalled(asPluginBaseName + ".esp"))
+			return true
+		endif
+		
+		if(abAvailableAsESL && Game.IsPluginInstalled(asPluginBaseName + ".esl"))
+			return true
+		endif
+		
+		if(abAvailableAsESM && Game.IsPluginInstalled(asPluginBaseName + ".esm"))
+			return true
+		endif
+	endif
+	
+	return false
 EndFunction
 
 
@@ -423,6 +488,7 @@ Quest Function GetQuestStageSetForm(QuestStageSet aQuestSet) global
 EndFunction
 
 
+
 ; -----------------------------------
 ; CheckQuestStageSet
 ; 
@@ -448,6 +514,190 @@ Bool Function CheckQuestStageSet(QuestStageSet aQuestSet) global
 	return false
 EndFunction
 
+
+
+; -----------------------------------
+; GetQuestObjectiveSetForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:QuestStageSet struct
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Quest Function GetQuestObjectiveSetForm(QuestObjectiveSet aQuestSet) global
+	if( ! aQuestSet)
+		return None
+	endif
+
+	Quest thisForm
+
+	if(aQuestSet.QuestForm)
+		thisForm = aQuestSet.QuestForm
+	elseif(aQuestSet.iFormID > 0 && aQuestSet.sPluginName != "" && Game.IsPluginInstalled(aQuestSet.sPluginName))
+		thisForm = Game.GetFormFromFile(aQuestSet.iFormID, aQuestSet.sPluginName) as Quest
+	else
+		return None
+	endif
+
+	return thisForm
+EndFunction
+
+; -----------------------------------
+; CheckQuestObjectiveSet
+; 
+; Description: Checks if a QuestObjectiveSet passes
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Bool Function CheckQuestObjectiveSet(QuestObjectiveSet aQuestObjectiveSet) global
+	Quest thisForm = GetQuestObjectiveSetForm(aQuestObjectiveSet)
+
+	if(thisForm)
+		if(aQuestObjectiveSet.iCompareMethod == -1)
+			return thisForm.IsObjectiveFailed(aQuestObjectiveSet.iObjective)
+		elseif(aQuestObjectiveSet.iCompareMethod == 0)
+			return ( ! thisForm.IsObjectiveFailed(aQuestObjectiveSet.iObjective) && ! thisForm.IsObjectiveCompleted(aQuestObjectiveSet.iObjective))
+		elseif(aQuestObjectiveSet.iCompareMethod == 1)
+			return thisForm.IsObjectiveCompleted(aQuestObjectiveSet.iObjective)
+		endif
+	endif
+
+	; Quest not found
+	return false
+EndFunction
+
+
+; -----------------------------------
+; GetScriptPropertySetCheckForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:ScriptPropertySet struct
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Form Function GetScriptPropertySetCheckForm(ScriptPropertySet aScriptPropertySet) global
+	if( ! aScriptPropertySet)
+		return None
+	endif
+	
+	Form thisForm
+	
+	if(aScriptPropertySet.CheckForm)
+		thisForm = aScriptPropertySet.CheckForm
+	elseif(aScriptPropertySet.iCheckFormID > 0 && aScriptPropertySet.sCheckPluginName != "" && Game.IsPluginInstalled(aScriptPropertySet.sCheckPluginName))
+		thisForm = Game.GetFormFromFile(aScriptPropertySet.iCheckFormID, aScriptPropertySet.sCheckPluginName)
+	else
+		return None
+	endif
+	
+	return thisForm
+EndFunction
+
+
+; -----------------------------------
+; GetScriptPropertySetMatchForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:ScriptPropertySet struct
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Form Function GetScriptPropertySetMatchForm(ScriptPropertySet aScriptPropertySet) global
+	if( ! aScriptPropertySet)
+		return None
+	endif
+	
+	Form thisForm
+	
+	if(aScriptPropertySet.MatchForm)
+		thisForm = aScriptPropertySet.MatchForm
+	elseif(aScriptPropertySet.iMatchFormID > 0 && aScriptPropertySet.sMatchPluginName != "" && Game.IsPluginInstalled(aScriptPropertySet.sMatchPluginName))
+		thisForm = Game.GetFormFromFile(aScriptPropertySet.iMatchFormID, aScriptPropertySet.sMatchPluginName)
+	else
+		return None
+	endif
+	
+	return thisForm
+EndFunction
+
+
+; -----------------------------------
+; CheckScriptPropertySet
+; 
+; Description: Checks if a ScriptPropertySet passes
+;
+; Added: 1.2.0
+; -----------------------------------
+
+Bool Function CheckScriptPropertySet(ScriptPropertySet aScriptPropertySet) global
+	Form thisForm = GetScriptPropertySetCheckForm(aScriptPropertySet)
+	
+	ScriptObject CastForm = thisForm.CastAs(aScriptPropertySet.sScriptName)
+	
+	if(CastForm && aScriptPropertySet.sPropertyName != "")
+		Var vPropertyValue = CastForm.GetPropertyValue(aScriptPropertySet.sPropertyName)
+		
+		if(vPropertyValue is Bool)
+			if(vPropertyValue as Bool == aScriptPropertySet.fValue as Bool)
+				return true
+			endif
+		elseif(vPropertyValue is Int || vPropertyValue is Float)
+			Float fPropertyValue = vPropertyValue as Float
+			if(aScriptPropertySet.iCompareMethod == -2)
+				if(fPropertyValue < aScriptPropertySet.fValue)
+					return true
+				endif
+			elseif(aScriptPropertySet.iCompareMethod == -1)
+				if(fPropertyValue <= aScriptPropertySet.fValue)
+					return true
+				endif
+			elseif(aScriptPropertySet.iCompareMethod == 0)
+				if(fPropertyValue == aScriptPropertySet.fValue)
+					return true
+				endif
+			elseif(aScriptPropertySet.iCompareMethod == 1)
+				if(fPropertyValue >= aScriptPropertySet.fValue)
+					return true
+				endif
+			elseif(aScriptPropertySet.iCompareMethod == 2)
+				if(fPropertyValue > aScriptPropertySet.fValue)
+					return true
+				endif
+			endif
+		elseif(vPropertyValue is String)
+			String sPropertyValue = vPropertyValue as String
+			
+			if(sPropertyValue == aScriptPropertySet.fValue)
+				if(aScriptPropertySet.iCompareMethod == 0)
+					return true
+				endif
+			else
+				; String doesn't match - if iCompareMethod is not the default value of 0, the user wanted anything but the value they requested
+				if(aScriptPropertySet.iCompareMethod != 0)
+					return true
+				endif
+			endif
+		elseif(vPropertyValue as Form)
+			Form checkForm = vPropertyValue as Form
+			Form matchForm = GetScriptPropertySetMatchForm(aScriptPropertySet)
+			
+			if(checkForm == matchForm)
+				if(aScriptPropertySet.iCompareMethod == 0)
+					return true
+				endif
+			else
+				; Form doesn't match - if iCompareMethod is not the default value of 0, the user wanted anything but the value they requested
+				if(aScriptPropertySet.iCompareMethod != 0)
+					return true
+				endif
+			endif
+		endif					
+	endif
+	
+	; No match occurred (or important data was missing)
+	return false
+EndFunction
 
 
 ; -----------------------------------
@@ -497,53 +747,121 @@ endFunction
 ;
 ; Description: Removes all None elements from a form list
 ;
-; Author: cadpnq
+; Author: cadpnq, edits by kinggath
 ; -----------------------------------
 Function CleanFormList(FormList f, int index = -1) global
-  int i = 0
-  Form element
+	int i = 0
+	Form element
 
-  If (index == -1)
-    bool dirty = False
-    index = f.GetSize() - 1
+	if(index == -1)
+		bool bDirty = False
+		index = f.GetSize() - 1
 
-    i = index
-    While (i >= 0)
-      element = f.GetAt(i)
-      If (element == None)
-        dirty = True
-      EndIf
+		i = index
+		while(i >= 0 && ! bDirty)
+			element = f.GetAt(i)
+			if(element == None)
+				bDirty = True
+			endIf
 
-      i -= 1
-    EndWhile
+			i -= 1
+		endWhile
 
-    If (dirty)
-      CleanFormList(f, index)
-    EndIf
-  Else
-    Form[] tmp = New Form[0]
+		if(bDirty)
+			CleanFormList(f, index)
+		endIf
+	else
+		form[] tmp = New Form[0]
 
-    While ((i < 128) && (index >= 0))
-      element = f.GetAt(index)
-      If (element != None)
-        tmp.Add(element)
-        i += 1
-      EndIf
-      index -= 1
-    EndWhile
+		while((i < 128) && (index >= 0))
+			element = f.GetAt(index)
+			
+			if(element != None)
+				tmp.Add(element)
+				
+				i += 1
+			endIf
+			
+			index -= 1
+		endWhile
 
-    If (index == -1)
-      f.Revert()
-    Else
-      CleanFormList(f, index)
-    EndIf
+		if(index == -1)
+			f.Revert()
+		else
+			CleanFormList(f, index)
+		endIf
 
-    i = tmp.Length - 1
-    While (i > -1)
-      f.AddForm(tmp[i])
-      i -= 1
-    EndWhile
-  EndIf
+		i = tmp.Length - 1
+		while(i > -1)
+			f.AddForm(tmp[i])
+			
+			i -= 1
+		endWhile
+	endIf
+endFunction
+
+
+; -----------------------------------
+; CleanFormListRecursively
+;
+; Description: Removes all None elements from a form list, also digs into subformlists
+;
+; Author: kinggath
+; -----------------------------------
+Function CleanFormListRecursively(FormList f, int index = -1) global
+	int i = 0
+	Form element
+
+	if(index == -1)
+		bool bDirty = False
+		index = f.GetSize() - 1
+
+		i = index
+		while(i >= 0)
+			element = f.GetAt(i)
+			if(element == None)
+				bDirty = True
+			else
+				Formlist asFormlist = element as FormList
+				if(asFormlist)
+					CleanFormListRecursively(asFormlist)
+				endif
+			endIf
+
+			i -= 1
+		endWhile
+
+		if(bDirty)
+			CleanFormListRecursively(f, index)
+		endIf
+	else
+		form[] tmp = New Form[0]
+
+		while((i < 128) && (index >= 0))
+			element = f.GetAt(index)
+			
+			if(element != None)
+				tmp.Add(element)
+				
+				i += 1
+			endIf
+			
+			index -= 1
+		endWhile
+
+		if(index == -1)
+			f.Revert()
+		else
+			CleanFormListRecursively(f, index)
+		endIf
+
+		i = tmp.Length - 1
+		while(i > -1)
+			f.AddForm(tmp[i])
+			
+			i -= 1
+		endWhile
+	endIf
 EndFunction
 
 
@@ -583,7 +901,7 @@ EndFunction
 ; 
 ; Description: Creates a new copy of a WorldObject. This is useful due to the way structs and arrays are passed by reference, so that you don't edit the original copy, if you just want to tweak the data itself
 ;
-; Parmeters:
+; Parameters:
 ; WorldObject aWorldObject: A WorldObject struct you want to make a copy of
 ; 
 ; Added: 1.0.7
@@ -665,4 +983,22 @@ Float[] Function GetWorldObjectCoordinatesFromRef(ObjectReference akObjectRef) g
 	Coordinates[5] = akObjectRef.GetValue(AngZ)
 	
 	return Coordinates
+EndFunction
+
+
+; ------------------------------
+; Mod 
+; 
+; Description: Basic math function to find remainder
+;
+; Parameters:
+; Int a, Int b
+; 
+; Added: 1.2.0
+; ------------------------------
+Int Function Mod(Int a, Int b) global
+	Float x = a / b
+	Int y = Math.Floor( x )
+	
+	return a - (b * y)
 EndFunction

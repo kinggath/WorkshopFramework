@@ -296,15 +296,6 @@ Event OnTimerGameTime(Int aiTimerID)
 EndEvent
 
 
-Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework:Library:ThreadRunner akThreadRunner, Var[] akargs)
-	;/
-	akargs[0] = sCustomCallCallbackID
-	akargs[1] = iCallbackID
-	akargs[2] = Result from called function
-	/;
-EndEvent
-
-
 Event WorkshopParentScript.WorkshopObjectBuilt(WorkshopParentScript akSenderRef, Var[] akArgs)
 	;/
 	kargs[0] = newWorkshopObject
@@ -436,7 +427,6 @@ Function HandleQuestInit()
 	RegisterForRemoteEvent(PlayerRef, "OnLocationChange") ; We want to be directly aware of this for settlements like Spectacle Island
 	RegisterForCustomEvent(WorkshopParent, "WorkshopInitializeLocation")
 	
-	ThreadManager.RegisterForCallbackThreads(Self)
 	WorkshopParent.RegisterForWorkshopEvents(Self, bRegister = true)
 	
 	if(WorkshopParent.GetStageDone(iWorkshopParentInitializedStage))
@@ -477,6 +467,10 @@ EndFunction
 
 Function HandleInstallModChanges()
 	SetupAllWorkshopProperties() ; 1.0.8 - Confirm any new properties are configured each patch
+	
+	if(iInstalledVersion < 26)
+		ThreadManager.UnregisterForCallbackThreads(Self) ; We don't need these callbacks
+	endif
 	
 	if(iInstalledVersion < 22) ; 1.1.8 - Update vars for new WSFW_PowerRequired feature
 		int i = 0

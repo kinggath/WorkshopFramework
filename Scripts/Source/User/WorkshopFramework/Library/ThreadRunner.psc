@@ -296,6 +296,7 @@ EndEvent
 Function CompleteRun(String asCustomCallbackID, Int aiCallBackID, Var akResult)
 	QueueCounter.Mod(-1)
 	
+	;Debug.Trace("ThreadRunner.CompleteRun. asCustomCallbackID = " + asCustomCallbackID + " Thread = " + akResult)
 	; Send the response with the callback ID so in case the original caller needs it
 	if(asCustomCallbackID != "")
 		Var[] kResultArgs = new Var[3]
@@ -387,7 +388,7 @@ EndFunction
 
 Function TryToProcessNextQueuedThread()
 	if(iRunningThreads > 0)
-		Debug.Trace(Self + " busy, will try again after previous thread completes.")
+		;Debug.Trace(Self + " busy, will try again after previous thread completes.")
 		return
 	endif	
 	

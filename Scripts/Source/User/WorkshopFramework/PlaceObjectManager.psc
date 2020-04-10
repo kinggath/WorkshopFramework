@@ -134,6 +134,8 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 			ObjectReference kCreatedRef = kThreadRef.kResult
 			int iBatchID = kThreadRef.iBatchID
 			
+			kThreadRef.SelfDestruct() ; 1.2.0 - this should have been set up this way from the get-go
+			
 			ModTrace("[WSFW] PlaceObjectManager - CreatedRef " + kCreatedRef + " returned from thread, updating simple monitor for batch " + iBatchID)
 			if(kCreatedRef && iBatchID >= 0)
 				int iBatchIndex = GetSimpleBatchIndex(iBatchID)
@@ -389,6 +391,11 @@ Int Function CreateObject_Private(WorldObject aPlaceMe, WorkshopScript akWorksho
 			; 1.0.5
 			kThread.iBatchID = aiBatchID
 			
+			; 1.2.0 Only prevent autodestroy if used with the batch system
+			if(sCustomCallbackID == sThreadID_ObjectPlaced && abCallbackEventNeeded)
+				kThread.bAutoDestroy = false
+			endif
+			
 			int iCallBackID = ThreadManager.QueueThread(kThread, sCustomCallbackID)
 			
 			return iCallBackID
@@ -424,6 +431,7 @@ ObjectReference Function CreateObjectImmediately(WorldObject aPlaceMe, WorkshopS
 			kThread.fAngleZ = aPlaceMe.fAngleZ
 			kThread.fScale = aPlaceMe.fScale
 			kThread.kWorkshopRef = akWorkshopRef
+			kThread.kPositionRelativeTo = akPositionRelativeTo ; 1.1.11 - This had been missing
 			
 			kThread.RunCode()
 			
@@ -455,6 +463,31 @@ Int Function ScrapObject(ObjectReference akScrapMe, Bool abCallbackEventNeeded =
 	if(kThread)
 		kThread.kScrapMe = akScrapMe
 					
+		int iCallBackID = ThreadManager.QueueThread(kThread, sCustomCallbackID)
+		
+		return iCallBackID
+	endif	
+		
+	return -1
+EndFunction
+
+
+Int Function ScrapObjectInWorkshopArea(ObjectReference akScrapMe, WorkshopScript akWorkshopRef, Bool abCallbackEventNeeded = true)
+	; Send deletion request to the thread manager
+	String sCustomCallbackID = sThreadID_ObjectRemoved
+	if( ! abCallbackEventNeeded)
+		sCustomCallbackID = ""
+	else
+		ModTrace("[WSFW] PlaceObjectManager: Creating ScrapObjectInWorkshopArea thread - requesting callback event.")
+	endif
+		
+	WorkshopFramework:ObjectRefs:Thread_ScrapObject kThread = ThreadManager.CreateThread(ScrapObjectThread) as WorkshopFramework:ObjectRefs:Thread_ScrapObject
+	
+	if(kThread)
+		kThread.kScrapMe = akScrapMe
+		kThread.bWithinBuildableAreaCheck = true
+		kThread.kWorkshopRef = akWorkshopRef
+		
 		int iCallBackID = ThreadManager.QueueThread(kThread, sCustomCallbackID)
 		
 		return iCallBackID

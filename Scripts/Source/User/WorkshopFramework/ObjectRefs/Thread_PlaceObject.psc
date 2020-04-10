@@ -14,6 +14,7 @@
 Scriptname WorkshopFramework:ObjectRefs:Thread_PlaceObject extends WorkshopFramework:Library:ObjectRefs:Thread
 
 import WorkshopFramework:Library:DataStructures
+import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:Library:ThirdParty:Cobb:CobbLibraryRotations
 
 ; -
@@ -57,11 +58,11 @@ ObjectReference Property WorkshopRadioRef Auto Mandatory ; Do not make Const - w
 Keyword Property ForceStaticKeyword Auto Const Mandatory
 { Keyword to tag objects so we can monitor for their onload event }
 
+Formlist Property SkipPowerOnList Auto Const Mandatory
+{ Formlist to skip the power on triggers for some items, such as the siren }
 ; -
 ; Properties
 ; -
-
-; We are turning off bAutoDestroy so our batch event manager can grab the result ref
 ObjectReference Property kResult Auto Hidden
 Bool Property bAwaitingOnLoadEvent = false Auto Hidden
 
@@ -84,11 +85,50 @@ Bool Property bFauxPowered = false Auto Hidden ; 1.0.5 - Default to false
 Bool Property bSelfDestructThreadAfterOnLoad = true Auto Hidden ; 1.0.5 - Added option to prevent the self destruct
 Bool Property bApplyDrawCount = false Auto Hidden ; 1.1.5 - Defaults to false - if WorkshopCurrentDraws is applied to the placed object, it will be added to the workshop for the sake of the build limit
 Bool Property bApplyTriCount = false Auto Hidden ; 1.1.5 - Defaults to false - if WorkshopCurrentTriangles is applied to the placed object, it will be added to the workshop for the sake of the build limit
+Bool Property bRecalculateWorkshopResources = true Auto Hidden ; 1.2.0 - For huge batches where we know the player will stay put, we don't want this triggering for every item
 Bool Property bForceWorkshopItemLink = true Auto Hidden
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
+
 Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of threads
+
+
+; Extra Data to Pass to Spawned item
+Form Property ExtraData_Form01 Auto Hidden
+Form Property ExtraData_Form02 Auto Hidden
+Form Property ExtraData_Form03 Auto Hidden
+Bool Property ExtraData_Form01Set = false Auto Hidden
+Bool Property ExtraData_Form02Set = false Auto Hidden
+Bool Property ExtraData_Form03Set = false Auto Hidden
+
+Float Property ExtraData_Number01 Auto Hidden
+Float Property ExtraData_Number02 Auto Hidden
+Float Property ExtraData_Number03 Auto Hidden	
+Bool Property ExtraData_Number01Set = false Auto Hidden
+Bool Property ExtraData_Number02Set = false Auto Hidden
+Bool Property ExtraData_Number03Set = false Auto Hidden
+
+String Property ExtraData_String01 Auto Hidden
+String Property ExtraData_String02 Auto Hidden
+String Property ExtraData_String03 Auto Hidden
+Bool Property ExtraData_String01Set = false Auto Hidden
+Bool Property ExtraData_String02Set = false Auto Hidden
+Bool Property ExtraData_String03Set = false Auto Hidden
+
+Bool Property ExtraData_Bool01 Auto Hidden
+Bool Property ExtraData_Bool02 Auto Hidden
+Bool Property ExtraData_Bool03 Auto Hidden
+Bool Property ExtraData_Bool01Set = false Auto Hidden
+Bool Property ExtraData_Bool02Set = false Auto Hidden
+Bool Property ExtraData_Bool03Set = false Auto Hidden
+
+; Sim Settlements specific
+Form Property BuildingPlan Auto Hidden
+Form Property SkinPlan Auto Hidden
+Form Property StoryPlan Auto Hidden
+Int Property iStartingLevel = -1 Auto Hidden
+
 ; -
 ; Events
 ; -
@@ -169,7 +209,9 @@ Function RunCode()
 	if(bVerbose)
 		Debug.MessageBox("RunCode called")
 	endif
-	bAutoDestroy = false
+	
+	; bAutoDestroy = false ; 1.2.0 - Commenting this out as this thread is being used by more than just our batch system, this value will now be set by the code that sets up the thread before its run
+	
 	kResult = None
 	; Place temporary object at player
 	ObjectReference kTempPositionHelper = kSpawnAt.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
@@ -239,7 +281,13 @@ Function RunCode()
 		
 		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = bInitiallyDisabled, abDeleteWhenAble = false)
 				
-		if(kResult)
+		if(kResult)		
+			SendExtraData(kResult)
+			; Handle Sim Settlements extras immediately so we can pause the initilization and prevent mass spam
+			if(BuildingPlan != None)
+				HandleSimSettlementsData(kResult)
+			endif
+			
 			if(bVerbose)
 				Debug.TraceAndBox("Object placed " + kResult)
 			endif
@@ -299,11 +347,13 @@ Function RunCode()
 						FauxPowered(kResult)
 					endif
 					
-					if(kResult.Is3dLoaded())
-						kResult.PlayAnimation("Reset")
-						kResult.PlayAnimation("Powered")
-					else
-						RegisterForRemoteEvent(kResult, "OnLoad")
+					if(SkipPowerOnList != None && ! SkipPowerOnList.HasForm(SpawnMe))
+						if(kResult.Is3dLoaded())
+							kResult.PlayAnimation("Reset")
+							kResult.PlayAnimation("Powered")
+						else
+							RegisterForRemoteEvent(kResult, "OnLoad")
+						endif
 					endif
 				endif	
 
@@ -327,7 +377,9 @@ Function RunCode()
 					asWorkshopObject.HandleCreation(true)
 					
 					; Instead of doing kWorkshopRef.RecalculateWorkshopResources, we'll allow our ResourceManager to handle it. This let's us remotely update the workshop so things like the pipboy data are correct even when the settlement is unloaded.
-					ResourceManager.ApplyObjectSettlementResources(asWorkshopObject, kWorkshopRef)
+					if(bRecalculateWorkshopResources)
+						ResourceManager.ApplyObjectSettlementResources(asWorkshopObject, kWorkshopRef)
+					endif
 				endif
 			else
 				if(bVerbose)
@@ -388,6 +440,35 @@ Function RunCode()
 EndFunction
 
 
+Function HandleSimSettlementsData(ObjectReference akPlacedRef)
+	ScriptObject PlotRef = akPlacedRef.CastAs("SimSettlements:SimPlot")
+				
+	; Pause init and send plot to Sim Settlements for queued initilization - this prevents SS Plots from mass spamming functions as soon as they are spawned
+	PlotRef.SetPropertyValue("bPauseInit", true)
+	
+	Form WSFWRelay = Game.GetFormFromFile(0x0000BD42, "SimSettlements.esm")
+	ScriptObject CastWSFWRelay = WSFWRelay.CastAs("SimSettlements:WorkshopFrameworkIntegration")
+	
+	Var[] kArgs = new Var[1]
+	kArgs[0] = akPlacedRef ; Don't send PlotRef here or you'll get a type mismatch error
+	CastWSFWRelay.CallFunction("RegisterSpawnedPlot", kArgs)
+	
+	; Prep BuildingPlan
+	PlotRef.SetPropertyValue("ForcedBuildingPlan", BuildingPlan)
+	PlotRef.SetPropertyValue("iForceStartingLevel", iStartingLevel) ; This will force to appropriate level
+	
+	; Prep Skin
+	if(SkinPlan != None)
+		PlotRef.SetPropertyValue("ForcedSkin", SkinPlan)
+	endif
+	
+	; Prep VIP Story
+	if(StoryPlan != None)
+		PlotRef.SetPropertyValue("ForcedVIP", StoryPlan)
+	endif
+EndFunction
+
+
 Function ConfigureRadio(WorkshopObjectScript akWorkshopObject, WorkshopScript akWorkshopRef)
 	; Copied from WorkshopParent.UpdateRadioObject
 	
@@ -432,4 +513,66 @@ Function FauxPowered(ObjectReference akRef)
 	
 	akRef.SetValue(PowerGenerated, 0.1)
 	akRef.SetValue(WorkshopResourceObject, 1.0)
+EndFunction
+
+
+Function SendExtraData(ObjectReference akRef)
+	if(ExtraData_Form01Set || ExtraData_Form02Set || ExtraData_Form03Set || ExtraData_Number01Set || ExtraData_Number02Set || ExtraData_Number03Set || ExtraData_String01Set || ExtraData_String02Set || ExtraData_String03Set || ExtraData_Bool01Set || ExtraData_Bool02Set || ExtraData_Bool03Set)
+		; Users should grab this data with GetExtraData and then trigger a timer or a CallFunctionNoWait to ensure this thread isn't held up while they process the data
+		akRef.OnTriggerEnter(Self) ; Send import notice - objects can define this vanilla event to be treated like a function so they grab the ExtraData stored on this thread
+	endif
+EndFunction
+
+Var[] Function GetExtraData()
+	Var[] ExtraData = new Var[0]
+	
+	if(ExtraData_Form01Set)
+		ExtraData.Add(ExtraData_Form01)
+	endif
+	
+	if(ExtraData_Form02Set)
+		ExtraData.Add(ExtraData_Form02)
+	endif
+	
+	if(ExtraData_Form03Set)
+		ExtraData.Add(ExtraData_Form03)
+	endif
+	
+	if(ExtraData_Number01Set)
+		ExtraData.Add(ExtraData_Number01)
+	endif
+	
+	if(ExtraData_Number02Set)
+		ExtraData.Add(ExtraData_Number02)
+	endif
+	
+	if(ExtraData_Number03Set)
+		ExtraData.Add(ExtraData_Number03)
+	endif
+	
+	if(ExtraData_String01Set)
+		ExtraData.Add(ExtraData_String01)
+	endif
+	
+	if(ExtraData_String02Set)
+		ExtraData.Add(ExtraData_String02)
+	endif
+	
+	if(ExtraData_String03Set)
+		ExtraData.Add(ExtraData_String03)
+	endif
+	
+	if(ExtraData_Bool01Set)
+		ExtraData.Add(ExtraData_Bool01)
+	endif
+	
+	if(ExtraData_Bool02Set)
+		ExtraData.Add(ExtraData_Bool02)
+	endif
+	
+	if(ExtraData_Bool03Set)
+		ExtraData.Add(ExtraData_Bool03)
+	endif
+	
+	return ExtraData
 EndFunction
