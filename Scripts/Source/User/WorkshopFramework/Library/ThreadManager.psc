@@ -34,8 +34,9 @@ int OVERLOADTHRESHOLD = 20 Const ; If a thread exceeds this number of queued act
 Group Controllers
 	WorkshopFramework:Library:ThreadRunner[] Property ThreadRunners Auto Const
 	GlobalVariable[] Property gThreadRunnerQueueCounts Auto Const
-	ReferenceAlias Property ThreadSpawnPointAlias Auto Const Mandatory
+	ReferenceAlias Property ThreadSpawnPointAlias Auto Const Mandatory	
 EndGroup
+
 
 ; ---------------------------------------------
 ; Properties
@@ -169,6 +170,23 @@ Function RegisterForCallbackThreads(Form akRequestor)
 			
 			if(thisRunner != None)
 				akRequestor.RegisterForCustomEvent(thisRunner, "OnThreadCompleted")
+			endif
+			
+			i += 1
+		endWhile
+	endif
+EndFunction
+
+
+Function UnregisterForCallbackThreads(Form akRequestor)
+	if(akRequestor)
+		int i = 0
+	
+		while(i < ThreadRunners.Length)
+			WorkshopFramework:Library:ThreadRunner thisRunner = ThreadRunners[i]
+			
+			if(thisRunner != None)
+				akRequestor.UnregisterForCustomEvent(thisRunner, "OnThreadCompleted")
 			endif
 			
 			i += 1

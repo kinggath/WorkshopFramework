@@ -12,15 +12,26 @@
 ; ---------------------------------------------
 
 Scriptname WorkshopFramework:HUDFrameworkManager extends WorkshopFramework:Library:SlaveQuest Conditional
-{ Interface for HUDFramework }
+{ Interface for HUDFramework - ensures no hard requirement on HUDFramework, acts as a throttle to prevent overloading HUDFramework, offers some common elements without the need for the mod author to do any flash work. }
 
 
 import WorkshopFramework:Library:UtilityFunctions
+import WorkshopFramework:Library:DataStructures
 
 ; ---------------------------------------------
 ; Consts
 ; ---------------------------------------------
 
+int iCommand_ShowProgressBar = 201 Const
+int iCommand_HideProgressBar = 202 Const
+int iCommand_AddProgressBar = 301 Const ; Update label and icon
+int iCommand_UpdateProgressBar = 401 Const ; Update number
+
+String sDelimiter_CommandString = "]"
+
+String sWSFWWidget_Framework = "WorkshopFramework_HUDFramework.swf"
+
+int MAXPROGRESSBARID = 1000000 Const ; Some large value. We just want to make sure that we never overwrite an earlier progress bar and that we never go out of bounds for an int. This will be checked on game load and if iNextProgressBarID is larger than this, it will reset to 0
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -38,7 +49,17 @@ Bool Property IsHUDFrameworkInstalled
 	EndFunction
 EndProperty
 
+Float Property fWSFWWidget_HUDFrameworkX = 1000.0 Auto Hidden ; right side of screen
+Float Property fWSFWWidget_HUDFrameworkY = 70.0 Auto Hidden
 
+int iNextProgressBarID = 0
+Int Property NextProgressBarID
+	Int Function Get()
+		iNextProgressBarID += 1
+		
+		return iNextProgressBarID
+	EndFunction
+EndProperty
 
 ; ---------------------------------------------
 ; Vars
@@ -47,17 +68,35 @@ EndProperty
 ScriptObject HudInstance = None
 String[] RegisteredWidgets
 
+ProgressBar[] RegisteredProgressBars
+
+
 
 ; ---------------------------------------------
 ; Events 
 ; ---------------------------------------------
 
+; TODO - Allow position and scaling of the progress bars block (can we add outline while positioning/scaling?)
 
+Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
+    if(asMenuName== "WorkshopMenu")
+        ShowHUDWidgetsInWorkshopMode()
+    endif
+endEvent
 
 
 ; ---------------------------------------------
 ; Methods 
 ; ---------------------------------------------
+
+Function HandleQuestInit()
+	RegisterForMenuOpenCloseEvent("WorkshopMenu")
+	
+	RegisteredProgressBars = new ProgressBar[0]
+	
+	Parent.HandleQuestInit()
+EndFunction
+
 
 Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
@@ -66,6 +105,35 @@ Function HandleGameLoaded()
 	if(HudInstance == None || RegisteredWidgets == None)
 		RegisteredWidgets = new String[0]
 	endif
+	
+	; Register any of the WorkshopFramework included widgets
+	RegisterWidget(Self, sWSFWWidget_Framework, fWSFWWidget_HUDFrameworkX, fWSFWWidget_HUDFrameworkY)
+	
+	if(iNextProgressBarID > MAXPROGRESSBARID)
+		; Make sure we never go out of bounds
+		iNextProgressBarID = 0
+	endif
+	
+	; Restore any progress bars
+	int i = 0
+	if(RegisteredProgressBars != None)
+		while(i < RegisteredProgressBars.Length)
+			CreateProgressBar(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].sLabel, RegisteredProgressBars[i].sIconPath)
+			
+			UpdateProgressBarPercentage(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].fValue as Int)
+			
+			i += 1
+		endWhile
+	endif
+EndFunction
+
+
+Function HandleInstallModChanges()
+	if(iInstalledVersion < 26) ; 1.2.0
+		RegisterForMenuOpenCloseEvent("WorkshopMenu")
+	endif
+	
+	Parent.HandleInstallModChanges()
 EndFunction
 
 
@@ -115,6 +183,169 @@ Function PrepareHUDFramework()
 	endif
 EndFunction
 
+
+
+; ----------------------------------
+;
+; Progress Bars
+; 
+; ----------------------------------
+
+int iTestCount = 0
+Function TestAddProgressBar()
+	iTestCount += 1
+	String sId = "ProgressBar" + iTestCount as String
+	String sLabel = "Progress Bar " + iTestCount as String
+	CreateProgressBar(Self, sId, sLabel, "WSFWIcons\\SimSettlementsSpinningIcon.swf")
+	UpdateProgressBarPercentage(Self, sId, Utility.RandomInt(1, 100))
+EndFunction
+
+
+Function CreateProgressBar(Form akHandler, String asCustomIdentifier, String asInitialLabel, String asIconPath = "")
+	int iLockKey = GetLock()
+		
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("[HUDFrameworkManager] CreateProgressBar: Unable to get lock!")
+		
+		return None
+	endif
+	
+	ProgressBar thisBar
+	int iIndex = -1
+	if(RegisteredProgressBars == None || RegisteredProgressBars.Length == 0)
+		RegisteredProgressBars = new ProgressBar[0]
+	else
+		; Check if progress bar already exists
+		iIndex = FindProgressBar(akHandler, asCustomIdentifier)
+		if(iIndex >= 0)
+			thisBar = RegisteredProgressBars[iIndex]
+		endif
+	endif
+	
+	if(iIndex < 0)
+		; Create new entry
+		thisBar = new ProgressBar
+		thisBar.Source = akHandler
+		thisBar.sSourceID = asCustomIdentifier
+		thisBar.sLabel = asInitialLabel
+		thisBar.sIconPath = asIconPath
+		thisBar.fValue = 0.0
+		thisBar.fLastUpdated = Utility.GetCurrentGameTime()
+		thisBar.iBarIndex = NextProgressBarID
+		
+		RegisteredProgressBars.Add(thisBar)
+	endif
+	
+	; Send Progress Bar to HUDFramework
+	SendMessageString(sWSFWWidget_Framework, iCommand_AddProgressBar as String, thisBar.iBarIndex as String +  sDelimiter_CommandString + asInitialLabel + sDelimiter_CommandString + asIconPath, abReplaceExisting = false)
+	
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("[HUDFrameworkManager] CreateProgressBar: Failed to release lock " + iLockKey + "!")
+	endif
+EndFunction
+
+Int Function FindProgressBar(Form akHandler, String asCustomIdentifier)
+	int i = 0
+	while(i < RegisteredProgressBars.Length)
+		if(RegisteredProgressBars[i].Source == akHandler && RegisteredProgressBars[i].sSourceID == asCustomIdentifier)
+			return i
+		endif
+		
+		i += 1
+	endWhile
+	
+	return -1
+EndFunction
+
+Function CompleteProgressBar(Form akHandler, String asCustomIdentifier)
+	int iLockKey = GetLock()
+		
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("[HUDFrameworkManager] CompleteProgressBar: Unable to get lock!")
+		
+		return None
+	endif
+	
+	; Remove from array and hide
+	Int iIndex = FindProgressBar(akHandler, asCustomIdentifier)
+	
+	if(iIndex >= 0)	
+		SendMessage(sWSFWWidget_Framework, iCommand_HideProgressBar, RegisteredProgressBars[iIndex].iBarIndex)
+		
+		RegisteredProgressBars.Remove(iIndex)
+	endif
+	
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("[HUDFrameworkManager] CompleteProgressBar: Failed to release lock " + iLockKey + "!")
+	endif
+EndFunction
+
+Function ForceCloseAllProgressBars()
+	int i = 0
+	while(i < RegisteredProgressBars.Length)
+		CompleteProgressBar(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID)
+		
+		i += 1
+	endWhile
+EndFunction
+
+Function UpdateProgressBarPercentage(Form akHandler, String asCustomIdentifier, Int aiNewValue)
+	if(aiNewValue > 100)
+		aiNewValue = 100
+	elseif(aiNewValue < 0)
+		aiNewValue = 0
+	endif
+	
+	Int iIndex = FindProgressBar(akHandler, asCustomIdentifier)
+	
+	if(iIndex >= 0)		
+		if(RegisteredProgressBars[iIndex].fValue != aiNewValue as Float)
+			; Value updated, send to HUDFramework
+			SendMessage(sWSFWWidget_Framework, iCommand_UpdateProgressBar, RegisteredProgressBars[iIndex].iBarIndex, aiNewValue)
+		endif
+		
+		; Update our record
+		RegisteredProgressBars[iIndex].fValue = aiNewValue
+		RegisteredProgressBars[iIndex].fLastUpdated = Utility.GetCurrentGameTime()
+	endif
+EndFunction
+
+Function UpdateProgressBarData(Form akHandler, String asCustomIdentifier, String asUpdateLabel, String asIconPath = "", Bool abForceUpdate = false)
+	int iLockKey = GetLock()
+		
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("[HUDFrameworkManager] UpdateProgressBarData: Unable to get lock!")
+		
+		return None
+	endif
+	
+	Int iIndex = FindProgressBar(akHandler, asCustomIdentifier)
+	
+	if(iIndex >= 0)
+		if(abForceUpdate || RegisteredProgressBars[iIndex].sLabel != asUpdateLabel || RegisteredProgressBars[iIndex].sIconPath != asIconPath)
+			; Value updated, send to HUDFramework
+			SendMessageString(sWSFWWidget_Framework, iCommand_AddProgressBar as String, RegisteredProgressBars[iIndex].iBarIndex as String + sDelimiter_CommandString + asUpdateLabel + sDelimiter_CommandString + asIconPath, abReplaceExisting = false)
+		endif
+		
+		; Update our record
+		RegisteredProgressBars[iIndex].sLabel = asUpdateLabel
+		RegisteredProgressBars[iIndex].sIconPath = asIconPath
+		RegisteredProgressBars[iIndex].fLastUpdated = Utility.GetCurrentGameTime()
+	endif
+	
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("[HUDFrameworkManager] UpdateProgressBarData: Failed to release lock " + iLockKey + "!")
+	endif
+EndFunction
+
+
+
+
+; ----------------------------------
+;
+; HUDFramework Wrappers
+; 
+; ----------------------------------
 
 Bool Function RegisterWidget(ScriptObject akHandler, String asWidgetName, Float afPositionX, Float afPositionY, Bool abLoadNow = true, Bool abAutoLoad = true)
 	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
@@ -456,7 +687,9 @@ EndFunction
 
 
 ; ---------------------------
-; Wrapper functions
+;
+; Display functions
+;
 ; ---------------------------
 
 Function NudgeWidget(String asWidgetName, Int aiDirection = 0, Float afAmount = 10.0)

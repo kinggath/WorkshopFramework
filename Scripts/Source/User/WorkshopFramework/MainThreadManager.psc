@@ -22,7 +22,7 @@ Scriptname WorkshopFramework:MainThreadManager extends WorkshopFramework:Library
 ; -----------------------------------
 ; Editor Properties
 ; -----------------------------------
-
+GlobalVariable Property gMCMVisualSetting_MaxThreadCount Auto Const Mandatory
 
 ; --------------------------------------------- 
 ; Consts
@@ -100,4 +100,10 @@ Function UpdateThreadRunnerVars()
 		; Try again shortly
 		StartTimer(1.0, iUpdateThreadRunnersTimerID)
 	endif
+EndFunction
+
+
+Function MCM_ChangeMaxThreads(Float afNewValue)
+	gMCMVisualSetting_MaxThreadCount.SetValue(afNewValue)
+	iMaxThreads = afNewValue as Int
 EndFunction

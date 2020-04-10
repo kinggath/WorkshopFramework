@@ -9,6 +9,26 @@ MainQuest.ClaimSettlement(None)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_02
+Function Fragment_Terminal_02(ObjectReference akTerminalRef)
+;BEGIN CODE
+WorkshopScript thisWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+if(thisWorkshop)
+MainQuest.PresentManageSettlementMenu(thisWorkshop)
+endif
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_03
+Function Fragment_Terminal_03(ObjectReference akTerminalRef)
+;BEGIN CODE
+HUDFrameworkManager.ForceCloseAllProgressBars()
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 WorkshopFramework:MainQuest Property MainQuest Auto Const Mandatory
+WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory

@@ -59,7 +59,6 @@ EndFunction
 
 Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
-	
 	if(iInstalledVersion < gCurrentVersion.GetValueInt())
 		if(iInstalledVersion > 0)
 			InstallModChanges()

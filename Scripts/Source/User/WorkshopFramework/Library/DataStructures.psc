@@ -23,9 +23,9 @@ Struct ActorValueSet
 	ActorValue AVForm = None
 	{ ActorValue form. [Optional] Either this, or iFormID + sPluginName have to be set. }
 	Int iFormID = -1
-	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or ObjectForm have to be set. }
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or AVForm have to be set. }
 	String sPluginName = ""
-	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or ObjectForm have to be set. }
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or AVForm have to be set. }
 	
 	Float fValue = 0.0
 	{ The value to check for based on iCompareMethod }
@@ -41,9 +41,9 @@ Struct GlobalVariableSet
 	GlobalVariable GlobalForm = None
 	{ GlobalVariable form. [Optional] Either this, or iFormID + sPluginName have to be set. }
 	Int iFormID = -1
-	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or ObjectForm have to be set. }
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or GlobalVariable have to be set. }
 	String sPluginName = ""
-	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or ObjectForm have to be set. }
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or GlobalVariable have to be set. }
 	
 	Float fValue = 0.0
 	{ The value to check for based on iCompareMethod }
@@ -57,14 +57,62 @@ Struct QuestStageSet
 	Quest QuestForm = None
 	{ Quest form. [Optional] Either this, or iFormID + sPluginName have to be set. }
 	Int iFormID = -1
-	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or ObjectForm have to be set. }
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or QuestForm have to be set. }
 	String sPluginName = ""
-	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or ObjectForm have to be set. }
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or QuestForm have to be set. }
 	
 	Int iStage = 0
 	{ The stage that must be complete on this quest }
 	Bool bNotDoneCheck = false
 	{ If set to true, this will instead look to see that this stage is NOT complete }
+EndStruct
+
+; 1.2.0 - Expanding common structure options
+Struct QuestObjectiveSet
+	Quest QuestForm = None
+	{ Quest form. [Optional] Either this, or iFormID + sPluginName have to be set. }
+	Int iFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or QuestForm have to be set. }
+	String sPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or QuestForm have to be set. }
+
+	Int iObjective = 0
+	{ The objective to check on this quest }
+
+	Int iCompareMethod = 1
+	{ 1 means the objective must be completed, 0 means the objective must not be failed and must not be completed, -1 means the objective must be failed }
+EndStruct
+
+; 1.2.0 - Expanding common structure options
+Struct ScriptPropertySet
+	Form CheckForm = None
+	{ Form to check for script property value. [Optional] Either this, or iCheckFormID + sCheckPluginName have to be set. }
+	Int iCheckFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sCheckPluginName, or CheckForm have to be set. }
+	String sCheckPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iCheckFormID, or CheckForm have to be set. }
+	
+	String sScriptName = ""
+	{ Exact script name to be checked, including namespaces. }
+	
+	String sPropertyName = ""
+	{ Exact property name to be checked. }
+	
+	Float fValue = 0.0
+	{ If property holds a float/int/ bool, it will be compared to this (for bool 0.0 = false, 1.0 = true) for float/int this is based on iCompareMethod}
+	
+	String sValue = ""
+	{ If property holds a string, it will be checked for matching against this }
+	
+	Int iCompareMethod = 0
+	{ Float/Int: 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, String/Form: 0 means check for match, any other value means check for mismatch }
+	
+	Form MatchForm = None
+	{ Form to test property value against if it is a Form. [Optional] Either this, or iMatchFormID + sMatchPluginName have to be set. }
+	Int iMatchFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sMatchPluginName, or FormToCheck have to be set. }
+	String sMatchPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iMatchFormID, or FormToCheck have to be set. }
 EndStruct
 
 ; 1.0.4 - Expanding common structure options
@@ -87,6 +135,32 @@ Struct UniversalForm
 	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or BaseForm have to be set. }
 	String sPluginName = ""
 	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or BaseForm have to be set. }
+EndStruct
+
+; 1.2.0 - Version of UniversalForm that can have a corresponding index for pairing with another array that might have a different number of entries
+Struct IndexMappedUniversalForm
+	Int iIndex
+	Form BaseForm = None
+	
+	Int iFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or BaseForm have to be set. }
+	String sPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or BaseForm have to be set. }
+EndStruct
+
+Struct IndexMappedNumber
+	Int iIndex
+	Float fNumber = 0.0
+EndStruct
+
+Struct IndexMappedString
+	Int iIndex
+	String sString = ""
+EndStruct
+
+Struct IndexMappedBool
+	Int iIndex
+	Bool bBool = false
 EndStruct
 
 
@@ -131,6 +205,18 @@ Struct ResourceShortage
 	{ The total value this settlement should have to no longer be considered short }
 	Float fTimeLastReported
 	{ If a shortage isn't re-reported after 2 days in-game, it will be cleared - this is to prevent changes in logic from mods, or removal of mods, or other circumstances from permanently affecting the shortage data }
+EndStruct
+
+; 1.1.11 - Used for pairing a global to wether or not a plugin is installed
+Struct PluginInstalledGlobal
+	GlobalVariable GlobalForm
+	String sPluginName
+EndStruct
+
+; 1.1.11 - Used for handling workshop menu injection pairing
+Struct WorkshopMenuInjection
+	Formlist TargetMenu
+	Form InjectKeywordOrFormlist
 EndStruct
 
 
@@ -262,4 +348,42 @@ Struct ReservedAssaultQuest
 	int iReserveID = -1
 	Quest kQuestRef
 	Bool bCompleteEventFired = false
+EndStruct
+
+
+; 1.2.0 - Struct to link some form to a callback counter
+Struct CallbackTracking
+	int iCustomCallBackID = -1
+	String sCustomCallbackID
+	int iAwaitingCallbacks = 0
+	int iCallbacksReceived = 0
+	Form RelatedForm
+EndStruct
+
+
+; 1.2.0 - Struct to track power connections between SettlementLayout objects
+Struct PowerConnectionMap
+	Int iIndexA
+	Int iIndexTypeA
+	Int iIndexB
+	Int iIndexTypeB
+EndStruct
+
+; 1.2.0 - Struct to store power connection data for an object so we only have to query each item once
+Struct PowerConnectionLookup
+	ObjectReference kPowereableRef
+	Int iIndex
+	Int iIndexType
+EndStruct
+
+
+; 1.2.0 - Struct to hold our HUD Progress Bars
+Struct ProgressBar
+	Form Source ; Used so we can check if the mod registering this was removed
+	String sSourceID ; String the calling mod is using to identify the bar
+	String sLabel = ""
+	String sIconPath = ""
+	Float fValue = 0.0
+	Float fLastUpdated = 0.0 ; Holds Utility.GetCurrentGameTime of last update we can use this to monitor for bars that the caller failed to handle correctly and left running
+	Int iBarIndex = -1 ; We need to track the index we are using
 EndStruct

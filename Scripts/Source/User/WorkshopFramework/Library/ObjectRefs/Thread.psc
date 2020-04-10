@@ -50,6 +50,9 @@ EndEvent
 Function StartThread()
 	RunCode()
 	
+	
+	;Debug.Trace("Completed Thread.RunCode(). sCustomCallbackID = " + sCustomCallbackID + " Thread = " + Self)
+	
 	Var[] kArgs = new Var[2]
 	
 	kArgs[0] = sCustomCallbackID
@@ -59,7 +62,11 @@ Function StartThread()
 	
 	
 	if(bAutoDestroy)
-		StartTimer(3.0)
+		if(IsBoundGameObjectAvailable())
+			StartTimer(3.0)
+		else
+			ReleaseObjectReferences()
+		endif
 	endif
 EndFunction
 

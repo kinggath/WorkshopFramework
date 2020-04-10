@@ -14,14 +14,14 @@
       "type": "section"
     },
     {
-		"text": "<p>Workshop Framework provides new options to control settlement gameplay, massive speed and stability improvements, as well as a framework for other mods to alter features about the settlement system without having to overwrite vanilla files.</p><br>",
+		"text": "<p>Workshop Framework provides new options to control settlement gameplay, massive speed and stability improvements, a settlement import/export system, as well as a framework for other mods to alter features about the settlement system without having to overwrite vanilla files.</p><br>",
 		"type": "text",
 		"html": true
     }
   ],                   
   "pages": [
   {                         
-    "pageDisplayName": "Options",   
+    "pageDisplayName": "Settlement Gameplay",   
     "content": [
 		 {
 			"text": "<p>All default options are designed to match how the vanilla game plays.</p><br>",
@@ -29,11 +29,11 @@
 			"html": true
 		},
 		{
-		  "text": "Functionality Options",
+		  "text": "Settlement Functionality Options",
 		  "type": "section"
 		},
 		{ 
-		  "id": "AdjustMaxNPCsByCharisma:Options",
+		  "id": "AdjustMaxNPCsByCharisma:SettlementOptions",
 		  "text": "Adjust Max NPCs By Charisma",
 		  "type": "switcher",
 		  "help": "[Default: ON] Your Charisma score increases the maximum number of settlers that can be recruited to a settlement.",
@@ -43,7 +43,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "AllowSettlementsToLeave:Options",
+		  "id": "AllowSettlementsToLeave:SettlementOptions",
 		  "text": "Allow Settlements To Leave",
 		  "type": "switcher",
 		  "help": "[Default: ON] If Happiness falls to 0, you will lose control of the settlement until completing a new radiant quest (radiant quests given randomly by Preston or other settlers).",
@@ -53,7 +53,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "ConsumeBasicResourcesOnly:Options",
+		  "id": "ConsumeBasicResourcesOnly:SettlementOptions",
 		  "text": "Consume Basic Resources Only",
 		  "type": "switcher",
 		  "help": "[Default: OFF] Each day, settlers consume food and water, they will consume any available types. If this is set to ON, they will only consume the basic produced resources from the vanilla game: Purified Water and crops such as Tatos, Corn, etc.",
@@ -63,7 +63,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "LinkedSettlementConsumption:Options",
+		  "id": "LinkedSettlementConsumption:SettlementOptions",
 		  "text": "Linked Settlement Consumption",
 		  "type": "switcher",
 		  "help": "[Default: ON] Each day, food and water are consumed by your settlers. This option allows them to consume from linked settlements if they are short to help keep happiness up.",
@@ -73,7 +73,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "RecruitSettlersImmediately:Options",
+		  "id": "RecruitSettlersImmediately:SettlementOptions",
 		  "text": "Recruit Settlers Immediately",
 		  "type": "switcher",
 		  "help": "[Default: ON] When a beacon is built and powered for the first time, a small number of new settlers will arrive immediately.",
@@ -83,7 +83,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "RobotsCountTowardsMaxPopulation:Options",
+		  "id": "RobotsCountTowardsMaxPopulation:SettlementOptions",
 		  "text": "Robots Count Towards Max Population",
 		  "type": "switcher",
 		  "help": "[Default: ON] Robots are counted as part of your max population (if OFF, they will still be included in the HUD count).",
@@ -93,7 +93,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "RobotHappinessLevel:Options",
+		  "id": "RobotHappinessLevel:SettlementOptions",
 		  "text": "Default Robot Happiness Level",
 		  "type": "slider",
 		  "help": "[Default: 50] Robots are automatically granted this level of happiness. (Set to 80 to have them treated exactly the same as non-robot settlers)",
@@ -106,7 +106,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "ShelterMechanic:Options",
+		  "id": "ShelterMechanic:SettlementOptions",
 		  "text": "Shelter Mechanic",
 		  "type": "switcher",
 		  "help": "[Default: ON] Shelter is a buggy mechanic in the base game that penalizes your happiness if the game can't detect roofs over the settler beds. It often fails to detect roofs correctly, so this option will bypass the issue and eliminate the penalty.",
@@ -120,7 +120,7 @@
 		  "type": "section"
 		},
 		{ 
-		  "id": "AutoAssignBeds:Options",
+		  "id": "AutoAssignBeds:SettlementOptions",
 		  "text": "Auto Assign Beds",
 		  "type": "switcher",
 		  "help": "[Default: ON] The game will attempt to auto-assign beds to settlers.",
@@ -130,7 +130,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "AutoAssignDefenses:Options",
+		  "id": "AutoAssignDefenses:SettlementOptions",
 		  "text": "Auto Assign Defenses",
 		  "type": "switcher",
 		  "help": "[Default: ON] The game will attempt to auto-assign guard posts to settlers.",
@@ -140,7 +140,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "AutoAssignFood:Options",
+		  "id": "AutoAssignFood:SettlementOptions",
 		  "text": "Auto Assign Food",
 		  "type": "switcher",
 		  "help": "[Default: ON] The game will attempt to auto-assign crops to settlers.",
@@ -150,7 +150,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "MaxDefenseWork:Options",
+		  "id": "MaxDefenseWork:SettlementOptions",
 		  "text": "Max Defense Work Per Settler",
 		  "type": "slider",
 		  "help": "[Default: 6] The max amount of defense work a single settler can be assigned to.",
@@ -163,7 +163,7 @@
 		  }	  
 		},
 		{ 
-		  "id": "MaxFoodWork:Options",
+		  "id": "MaxFoodWork:SettlementOptions",
 		  "text": "Max Food Work Per Settler",
 		  "type": "slider",
 		  "help": "[Default: 6] The max amount of food work a single settler can be assigned to.",
@@ -174,68 +174,176 @@
 			"sourceType": "GlobalValue",
 			"sourceForm": "WorkshopFramework.esm|92B7"
 		  }	  
-		},
-		{
-		  "text": "Message Options",
-		  "type": "section"
-		},
-		{ 
-		  "id": "AutoplayMessages:Options",
-		  "text": "Autoplay Messages",
-		  "type": "switcher",
-		  "help": "[Default: OFF] All messages using this system that were queued, will begin displaying as soon as conditions are clear.",
-		  "valueOptions": {
-			"sourceType": "GlobalValue",
-			"sourceForm": "WorkshopFramework.esm|92C6"
-		  }
-		},
-		{ 
-		  "id": "SuppressAllMessages:Options",
-		  "text": "Suppress All Messages",
-		  "type": "switcher",
-		  "help": "[Default: OFF] All messages using this system should wait for you to read them via holotape activation.",
-		  "valueOptions": {
-			"sourceType": "GlobalValue",
-			"sourceForm": "WorkshopFramework.esm|92C8"
-		  }
-		},
-		{ 
-		  "id": "SuppressMessagesDuringCombat:Options",
-		  "text": "Suppress Messages During Combat",
-		  "type": "switcher",
-		  "help": "[Default: OFF] Messages using this system, that are sent during combat, will be queued until you have finished the fight.",
-		  "valueOptions": {
-			"sourceType": "GlobalValue",
-			"sourceForm": "WorkshopFramework.esm|92C9"
-		  }
-		},
-		{ 
-		  "id": "SuppressMessagesDuringConversation:Options",
-		  "text": "Suppress Messages During Conversation",
-		  "type": "switcher",
-		  "help": "[Default: OFF] Messages using this system, that are sent during conversations, will be queued until you have finished.",
-		  "valueOptions": {
-			"sourceType": "GlobalValue",
-			"sourceForm": "WorkshopFramework.esm|92CA"
-		  }
-		},
-		{ 
-		  "id": "WorkshopTutorialMessages:Options",
-		  "text": "Workshop Tutorial Messages",
-		  "type": "switcher",
-		  "help": "[Default: ON] Toggle the tutorial messages that tell you about how to use the Workshop system.",
-		  "valueOptions": {
-			"sourceType": "GlobalValue",
-			"sourceForm": "WorkshopFramework.esm|7B0B"
-		  },
-		  "action": {
-				"type": "CallFunction",
-				"form": "WorkshopFramework.esm|F99", 
-				"function": "MCM_ToggleWorkshopTutorials"
-			}
 		}
 	]
 	},
+	{
+		"pageDisplayName": "Message Options",   
+		"content": [
+			{ 
+			  "id": "AutoplayMessages:MessageOptions",
+			  "text": "Autoplay Messages",
+			  "type": "switcher",
+			  "help": "[Default: OFF] All messages using this system that were queued, will begin displaying as soon as conditions are clear.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C6"
+			  }
+			},
+			{ 
+			  "id": "SuppressAllMessages:MessageOptions",
+			  "text": "Suppress All Messages",
+			  "type": "switcher",
+			  "help": "[Default: OFF] All messages using this system should wait for you to read them via holotape activation.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C8"
+			  }
+			},
+			{ 
+			  "id": "SuppressMessagesDuringCombat:MessageOptions",
+			  "text": "Suppress Messages During Combat",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Messages using this system, that are sent during combat, will be queued until you have finished the fight.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C9"
+			  }
+			},
+			{ 
+			  "id": "SuppressMessagesDuringConversation:MessageOptions",
+			  "text": "Suppress Messages During Conversation",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Messages using this system, that are sent during conversations, will be queued until you have finished.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92CA"
+			  }
+			},
+			{ 
+			  "id": "WorkshopTutorialMessages:MessageOptions",
+			  "text": "Workshop Tutorial Messages",
+			  "type": "switcher",
+			  "help": "[Default: ON] Toggle the tutorial messages that tell you about how to use the Workshop system.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|7B0B"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|F99", 
+					"function": "MCM_ToggleWorkshopTutorials"
+				}
+			}
+		]
+	},
+	{                   
+		"pageDisplayName": "Framework Controls",   
+		"content": [
+			{
+			  "text": "Alternate Activation Options",
+			  "type": "section"
+			},
+			{ 
+			  "id": "ManageWorkbench:FrameworkOptions",
+			  "text": "Manage Workbench",
+			  "type": "switcher",
+			  "help": "[Default: ON] Choosing Manage on a settlement's Workbench will bring up the Manage Settlement menu.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|15132"
+			  }
+			},
+			{
+			  "text": "Import Layout Options",
+			  "type": "section"
+			},
+			{ 
+			  "id": "F4SEPowerUpLayout:FrameworkOptions",
+			  "text": "F4SE Power Up Layout",
+			  "type": "switcher",
+			  "help": "[Default: ON] After a layout is built, wires and power transfer will be handled by F4SE.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D3"
+			  }
+			},
+			{ 
+			  "id": "LootableItems:FrameworkOptions",
+			  "text": "Lootable Items Collected",
+			  "type": "switcher",
+			  "help": "[Default: ON] When a Settlement Layout is built, any loose items found in the settlement will be stored in the workbench.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D2"
+			  }
+			},
+			{ 
+			  "id": "SelfPowerItems:FrameworkOptions",
+			  "text": "Self-Power Items",
+			  "type": "switcher",
+			  "help": "[Default: OFF] When turned on, objects created for a Settlement Layout will power themselves without need to be connected to a power source.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D3"
+			  }
+			},
+			{ 
+			  "id": "SpawnNPCs:FrameworkOptions",
+			  "text": "Spawn NPCs",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Spawn any NPCs included in a Settlement Layout record - this might include settlers, brahmin, etc.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D4"
+			  }
+			},
+			{ 
+			  "id": "SpawnPowerArmor:FrameworkOptions",
+			  "text": "Spawn Power Armor",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Spawn any Power Armor included in a Settlement Layout record.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D5"
+			  }
+			},
+			{
+			  "text": "Export Layout Options",
+			  "type": "section"
+			},
+			{ 
+			  "id": "IncludeAnimals:FrameworkOptions",
+			  "text": "Include Animals",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Domestic animals like Brahmin will be included in the Settlement Layout export.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D7"
+			  }
+			},
+			{ 
+			  "id": "IncludePowerArmor:FrameworkOptions",
+			  "text": "Include Power Armor",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Power Armor linked to the settlement will be included in the Settlement Layout export.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D6"
+			  }
+			},
+			{ 
+			  "id": "ScrapProfile:FrameworkOptions",
+			  "text": "Scrap Profile",
+			  "type": "switcher",
+			  "help": "[Default: ON] Records of vanilla items will be included to help the Layout system more accurately scrap appropriate items.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|158D8"
+			  }
+			}
+		]
+	},		
 	{                   
 		"pageDisplayName": "Tools",   
 		"content": [
@@ -253,8 +361,56 @@
 				"form": "WorkshopFramework.esm|F99", 
 				"function": "MCM_ClaimSettlement"
 			}
+		 },
+		 {
+			"text": "Manage Settlement Menu",
+			"type": "button",
+			"help": "After exiting MCM, a menu will come up with options for controlling the settlement, such as importing/exporting a Settlement Layout.",
+			"action": {
+				"type": "CallFunction",
+				"form": "WorkshopFramework.esm|F99", 
+				"function": "MCM_PresentManageSettlementMenu"
+			}
+		 },
+		 {
+			"text": "Force Close All ProgressBars",
+			"type": "button",
+			"help": "This will close any Progress Bars created by the WSFW system. Useful if one appears to become stuck or a mod fails to close them.",
+			"action": {
+				"type": "CallFunction",
+				"form": "WorkshopFramework.esm|269E", 
+				"function": "ForceCloseAllProgressBars"
+			}
 		 }
 		]
-	}	
+	},
+	{                   
+		"pageDisplayName": "Advanced Controls",   
+		"content": [
+			{
+			  "text": "Threading Engine Options",
+			  "type": "section"
+			},
+			{ 
+			  "id": "MaxThreads:AdvancedControls",
+			  "text": "Max Threads",
+			  "type": "slider",
+			  "help": "[Default: 50] If you are receiving crashes or stack dumps you can try reducing this.",
+			  "valueOptions": {
+				"min": 10,
+				"max": 50,
+				"step": 5,
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1736"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|F99", 
+					"function": "MCM_ChangeMaxThreads",
+					"params": ["{value}"]
+				}
+			}
+		]
+	}
   ]
 }

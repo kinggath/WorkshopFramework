@@ -26,7 +26,7 @@ CustomEvent WorkshopNPCSpawned ; 1.1.1
 ; ---------------------------------------------
 
 int RecruitmentLoopTimerID = 100 Const
-
+int iDefaultRecruitmentGuardChance = 20 Const ; Copy of value defined in WorkshopScript
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -421,23 +421,36 @@ EndFunction
 
 
 WorkshopNPCScript Function CreateSettler(WorkshopScript akWorkshopRef, ObjectReference akSpawnAtRef = None)
-	ActorBase thisActorBase
+	ActorBase thisActorBase = GetSettlerForm(akWorkshopRef)
+		
+	return CreateWorkshopNPC(thisActorBase, akWorkshopRef, akSpawnAtRef)
+EndFunction
 
-	; 1.1.0 - Allow faction control to override settlers
-	FactionControl thisFactionControl = akWorkshopRef.FactionControlData
-	if(thisFactionControl != None && thisFactionControl.SettlerOverride != None)
-		thisActorBase = thisFactionControl.SettlerOverride
+
+ActorBase Function GetSettlerForm(WorkshopScript akWorkshopRef = None)
+	; 1.1.11 - Separated to a new function so we can call it externally
+	ActorBase thisActorBase
+	
+	if(akWorkshopRef != None)
+		; 1.1.0 - Allow faction control to override settlers
+		FactionControl thisFactionControl = akWorkshopRef.FactionControlData
+		if(thisFactionControl != None && thisFactionControl.SettlerOverride != None)
+			thisActorBase = thisFactionControl.SettlerOverride
+		endif
 	endif
 	
 	if(thisActorBase == None)
-		if(akWorkshopRef.CustomWorkshopNPC)
+		if(akWorkshopRef && akWorkshopRef.CustomWorkshopNPC)
 			; Allow for things like special settler mix in Far Harbor
 			thisActorBase = akWorkshopRef.CustomWorkshopNPC
 		else
-			Float fRecruitmentGuardChance = akWorkshopRef.recruitmentGuardChance
+			Int iRecruitmentGuardChance = iDefaultRecruitmentGuardChance
+			if(akWorkshopRef)
+				iRecruitmentGuardChance = akWorkshopRef.recruitmentGuardChance
+			endif
 			
 			; roll for farmer vs. guard
-			if(Utility.RandomInt(1, 100) <= fRecruitmentGuardChance)
+			if(Utility.RandomInt(1, 100) <= iRecruitmentGuardChance)
 				thisActorBase = SettlerGuardActorBase
 				
 				if(bOverrideInjectedSettlers)
@@ -452,8 +465,8 @@ WorkshopNPCScript Function CreateSettler(WorkshopScript akWorkshopRef, ObjectRef
 			endif
 		endif
 	endif
-		
-	return CreateWorkshopNPC(thisActorBase, akWorkshopRef, akSpawnAtRef)
+	
+	return thisActorBase
 EndFunction
 
 
