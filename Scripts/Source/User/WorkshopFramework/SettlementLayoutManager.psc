@@ -367,6 +367,17 @@ Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
 EndFunction
 
+Function HandleInstallModChanges()
+	if(iInstalledVersion < 27)
+		; This check was failing in patch 26 (1.2.0), because F4SEManager was not correctly flagging before this quest initialized
+		if(F4SEManager.IsF4SERunning)
+			Setting_Import_FauxPowerItems.SetValue(0.0)
+		else
+			Setting_Import_FauxPowerItems.SetValue(1.0)
+		endif
+	endif
+EndFunction
+
 
 Function HandlePlayerEnteredSettlement(WorkshopScript akWorkshopRef)
 	int iWorkshopID = akWorkshopRef.GetWorkshopID()

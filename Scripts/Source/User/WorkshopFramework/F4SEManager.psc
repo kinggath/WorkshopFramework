@@ -37,9 +37,15 @@ EndGroup
 ; Properties
 ; ---------------------------------------------
 
+Bool bFirstCheckComplete = false
 Bool bIsF4SERunning = false Conditional
 Bool Property IsF4SERunning
 	Bool Function Get()
+		if( ! bFirstCheckComplete)
+			bFirstCheckComplete = true
+			F4SERunningCheck()
+		endif
+		
 		return bIsF4SERunning
 	EndFunction
 EndProperty
