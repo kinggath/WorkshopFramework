@@ -265,7 +265,7 @@
 			  "help": "[Default: ON] After a layout is built, wires and power transfer will be handled by F4SE.",
 			  "valueOptions": {
 				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|158D3"
+				"sourceForm": "WorkshopFramework.esm|1AC7C"
 			  }
 			},
 			{ 
@@ -401,11 +401,11 @@
 				"max": 50,
 				"step": 5,
 				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|1736"
+				"sourceForm": "WorkshopFramework.esm|19D49"
 			  },
 			  "action": {
 					"type": "CallFunction",
-					"form": "WorkshopFramework.esm|F99", 
+					"form": "WorkshopFramework.esm|1736", 
 					"function": "MCM_ChangeMaxThreads",
 					"params": ["{value}"]
 				}
