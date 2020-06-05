@@ -24,6 +24,7 @@ import WorkshopFramework:WorkshopFunctions
 CustomEvent SettlementLayoutAdded
 CustomEvent SettlementLayoutBuilt
 CustomEvent SettlementLayoutScrapped
+CustomEvent ExportStarting
 
 ; ---------------------------------------------
 ; Consts
@@ -136,6 +137,13 @@ Bool[] SettlementBuildThreadingInProgress
 
 Bool[] LootablePickupComplete
 Bool[] PowerUpPhaseComplete
+Function UpdatePowerUpPhaseStatus(Int aiWorkshopID, Bool abComplete)
+	if(PowerUpPhaseComplete == None)
+		PowerUpPhaseComplete = new Bool[128]
+	endif
+	
+	PowerUpPhaseComplete[aiWorkshopID] = abComplete
+EndFunction
 
 ; Handle tracking of item building via threading
 CallbackTracking[] LayoutBuildTracking
@@ -144,6 +152,7 @@ Bool bUseHUDProgressModule = false ; On startup, check for hud framework and set
 
 Bool Property bManualScrapTriggered = false Auto Hidden
 Bool Property bManualImportInProgress = false Auto Hidden
+WorkshopScript Property kWorkshopAwaitingBuildFromRefresh Auto Hidden
 Float Property fManuaBuildStartTime = 0.0 Auto Hidden
 
 int iAwaitingScrapCallbacks = 0
@@ -210,42 +219,7 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 		LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
 		
 		if(LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived >=  LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
-			WorkshopFramework:Weapons:SettlementLayout thisLayout = LayoutBuildTracking[iCallbackTrackingIndex].RelatedForm as WorkshopFramework:Weapons:SettlementLayout
-			
-			;Debug.MessageBox("Layout building completed. " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + " objects placed. Attempting to wire/power.")
-			
-			; All callbacks received, send out event, trigger power up, and clear this tracker
-			WorkshopScript thisWorkshop = kCreatedRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
-			int iWorkshopID = thisWorkshop.GetWorkshopID()
-			
-			; We suspended the individual objects from calling recalc on the workshop so let's do it now for the entire place
-			thisWorkshop.RecalculateWorkshopResources()
-			
-			; Send out the event
-			SendSettlementLayoutBuiltEvent(thisWorkshop, thisLayout)
-			
-			; Trigger power up			
-			if(F4SEManager.IsF4SERunning && Setting_Import_F4SEPowerItems.GetValueInt() == 1)
-				if( ! PowerUpPhaseComplete[iWorkshopID])
-					if(thisWorkshop.Is3dLoaded() && PlayerRef.IsWithinBuildableArea(thisWorkshop))
-						PowerUpSettlement(thisWorkshop, thisLayout)
-					endif
-				endif
-			else
-				PowerUpPhaseComplete[iWorkshopID] = true
-			endif
-			
-			if(bManualImportInProgress)
-				if(bUseHUDProgressModule)
-					HUDFrameworkManager.CompleteProgressBar(Self, sProgressBarID_Build)
-				endif
-			
-				BuildingFinished.Show(Utility.GetCurrentRealTime() - fManuaBuildStartTime)
-			endif
-			
-			bManualImportInProgress = false
-			
-			LayoutBuildTracking[iCallbackTrackingIndex] = None
+			BuildingCompleted(iCallbackTrackingIndex)
 		elseif(bManualImportInProgress)
 			Float fProgress = Math.Floor((LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived as Float/LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks as Float) * 100) ; *100 to get as whole percentage
 			
@@ -264,16 +238,7 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 		iExportCallbacksReceived += 1
 		
 		if(iExportCallbacksReceived >= iAwaitingExportCallbacks)
-			Debug.CloseUserLog(sLastExportLogName)
-			
-			if(bUseHUDProgressModule)
-				HUDFrameworkManager.CompleteProgressBar(Self, sProgressBarID_Export)
-			endif
-			
-			Float fExportEndTime = Utility.GetCurrentRealTime()
-			bExportInProgress = false
-			
-			Debug.MessageBox("Completed Settlement Layout export in " + (fExportEndTime - fExportStartTime) + " seconds!\n\nFilename: %UserProfile%\\Documents\\My Games\\Fallout4\\Logs\\Script\\User\\" + sLastExportLogName + ".0.log\n\nIf you were unable to locate this file, you will need to enable Papyrus logging in your Fallout4Custom.ini and run this export again.")
+			ExportCompleted()
 		else
 			Float fProgress = Math.Floor((iExportCallbacksReceived as Float/iAwaitingExportCallbacks as Float) * 100) ; *100 to get as whole percentage
 			if(bUseHUDProgressModule)
@@ -350,8 +315,7 @@ Function HandleQuestInit()
 		Setting_Import_FauxPowerItems.SetValue(1.0)
 	endif
 	
-	RegisterForCustomEvent(WSFW_Main, "PlayerEnteredSettlement")
-	RegisterForCustomEvent(WSFW_Main, "PlayerExitedSettlement")
+	RegisterForEvents()
 EndFunction
 
 
@@ -363,6 +327,8 @@ Function HandleGameLoaded()
 	else
 		bUseHUDProgressModule = false
 	endif
+	
+	RegisterForEvents()
 	
 	Parent.HandleGameLoaded()
 EndFunction
@@ -398,6 +364,11 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+Function RegisterForEvents()
+	RegisterForCustomEvent(WSFW_Main, "PlayerEnteredSettlement")
+	RegisterForCustomEvent(WSFW_Main, "PlayerExitedSettlement")
+EndFunction
 
 Bool Function AllCallbacksReceived()
 	if(iExportCallbacksReceived >= iAwaitingExportCallbacks)
@@ -486,7 +457,7 @@ Function PresentLayoutManagementMenu(WorkshopScript akWorkshopRef)
 		
 		iConfirm = RefreshAllConfirmation.Show()
 		if(iConfirm != 0)
-			PowerUpPhaseComplete[iWorkshopID] = false
+			UpdatePowerUpPhaseStatus(iWorkshopID, false)
 		endif
 		
 		if(iConfirm == 1)			
@@ -1082,7 +1053,7 @@ Function BuildSettlement(WorkshopScript akWorkshopRef)
 	endif
 	
 	SettlementBuildThreadingInProgress[iWorkshopID] = true ; This settlement under construction
-	PowerUpPhaseComplete[iWorkshopID] = false
+	UpdatePowerUpPhaseStatus(iWorkshopID, false)
 	
 	; Check if scrapping is queued - if so, we need to protect these items from being scrapped as well
 	Bool bIsScrappingQueued = AwaitingScrapping.Find(akWorkshopRef) >= 0
@@ -1121,6 +1092,10 @@ Function BuildSettlement(WorkshopScript akWorkshopRef)
 			
 			; If prediction was off, correct it
 			LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks -= Layouts[i].GetPredictedItemCount() - iThreadsStarted
+			
+			if(LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived >= LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
+				BuildingCompleted(iCallbackTrackingIndex)
+			endif
 			
 			akWorkshopRef.LayoutPlacementComplete[i] = true
 		endif
@@ -1177,7 +1152,7 @@ Function PowerUpSettlement(WorkshopScript akWorkshopRef, WorkshopFramework:Weapo
 	endif
 	
 	int iWorkshopID = akWorkshopRef.GetWorkshopID()
-	PowerUpPhaseComplete[iWorkshopID] = true
+	UpdatePowerUpPhaseStatus(iWorkshopID, true)
 EndFunction
 
 
@@ -1257,21 +1232,21 @@ Function RefreshSettlement(WorkshopScript akWorkshopRef, Bool abRedoLayoutScrapp
 	; Correct for over-prediction
 	iAwaitingScrapCallbacks -= iPredictedThreads - iActualThreads	
 	
+	; Queue up rebuild of settlement from ScrappingCompleted
+	kWorkshopAwaitingBuildFromRefresh = akWorkshopRef
+	i = 0
+	while(i < iAppliedLayoutCount)
+		akWorkshopRef.LayoutPlacementComplete[i] = false
+	
+		i += 1
+	endWhile	
+	
 	Utility.Wait(3.0)
 	iAwaitingScrapCallbacks -= iDummyCallbackCount
 	
 	if(iAwaitingScrapCallbacks <= iScrapCallbacksReceived)
 		ScrappingCompleted()
 	endif
-	
-	i = 0
-	while(i < iAppliedLayoutCount)
-		akWorkshopRef.LayoutPlacementComplete[i] = false
-	
-		i += 1
-	endWhile
-	
-	BuildSettlement(akWorkshopRef)
 EndFunction
 	
 
@@ -1342,6 +1317,16 @@ Int Function RefreshSettlementLayout(WorkshopScript akWorkshopRef, WorkshopFrame
 EndFunction
 
 
+int iPreExportHolds = 0
+Function PreExportHold(Bool abRelease = false)
+	if(abRelease)
+		iPreExportHolds -= 1
+	else
+		iPreExportHolds += 1
+	endif
+EndFunction
+
+
 Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akWorkshopRef = None)
 	if( ! F4SEManager.IsF4SERunning)
 		Debug.MessageBox("This feature requires the Fallout 4 script extender (F4SE).")
@@ -1363,6 +1348,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 		return
 	endif
 	
+	iPreExportHolds = 0
 	bExportInProgress = true
 	bExportThreadingInProgress = true
 	fExportStartTime = Utility.GetCurrentRealTime()
@@ -1376,6 +1362,9 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	
 	if(bUseHUDProgressModule)
 		HUDFrameworkManager.CreateProgressBar(Self, sProgressBarID_Export, "Exporting Settlement") ; TODO - Get an icon for this
+		
+		; Display immediately so user knows something is happening
+		HUDFrameworkManager.UpdateProgressBarPercentage(Self, sProgressBarID_Export, 0)
 	endif
 	
 	ThreadManager.RegisterForCallbackThreads(Self)
@@ -1388,6 +1377,26 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	endif
 	
 	Debug.OpenUserLog(asExportFileName)
+	
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akWorkshopRef
+	kArgs[1] = asExportFileName
+	
+	SendCustomEvent("ExportStarting", kArgs)
+	
+	Utility.Wait(5.0)
+	int iWaitCounter = 0
+	int iLastHoldCount = 0
+	; If any preexport lock gets stuck for more than 30 seconds, we'll just break free
+	while(iPreExportHolds > 0 && iWaitCounter < 30)
+		Utility.Wait(1.0)
+		
+		if(iPreExportHolds == iLastHoldCount)
+			iWaitCounter += 1
+		else
+			iLastHoldCount = iPreExportHolds
+		endif
+	endWhile
 	
 	; Record workshop data - this section was added to support conversion to TS Blueprints
 	Worldspace WorkshopWorldspace = akWorkshopRef.GetWorldspace()
@@ -1408,7 +1417,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	ModTraceCustom(asExportFileName, "|||Load Order;;;" + sPlugins + ";;;" + sLightPlugins)
 	
 	if(Setting_Export_IncludeVanillaScrapInfo.GetValueInt() == 1)
-		Var[] kArgs = new Var[2]
+		kArgs = new Var[2]
 		kArgs[0] = akWorkshopRef
 		kArgs[1] = asExportFileName
 		; Calling export functions in parallel to reduce change the log will close before ExportLinkedItems has a chance to increment the iAwaitingExportCallbacks
@@ -1423,6 +1432,11 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	
 	Utility.Wait(3.0) ; Give enough time for each export call to have predicted callbacks
 	iAwaitingExportCallbacks -=	iDummyCallbackCount
+	
+	
+	if(iExportCallbacksReceived >= iAwaitingExportCallbacks)
+		ExportCompleted()
+	endif
 EndFunction
 
 
@@ -1457,15 +1471,18 @@ Int Function ExportLinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 			kThread.sLogName = asLogName
 			kThread.bIsLinkedWorkshopItem = true
 			
-			iActualThreads += 1
-
-			ThreadManager.QueueThread(kThread, sExportCallbackID)			
+			int iThreadQueueResult = ThreadManager.QueueThread(kThread, sExportCallbackID)
+			
+			if(iThreadQueueResult >= 0)
+				iActualThreads += 1
+			endif						
 		endif
 		
 		i += 1
 	endWhile
 	
 	; Correct for bad prediction
+	ModTrace("[Export] Linked Item thread details: iAwaitingExportCallbacks (before prediction correction) = " + iAwaitingExportCallbacks + ", iPredictedThreads = " + iPredictedThreads + ", iActualThreads = " + iActualThreads)
 	iAwaitingExportCallbacks -= iPredictedThreads - iActualThreads
 	
 	return iActualThreads
@@ -1506,15 +1523,18 @@ Int Function ExportUnlinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 					kThread.sLogName = asLogName
 					kThread.bIsLinkedWorkshopItem = false
 					
-					iActualThreads += 1
+					int iThreadQueueResult = ThreadManager.QueueThread(kThread, sExportCallbackID)		
 					
-					ThreadManager.QueueThread(kThread, sExportCallbackID)					
+					if(iThreadQueueResult >= 0)
+						iActualThreads += 1
+					endif
 				endif
 				
 				i += 1
 			endWhile
 			
 			; Correct for bad prediction
+			ModTrace("[Export] Unlinked Item thread details: iAwaitingExportCallbacks (before prediction correction) = " + iAwaitingExportCallbacks + ", iPredictedThreads = " + iPredictedThreads + ", iActualThreads = " + iActualThreads)
 			iAwaitingExportCallbacks -= iPredictedThreads - iActualThreads
 	
 			ScrapFinderQuest.Stop()
@@ -1524,6 +1544,58 @@ Int Function ExportUnlinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 	return iActualThreads
 EndFunction
 
+Function ExportCompleted()
+	Debug.CloseUserLog(sLastExportLogName)
+			
+	if(bUseHUDProgressModule)
+		HUDFrameworkManager.CompleteProgressBar(Self, sProgressBarID_Export)
+	endif
+	
+	Float fExportEndTime = Utility.GetCurrentRealTime()
+	bExportInProgress = false
+	
+	Debug.MessageBox("Completed Settlement Layout export in " + (fExportEndTime - fExportStartTime) + " seconds!\n\nFilename: %UserProfile%\\Documents\\My Games\\Fallout4\\Logs\\Script\\User\\" + sLastExportLogName + ".0.log\n\nIf you were unable to locate this file, you will need to enable Papyrus logging in your Fallout4Custom.ini and run this export again.")
+EndFunction
+
+
+Function BuildingCompleted(Int aiCallbackTrackingIndex)
+	WorkshopFramework:Weapons:SettlementLayout thisLayout = LayoutBuildTracking[aiCallbackTrackingIndex].RelatedForm as WorkshopFramework:Weapons:SettlementLayout
+			
+	;Debug.MessageBox("Layout building completed. " + LayoutBuildTracking[aiCallbackTrackingIndex].iCallbacksReceived + " objects placed. Attempting to wire/power.")
+	
+	; All callbacks received, send out event, trigger power up, and clear this tracker
+	WorkshopScript thisWorkshop = GetUniversalForm(thisLayout.WorkshopRef) as WorkshopScript
+	int iWorkshopID = thisWorkshop.GetWorkshopID()
+	
+	; We suspended the individual objects from calling recalc on the workshop so let's do it now for the entire place
+	thisWorkshop.RecalculateWorkshopResources()
+	
+	; Send out the event
+	SendSettlementLayoutBuiltEvent(thisWorkshop, thisLayout)
+	
+	; Trigger power up			
+	if(F4SEManager.IsF4SERunning && Setting_Import_F4SEPowerItems.GetValueInt() == 1)
+		if( ! PowerUpPhaseComplete[iWorkshopID])
+			if(thisWorkshop.Is3dLoaded() && PlayerRef.IsWithinBuildableArea(thisWorkshop))
+				PowerUpSettlement(thisWorkshop, thisLayout)
+			endif
+		endif
+	else
+		UpdatePowerUpPhaseStatus(iWorkshopID, true)
+	endif
+	
+	if(bManualImportInProgress)
+		if(bUseHUDProgressModule)
+			HUDFrameworkManager.CompleteProgressBar(Self, sProgressBarID_Build)
+		endif
+	
+		BuildingFinished.Show(Utility.GetCurrentRealTime() - fManuaBuildStartTime)
+	endif
+	
+	bManualImportInProgress = false
+	
+	LayoutBuildTracking[aiCallbackTrackingIndex] = None
+EndFunction
 
 Function ScrappingCompleted()
 	if((bManualImportInProgress || bManualScrapTriggered) && bUseHUDProgressModule)
@@ -1532,6 +1604,17 @@ Function ScrappingCompleted()
 		
 	if(bManualScrapTriggered)				
 		ScrappingFinished.Show()
+	endif
+	
+	if(kWorkshopAwaitingBuildFromRefresh != None)
+		WorkshopScript kRebuildMe = kWorkshopAwaitingBuildFromRefresh
+		kWorkshopAwaitingBuildFromRefresh = None ; Set to None so another ScrappingCompleted call occurs before this one completes we don't end up running this twice
+		
+		if(bUseHUDProgressModule)
+			HUDFrameworkManager.CreateProgressBar(Self, sProgressBarID_Build, "Rebuilding Layout")
+		endif
+	
+		BuildSettlement(kRebuildMe)
 	endif
 	
 	bManualScrapTriggered = false

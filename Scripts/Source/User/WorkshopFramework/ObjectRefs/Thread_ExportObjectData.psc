@@ -160,8 +160,13 @@ Function RunCode()
 	ExtraData = new Var[0]
 	ExtraData = GetExtraModData(kObjectRef, sPluginName)
 	
-	kObjectRef.OnTriggerLeave(Self) ; Send export notice - objects can define this vanilla event to be treated like a function and add data to the thread
-	
+	; Send export notice - objects can define this vanilla event to be treated like a function and add data to the thread	
+	if(kObjectRef as WorkshopFramework:Library:ObjectRefs:ExportExtraData)
+		; Special script type specifically for this - this will ensure that if the object has multiple scripts attached, this one is handled
+		(kObjectRef as WorkshopFramework:Library:ObjectRefs:ExportExtraData).OnTriggerLeave(Self)
+	else
+		kObjectRef.OnTriggerLeave(Self)
+	endif
 	
 	sMessageText += BaseForm + sLogDelimitter_LineItem + sPluginName + sLogDelimitter_LineItem + fX + sLogDelimitter_LineItem + fY + sLogDelimitter_LineItem + fZ + sLogDelimitter_LineItem + fAngleX + sLogDelimitter_LineItem + fAngleY + sLogDelimitter_LineItem + fAngleZ + sLogDelimitter_LineItem + fScale + sLogDelimitter_LineItem + bForceStatic + sLogDelimitter_LineItem + bIsResourceObject + sLogDelimitter_LineItem + sObjectName + sLogDelimitter_LineItem + kObjectRef + sLogDelimitter_LineItem
 	

@@ -112,6 +112,11 @@ Group VendorData
 	ObjectReference[] Property VendorContainersBar auto hidden
 	ObjectReference[] Property VendorContainersClinic auto hidden
 	ObjectReference[] Property VendorContainersClothing auto hidden
+	
+	; WSFW - 2.0.0
+	ObjectReference[] Property kCustomVendorContainersL0 Auto Hidden
+	ObjectReference[] Property kCustomVendorContainersL1 Auto Hidden
+	ObjectReference[] Property kCustomVendorContainersL2 Auto Hidden
 endGroup
 
 ; 1.6: optional radio override data
@@ -1537,6 +1542,68 @@ ObjectReference[] function InitializeVendorChests(int vendorType)
 endFunction
 
 
+; WSFW 2.0.0 - Pull vendor containers for custom vendor types
+ObjectReference[] Function GetCustomVendorContainers(String asCustomVendorID)
+	int iIndex = WorkshopParent.CustomVendorTypes.FindStruct("sVendorID", asCustomVendorID)
+	if(iIndex >= 0) ; Vendor type registered - look for local containers
+		ObjectReference[] kContainers = new ObjectReference[3]
+		
+		if(kCustomVendorContainersL0 == None)
+			kCustomVendorContainersL0 = new ObjectReference[128]
+		endif
+		
+		if(kCustomVendorContainersL1 == None)
+			kCustomVendorContainersL1 = new ObjectReference[128]
+		endif
+		
+		if(kCustomVendorContainersL2 == None)
+			kCustomVendorContainersL2 = new ObjectReference[128]
+		endif
+		
+		if(kCustomVendorContainersL0[iIndex] == None || kCustomVendorContainersL1[iIndex] == None || kCustomVendorContainersL2[iIndex] == None)
+			kContainers = InitializeCustomVendorChests(asCustomVendorID)
+		else
+			kContainers[0] = kCustomVendorContainersL0[iIndex]
+			kContainers[1] = kCustomVendorContainersL1[iIndex]
+			kContainers[2] = kCustomVendorContainersL2[iIndex]
+		endif
+		
+		return kContainers
+	endif
+	
+	return None
+EndFunction
+
+; WSFW 2.0.0 - Create vendor containers for custom vendor types
+ObjectReference[] function InitializeCustomVendorChests(String asCustomVendorID)
+	; initialize array
+	ObjectReference[] kVendorContainers = new ObjectReference[3]
+
+	; create the chests
+	int iIndex = WorkshopParent.CustomVendorTypes.FindStruct("sVendorID", asCustomVendorID)
+	if(iIndex >= 0)
+		FormList vendorContainerList = WorkshopParent.CustomVendorTypes[iIndex].VendorContainerList
+		int iVendorLevel = 0
+		while(iVendorLevel < 3)
+			; create ref for each vendor level
+			kVendorContainers[iVendorLevel] = WorkshopParent.WorkshopHoldingCellMarker.PlaceAtMe(vendorContainerList.GetAt(iVendorLevel))
+			
+			if(iVendorLevel == 0)
+				kCustomVendorContainersL0[iIndex] = kVendorContainers[iVendorLevel]
+			elseif(iVendorLevel == 1)
+				kCustomVendorContainersL1[iIndex] = kVendorContainers[iVendorLevel]
+			elseif(iVendorLevel == 2)
+				kCustomVendorContainersL2[iIndex] = kVendorContainers[iVendorLevel]
+			endif
+			
+			iVendorLevel += 1
+		endWhile
+	endif
+	
+	return kVendorContainers
+endFunction
+
+
 Event OnInit()
 	; WSFW - 1.0.5 - Imperative that all vars are loaded. This will slow down the init, but will ensure we don't run into any None forms
 	WorkshopParent.FillWSFWVars()
@@ -1771,7 +1838,6 @@ Function TryRealDailyUpdate()
 EndFunction
 
 function SetOwnedByPlayer(bool bIsOwned)
-	Debug.TraceStack("[WSFW] Researching all places SetOwnedByPlayer is called.")
 	; is state changing?
 	if !bIsOwned && OwnedByPlayer
 		OwnedByPlayer = bIsOwned ; do this here so workshop is updated for UpdatePlayerOwnership check
@@ -1783,12 +1849,14 @@ function SetOwnedByPlayer(bool bIsOwned)
 		; clear farm discount faction if we can get actors
 		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
 		int i = 0
-		while i < WorkshopActors.Length
-			WorkshopNPCScript theActor = (WorkshopActors[i] as Actor) as WorkshopNPCScript
-			if theActor
+		while(i < WorkshopActors.Length)
+			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actor
+			Actor theActor = WorkshopActors[i] as Actor
+			if(theActor)
 				theActor.RemoveFromFaction(FarmDiscountFaction)
+				
 				; clear "player owned" actor value (used to condition trade items greetings)
-				theActor.UpdatePlayerOwnership(self)
+				WorkshopFramework:WorkshopFunctions.UpdatePlayerOwnership(theActor, self)
 			endif
 			i += 1
 		endWhile
@@ -1836,14 +1904,14 @@ function SetOwnedByPlayer(bool bIsOwned)
 		; add player owned actor value if possible
 		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
 		int i = 0
-		while i < WorkshopActors.Length
-			WorkshopNPCScript theActor = (WorkshopActors[i] as Actor) as WorkshopNPCScript
-			if theActor
-				theActor.UpdatePlayerOwnership(self)
+		while(i < WorkshopActors.Length)
+			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actors
+			Actor theActor = WorkshopActors[i] as Actor
+			if(theActor)
+				WorkshopFramework:WorkshopFunctions.UpdatePlayerOwnership(theActor, self)
 			endif
 			i += 1
 		endWhile
-
 	endif
 
 	OwnedByPlayer = bIsOwned
@@ -1883,15 +1951,7 @@ Event OnWorkshopObjectPlaced(ObjectReference akReference)
 		endif
 	endif
 	
-	if(WorkshopParent.BuildObjectPUBLIC(akReference, self))
-		; run timer for assigning resource objects
-		;UFO4P 2.0.4 Bug #24312: removed this line:
-		;AssignObjectToWorkshop (called from BuildObjectPUBLIC on WorkshopParentScript) now runs the assignment procedures directly on
-		;all new resource objects. Calling the functions from a timer started if any new object is built has always been a waste of time
-		;because they do not need to run on anything else than assignable resource objects.
-		;StartTimer(3.0, buildWorkObjectTimerID)
-	endif
-
+	WorkshopParent.BuildObjectPUBLIC(akReference, self)
 endEvent
 
 Event OnWorkshopObjectMoved(ObjectReference akReference)
@@ -1996,60 +2056,27 @@ endStruct
 
 bool bDailyUpdateInProgress = false
 
-;UFO4P 1.0.3 Bug #20775: Added a bool argument to handle calls from WorkShopParentScript (in that case, bResetHappiness will be true): those calls will not be
-;skipped (even though bRealUpdate is false) and when the function finishes running, it calls the ResetHappinessPUBLIC function on WorkshopParentScript. Also
-;modified the traces to display the value of the new bool.
-;UFO4P 2.0.1 Bug #22234: Removed the bResetHappiness argument from this function to eliminate API problems.
-;bResetHappiness is now a script variable that is set to 'true' when the timer event catches the call from the ResetHappiness function and reset to 'false' by
-;the DailyUpdate function when it stops running. This workaround has a minor flaw in that there is no guarantee that the thread started by the timer is also
-;the thread that will call WorkshopParentScript (e.g. there may be another thread alread waiting in the lock). Fortunately though, this doesn't matter here
-;as long as WorkshopParentScript is called from the right workshop.
 function DailyUpdate(bool bRealUpdate = true)
-	;UFO4P 1.0.2 Bug #20295: GENERAL NOTES:
-	;---------------------------------------
-	;
-	;There are two ways in which this function is called:
-	;(1) full updates (bRealUpdate = true): these are priority calls from the OnTimerGameTime event. That event checks WorkshopParent.DailyUpdateInProgress
-	;	 for the current lock state and will not let any calls of this function through when another thread is still running it.
-	;(2) partial updates (bRealUpdate = false): these are low priority calls that are skipped entirely when another instance is already running.
-	;In the vanilla script, the partial updates never checked the true Lock state in WorkshopParent.DailyUpdateInProgress; they only checked bDailyUpdateIn
-	;Progress but this turned out to be completely unreliable as a lock bool here. As a result, they could bypass the lock unwantedly and cause interferences
-	;(such as messed-up settlement stats in the pip-boy). Therefore, all threads will now check WorkshopParent.DailyUpdateInProgress only. bDailyUpdateInProgress
-	;will not be used anymore.
-
-	;UFO4P 1.0.2 Bug #20295: Traces added to check the bools (the trace for bDailyUpdateInProgress was subsequently commented out):
-	
 	; wait for update lock to be released
-	;UFO4P 1.0.2 Bug #20295: Checking WorkshopParent.DailyUpdateInProgress here instead of bDailyUpdateInProgress
-	if WorkshopParent.DailyUpdateInProgress
-		;UFO4P 1.0.3 Bug #20775: if bResetHappiness = true, the call should not be skipped even when bRealUpdate = false:
-		if bRealUpdate || bResetHappiness
-			;UFO4P 1.0.2 Bug #20295: Added a loop to wait for the thread to unlock (without that loop, the lock won't work)
-			While WorkshopParent.DailyUpdateInProgress
+	
+	if(WorkshopParent.DailyUpdateInProgress)
+		if(bRealUpdate || bResetHappiness)
+			while(WorkshopParent.DailyUpdateInProgress)
 				utility.wait(0.5)
-			EndWhile
+			endWhile
 		else
 			; just bail if not a real update - no need
-			;UFO4P 2.0: the following trace has been commented out (no need to log this)
 			return
 		endif
 	EndIf
-	;bDailyUpdateInProgress = true
-	WorkshopParent.DailyUpdateInProgress = true
-
-	if(bRealUpdate)
-		Debug.Trace(">>>>>>>>>>>>>>>>>>>> DailyUpdate Started for " + Self)
-	endif
 	
-	; WSFW - Removed containerRef short, as the container is no longer needed here anyway
+	WorkshopParent.DailyUpdateInProgress = true
 
 	; create local pointer to WorkshopRatings array to speed things up
 	WorkshopDataScript:WorkshopRatingKeyword[] ratings = WorkshopParent.WorkshopRatings
-
-	; WSFW - Removed updateData struct use as all of the code using it is now in WSFW_DailyUpdate_AdjustResourceValues
 	
 	; REAL UPDATE ONLY
-	if bRealUpdate
+	if(bRealUpdate)
 		; WSFW - New settlers handled by our NPCManager
 		; DailyUpdateAttractNewSettlers(ratings, updateData)
 		
@@ -2059,36 +2086,28 @@ function DailyUpdate(bool bRealUpdate = true)
 	EndIf
 
 	; if this is current workshop, update actors (in case some have been wounded since last update)
-	;UFO4P 2.0.2 Bug #23016: Also check whether the location is still loaded (otherwise, the WorkshopActors array will be empty):
-	if GetWorkshopID() == CurrentWorkshopID.GetValue() && WorkshopParent.UFO4P_IsWorkshopLoaded (self)
+	if(GetWorkshopID() == CurrentWorkshopID.GetValue() && WorkshopParent.UFO4P_IsWorkshopLoaded(self))
 		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
 		int i = 0
-		while (i < WorkshopActors.Length)
-			;WorkshopParent.UpdateActorsWorkObjects(WorkshopActors[i] as WorkShopNPCScript, self)
-			;UFO4P 2.0.6 Bug #25195: replaced the previous line with the following code to check for invalid actors:
-			WorkShopNPCScript theActor = WorkshopActors[i] as WorkShopNPCScript
-			if theActor
-				WorkshopParent.UpdateActorsWorkObjects (theActor, self)
-			else
-				WorkshopParent.wsTrace(self + "		  WARNING - Invalid actor found: obj ref = " + WorkshopActors[i])
+		while(i < WorkshopActors.Length)
+			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actors
+			Actor theActor = WorkshopActors[i] as Actor
+			
+			if(theActor)
+				WorkshopFramework:WorkshopFunctions.UpdateActorsWorkObjects(theActor, self, false)
 			endif
 			
 			i += 1
 		endWhile
 	endif
 
-	; WSFW - The "physical" act of actually adding and removing workshop inventory is handled by our Production manager - leaving only the resource value updates to be handled.
-	; WSFW - While it's likely more efficient in the grand scheme of things to be doing all three of these at once and cascading the updateData down between them, thus avoiding the excess calls, in practice this one giant function ends up becoming so slow that adding anymore functionality to it would become impractical.
-	; WSFW - By breaking up a lot of the work into different managers, we are actually able to speed things up, since we're essentially multi-threading this process, and can avoid polling for the values we don't need for each individual portion of the functionality - leaving only a small number of actual duplicated GetValue calls.
-	;DailyUpdateProduceResources(ratings, updateData, containerRef, bRealUpdate)
-	;DailyUpdateConsumeResources(ratings, updateData, containerRef, bRealUpdate)
+	; WSFW - Reminder: Production and Consumption are now handled by our WorkshopProductionManager script
 	WSFW_DailyUpdate_AdjustResourceValues(ratings, bRealUpdate)
 	
 	; REAL UPDATE ONLY:
-	if bRealUpdate
+	if(bRealUpdate)
 		; WSFW - Surplus handled by our WorkshopProductionManager script now 
-		; DailyUpdateSurplusResources(ratings, updateData, containerRef)
-
+		
 		RepairDamage()
 	
 		; now recalc all workshop resources if the current workshop - we don't want to do this when unloaded or everything will be 0
@@ -2097,17 +2116,13 @@ function DailyUpdate(bool bRealUpdate = true)
 		CheckForAttack()
 	endif
 
-	;UFO4P 1.0.3 Bug #20775: If the timer to call this function was started by WorkshopParentScript (only then, bResetHappiness is true), call the
-	;ResetHappinessPUBLIC function on WorkshopParentScript when everything else is done
-	if bResetHappiness
-		ModTrace("Calling WorkshopParent.ResetHappinessPUBLIC on " + Self)
+	if(bResetHappiness)
 		WorkshopParent.ResetHappinessPUBLIC(self)
-		;UFO4P 2.0.1 Bug #22234: reset bResetHappiness:
+		
 		bResetHappiness = false
 	endif
 
 	; clear update lock
-	; bDailyUpdateInProgress = false
 	WorkshopParent.DailyUpdateInProgress = false
 	
 	if(bRealUpdate)
@@ -2550,83 +2565,80 @@ function RepairDamageToResource(ActorValue resourceValue)
 
 	int iCurrentWorkshopID = CurrentWorkshopID.GetValueInt()
 
-	;UFO4P 2.0.2 Bug #23016: Added the following lines:
-	;If iCurrentWorkshopID is this workshop's ID, make sure that the workshop location is loaded. Otherwise, there actually is no current workshop, so
-	;the related properties on WorkshopParentScript have to be reset (and iCurrentWorkshopID set to -1). This will skip some of the subsequent operations
-	;that are unsafe to be carried out if the workshop location is not loaded.
-	if iCurrentWorkshopID == workshopID && WorkshopParent.UFO4P_IsWorkshopLoaded (self) == false
+	if(iCurrentWorkshopID == workshopID && WorkshopParent.UFO4P_IsWorkshopLoaded(self) == false)
 		iCurrentWorkshopID = -1
 	endif
 
-	if currentDamage > 0
+	if(currentDamage > 0)
 		; amount repaired
 		; scale this by population (uninjured) - unless this is population
 		float repairAmount = 1
-		bool bHealedActor = false 	; set to true if we find an actor to heal
-		if damageRating != DamagePopulation
+		
+		if(damageRating != DamagePopulation)
 			repairAmount = CalculateRepairAmount(ratings)
 			repairAmount = math.Max(repairAmount, 1.0)
 		else
 			; if this is population, try to heal an actor:
 			; are any of this workshop's NPC assigned to caravans?
 			Location[] linkedLocations = myLocation.GetAllLinkedLocations(WorkshopCaravanKeyword)
-			if linkedLocations.Length > 0
+			if(linkedLocations.Length > 0)
 				; there is at least 1 actor - find them
 				; loop through caravan actors
 				int index = 0
-				while (index < WorkshopParent.CaravanActorAliases.GetCount())
+				while(index < WorkshopParent.CaravanActorAliases.GetCount())
 					; check this actor - is he owned by this workshop?
-					WorkShopNPCScript caravanActor = WorkshopParent.CaravanActorAliases.GetAt(index) as WorkshopNPCScript
-					if caravanActor && caravanActor.GetWorkshopID() == workshopID && caravanActor.IsWounded()
-					; is this actor wounded? if so heal and exit
-						bHealedActor = true
-						WorkshopParent.WoundActor(caravanActor, false)
+					; WSFW 2.0.0 - Switch this section to use our global functions that avoid WorkshopNPCScript
+					Actor caravanActor = WorkshopParent.CaravanActorAliases.GetAt(index) as Actor
+					
+					if(caravanActor && WorkshopFramework:WorkshopFunctions.GetWorkshopID(caravanActor) == workshopID && WorkshopFramework:WorkshopFunctions.IsWounded(caravanActor))
+						; is this actor wounded? if so heal and exit
+						WorkshopFramework:WorkshopFunctions.WoundActor(caravanActor, false, abRecalculateResources = false)
+						
 						return
 					endif
 					index += 1
 				endwhile
 			endif
 
-			if !bHealedActor
-				; if this is the current workshop, we can try to heal one of the actors (otherwise we don't have them)
-				if workshopID == iCurrentWorkshopID
-					int i = 0
-					ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
-					while i < WorkshopActors.Length && !bHealedActor
-						WorkShopNPCScript theActor = WorkshopActors[i] as WorkShopNPCScript
-						if theActor && theActor.IsWounded()
-							bHealedActor = true
-							WorkshopParent.WoundActor(theActor, false)
-						endif
-						i += 1
-					endWhile
-				endif
-			endif
-		endif
-
-		if !bHealedActor
-			; if we healed an actor, keyword data already modified
-			repairAmount = math.min(repairAmount, currentDamage)
-			ModifyActorValue(self, damageRating, repairAmount*-1.0)
-			
-			; if this is the current workshop, find an object to repair (otherwise we don't have them)
-			if workshopID == iCurrentWorkshopID && damageRating != DamagePopulation
+			; if this is the current workshop, we can try to heal one of the actors (otherwise we don't have them)
+			if(workshopID == iCurrentWorkshopID)
 				int i = 0
-				; want only damaged objects that produce this resource
-				ObjectReference[] ResourceObjects = GetWorkshopResourceObjects(akAV = resourceValue, aiOption = 1)
-				while i < ResourceObjects.Length && repairAmount > 0
-					WorkShopObjectScript theObject = ResourceObjects[i] as WorkShopObjectScript
-					float damage = theObject.GetResourceDamage(resourceValue)
-					
-					if damage > 0
-						float modDamage = math.min(repairAmount, damage)*-1.0
-						if theObject.ModifyResourceDamage(resourceValue, modDamage)
-							repairAmount += modDamage
-						endif
+				ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
+				while(i < WorkshopActors.Length)
+					; WSFW 2.0.0 - Switch this section to use our global functions that avoid WorkshopNPCScript
+					Actor theActor = WorkshopActors[i] as Actor
+					if(theActor && WorkshopFramework:WorkshopFunctions.IsWounded(theActor))
+						; is this actor wounded? if so heal and exit
+						WorkshopFramework:WorkshopFunctions.WoundActor(theActor, false, abRecalculateResources = false)
+						
+						return
 					endif
 					i += 1
 				endWhile
 			endif
+		endif
+
+		
+		repairAmount = math.min(repairAmount, currentDamage)
+		ModifyActorValue(self, damageRating, repairAmount*-1.0)
+			
+		; if this is the current workshop, find an object to repair (otherwise we don't have them)
+		if(workshopID == iCurrentWorkshopID && damageRating != DamagePopulation)
+			int i = 0
+			; want only damaged objects that produce this resource
+			ObjectReference[] ResourceObjects = GetWorkshopResourceObjects(akAV = resourceValue, aiOption = 1)
+			while(i < ResourceObjects.Length && repairAmount > 0)
+				WorkShopObjectScript theObject = ResourceObjects[i] as WorkShopObjectScript
+				float damage = theObject.GetResourceDamage(resourceValue)
+				
+				if(damage > 0)
+					float modDamage = math.min(repairAmount, damage)*-1.0
+					if(theObject.ModifyResourceDamage(resourceValue, modDamage))
+						repairAmount += modDamage
+					endif
+				endif
+				i += 1
+			endWhile
 		endif
 	endif
 endFunction

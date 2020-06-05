@@ -258,18 +258,20 @@ Bool Function StartQuests()
 		int i = 0
 		int iStartedQuests = 0
 		while(i < FrameworkStartQuests.Length)
+			ModTrace("[WSFW] >>> Handling startup of quest " + FrameworkStartQuests[i])
 			if( ! FrameworkStartQuests[i].IsRunning() && ! FrameworkStartQuests[i].IsStarting())
 				Float fStartAttempt = Utility.GetCurrentRealTime()
+				
 				if(FrameworkStartQuests[i].Start())
 					iStartedQuests += 1
 				else
-					Debug.Trace("Failed to start quest " + FrameworkStartQuests[i])
+					ModTrace("Failed to start quest " + FrameworkStartQuests[i])
 				endif
 			elseif(FrameworkStartQuests[i].IsRunning())
-				Debug.Trace("Quest " + FrameworkStartQuests[i] + " is already running.")
+				ModTrace("Quest " + FrameworkStartQuests[i] + " is already running.")
 				iStartedQuests += 1
 			else
-				Debug.Trace("Failed to start quest " + FrameworkStartQuests[i])
+				ModTrace("Failed to start quest " + FrameworkStartQuests[i])
 			endif
 			
 			i += 1

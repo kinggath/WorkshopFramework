@@ -48,10 +48,7 @@ EndEvent
 ; -
 
 Function StartThread()
-	RunCode()
-	
-	
-	;Debug.Trace("Completed Thread.RunCode(). sCustomCallbackID = " + sCustomCallbackID + " Thread = " + Self)
+	RunCode()	
 	
 	Var[] kArgs = new Var[2]
 	

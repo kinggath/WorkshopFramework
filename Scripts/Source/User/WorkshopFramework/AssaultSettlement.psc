@@ -257,7 +257,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		if(bPlayerInvolved)
 			if(iCurrentAssaultType != AssaultManager.iType_Defend)
 				if(bAutoHandleObjectives)
-					SetObjectiveDisplayed(10)
+					SetObjectiveDisplayed(10)					
 				endif
 				
 				ObjectReference kAttackFrom = AttackFromAlias.GetRef()
@@ -273,11 +273,15 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				AttackerFactionAlias.AddRef(PlayerRef)
 			else
 				if(bAutoHandleObjectives)
-					SetObjectiveDisplayed(17)
+					SetObjectiveDisplayed(17)					
 				endif
 				
 				Actor PlayerRef = PlayerAlias.GetRef() as Actor
 				DefenderFactionAlias.AddRef(PlayerRef)
+			endif
+			
+			if(bAutoHandleObjectives)
+				SetActive() ; Mark it active in the player's quest log
 			endif
 		endif
 	elseif(aiStageID == iStage_AttackStartedByCombat)
@@ -505,7 +509,7 @@ Function SetupAssault()
 			AddCollectionToCompleteAliases(Settlers, abDefenders = true)
 			AddCollectionToCompleteAliases(NonSpeakingSettlers, abDefenders = true)
 			
-			if(kLeaderRef)
+			if(kLeaderRef && ! kLeaderRef.IsInFaction(CaptiveFaction))
 				if(kLeaderRef.IsInFaction(WorkshopNPCFaction) && (ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue))
 					SubdueToComplete.AddRef(kLeaderRef)
 				else
@@ -1396,6 +1400,11 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
 			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+				if( ! thisActor.Is3dLoaded())
+					; In case the actor fled or the AI package took it somewhere strange
+					thisActor.MoveTo(DefendFromAlias.GetRef())
+				endif				
+				
 				return false
 			endif
 						
@@ -1411,6 +1420,11 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = KillToComplete.GetAt(i) as Actor
 			
 			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+				if( ! thisActor.Is3dLoaded())
+					; In case the actor fled or the AI package took it somewhere strange
+					thisActor.MoveTo(DefendFromAlias.GetRef())
+				endif				
+				
 				return false
 			endif
 						

@@ -5,6 +5,7 @@ holds data about the object and sends event when build
 TODO - make const when it stops holding data
 }
 
+import WorkshopFramework:Library:DataStructures ; WSFW - 2.0.0
 import WorkshopDataScript
 
 WorkshopParentScript Property WorkshopParent Auto Const mandatory
@@ -19,6 +20,8 @@ Group VendorData
 	bool Property bVendorTopLevelValid = false auto hidden
 	{ set to TRUE when this object counts as a valid top level vendor}
 
+	String Property sCustomVendorID Auto Const ; WSFW - 2.0.0
+	{ Set this OR VendorType, not both! Be sure you are using a custom vendor ID that has been registered by your mod or another mod via WorkshopParent.RegisterCustomVendor }
 EndGroup
 
 ; the workshop that created me
@@ -104,7 +107,8 @@ group FurnitureMarker
 	{ OPTIONAL - if it exists, only place SpecialFurnitureBase if owning actor has this keyword }
 endGroup
 
-ObjectReference[] myFurnitureMarkerRefs
+ObjectReference[] Property myFurnitureMarkerRefs Auto Hidden ; 1.1.10 - Made a property so we can access this in an extended script
+
 
 MovableStatic Property DamageHelper const auto
 { OPTIONAL - if set, create a damage helper when built and link it to me }
@@ -171,6 +175,7 @@ Event OnInit()
 	if bPlaceMarkerOnCreation
 		CreateFurnitureMarkers()
 	endif
+	
 	;UFO4P 2.0.2 Bug #23017: Added check for a valid workshopID:
 	;If there's no valid workshopID (which is the case for most objects if this event runs), the ResetWorkshop function will call this function anyway on the
 	;player's first visit to this workshop, and there's no need to run it twice.
@@ -201,6 +206,9 @@ event OnUnload()
 		endif
 	endif
 EndEvent
+
+
+
 
 ; returns true if this object has a "multi resource" actor value
 bool function HasMultiResource()
@@ -259,29 +267,38 @@ endFunction
 
 ; is an actor assigned to this?
 bool function IsActorAssigned()
-	bool val = GetAssignedActor() != NONE
-	if !val && IsBed() && GetFactionOwner() != NONE
+	bool val = GetAssignedNPC() != NONE
+	if( !val && IsBed() && GetFactionOwner() != NONE)
 		; if I'm a bed, faction ownership counts as valid "assignment"
-		;WorkshopParent.wsTrace(self + " IsActorAssigned - bed with faction ownership = true")
 		val = true
 	endif
-	;WorkshopParent.wsTrace(self + " IsActorAssigned=" + val )	
+	
 	return val
 endFunction
 
-WorkshopNPCScript function GetAssignedActor()
-	WorkshopNPCScript assignedActor = GetActorRefOwner() as WorkshopNPCScript
-	if !assignedActor
+
+; WSFW 2.0.0 - Added nonWorkshopNPCScript version
+Actor function GetAssignedNPC()
+	Actor assignedActor = GetActorRefOwner()
+	if(!assignedActor)
 		; check for base actor ownership
 		ActorBase baseActor = GetActorOwner()
-		WorkshopParent.wsTrace(" baseActor=" + baseActor)
-		if baseActor && baseActor.IsUnique()
+		
+		if(baseActor && baseActor.IsUnique())
 			; if this has Actor ownership, use GetUniqueActor when available to get the actor ref
-			assignedActor = baseActor.GetUniqueActor() as WorkshopNPCScript
+			assignedActor = baseActor.GetUniqueActor()
 		endif
 	endif
-	WorkshopParent.wsTrace(" GetAssignedActor: " + assignedActor)
+	
 	return assignedActor
+endFunction
+
+WorkshopNPCScript function GetAssignedActor()
+	; WSFW 2.0.0 rerouting through our other function
+	Actor kAssignedActor = GetAssignedNPC()
+	if(kAssignedActor)
+		return kAssignedActor as WorkshopNPCScript
+	endif
 endFunction
 
 bool function RequiresPower()
@@ -374,58 +391,66 @@ function DeleteFurnitureMarkers()
 endFunction
 
 
-function AssignActor(WorkshopNPCScript newActor = None)
-	;WorkshopParent.wsTrace(self + "	AssignActor: newActor=" + newActor)
-	if newActor
+Function AssignNPC(Actor newActor = None)
+	if(newActor)
 		; if this is a bed, and has faction ownership OR actor base ownership, just keep it
-		if IsBed() && ( IsOwnedBy(newActor) )
-			; do nothing - editor-set faction ownership for double beds etc.
-			;WorkshopParent.wsTrace(self + "	AssignActor: DO NOTHING - actor already owns this bed.")
-		else
+		if( ! IsBed() || ! IsOwnedBy(newActor))
 			SetActorRefOwner(newActor, true)
 		endif
-		;WorkshopParent.wsTrace(self + " AssignActor - " + GetActorRefOwner())
-
+		
 		; create furniture marker if necessary
-		if FurnitureBase && myFurnitureMarkerRefs.Length == 0
+		if(FurnitureBase && myFurnitureMarkerRefs.Length == 0)
 			CreateFurnitureMarkers()
 			UpdatePosition()
 		endif
-
-		if myFurnitureMarkerRefs.Length > 0
+		
+		if(myFurnitureMarkerRefs.Length > 0)
 			SetFurnitureMarkerOwnership(newActor)
 		endif
 
 		; link actor to me if keyword
-		if AssignedActorLinkKeyword
-			;UFO4P 2.0.4 Bug #24122: added this check to tell whether the workshop is still loaded:
+		if(AssignedActorLinkKeyword)
 			;In case this function runs after a workshop has unloaded, the new owner should not be linked to the object to avoid
 			;persistence (all WorkshopObjectScripts clear these links on unload and restore them on load).
-			if WorkshopID == WorkshopParent.WorkshopCurrentWorkshopID.GetValue()
+			if(WorkshopID == WorkshopParent.WorkshopCurrentWorkshopID.GetValue())
 				newActor.SetLinkedRef(self, AssignedActorLinkKeyword)
 			endif
 		endif
 	else
 		SetActorRefOwner(none)
+		
 		; default ownership = player (so enemies will attack them if appropriate)
 		SetActorOwner(Game.GetPlayer().GetActorBase())
-		;WorkshopParent.wsTrace(self + " AssignActor: no owner, so assigning player ownership: " + GetActorOwner())
-		if myFurnitureMarkerRefs.Length > 0
+		
+		if(myFurnitureMarkerRefs.Length > 0)
 			; if marker placed on creation, just remove ownership
-			if bPlaceMarkerOnCreation
+			if(bPlaceMarkerOnCreation)
 				SetFurnitureMarkerOwnership(none)
 			else
-			; otherwise, delete markers when unassigned
+				; otherwise, delete markers when unassigned
 				DeleteFurnitureMarkers()
 			endif
 		endif
 	endif
-		
-	AssignActorCustom(newActor)
+	
+	if(newActor as WorkshopNPCScript) ; Make sure any previous defined versions from extensions are called correctly
+		AssignActorCustom(newActor as WorkshopNPCScript)
+	else
+		AssignNPCCustom(newActor)
+	endif
+EndFunction
+
+function AssignActor(WorkshopNPCScript newActor = None)
+	AssignNPC(newActor as Actor) ; WSFW 2.0.0 - Rerouting to our new version
+endFunction
+
+function AssignNPCCustom(Actor newActor)
+	; blank function for extended scripts to use
 endFunction
 
 function AssignActorCustom(WorkshopNPCScript newActor)
 	; blank function for extended scripts to use
+	AssignNPCCustom(newActor as Actor) ; WSFW 2.0.0 - Rerouting to our new version
 endFunction
 
 function CreateFurnitureMarkers()
@@ -494,7 +519,6 @@ function CreateFurnitureMarkers()
 
 endFunction
 
-
 function HandleDestruction()
 	;debug.tracestack(self + " HandleDestruction")
 
@@ -502,12 +526,12 @@ function HandleDestruction()
 	;this script is not assigned to a workshop:
 	if workshopID >= 0
 		;WorkshopParent.wsTrace(self + "HandleDestruction")
-		WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
+		WorkshopScript workshopRef = GetWorkshop()
 
 		RecalculateResourceDamage(workshopRef)
 
 		;WorkshopParent.wsTrace(self + "HandleDestruction: done with resources")
-		WorkshopParent.UpdateWorkshopRatingsForResourceObject(self, WorkshopParent.GetWorkshop(workshopID), bRecalculateResources = false)
+		WorkshopParent.UpdateWorkshopRatingsForResourceObject(self, GetWorkshop(), bRecalculateResources = false)
 		
 		;UFO4P 1.0.5 Bug #21028: Moved this here from the end of the function:
 		; send custom event for this object
@@ -536,7 +560,7 @@ endFunction
 function RecalculateResourceDamage(WorkshopScript workshopRef = NONE, bool clearAllDamage = false)
 	if workshopRef == NONE
 		; get it
-		workshopRef = WorkshopParent.GetWorkshop(workshopID)
+		workshopRef = GetWorkshop()
 	endif
 
 	; get this once for speed
@@ -570,7 +594,7 @@ Event OnDestructionStageChanged(int aiOldStage, int aiCurrentStage)
 	if IsDestroyed()
 		HandleDestruction()
 	elseif aiCurrentStage == 0
-		WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
+		WorkshopScript workshopRef = GetWorkshop()
 		; I've been repaired  - clear all damage
 		RecalculateResourceDamage(workshopRef, true)
 		; send custom event for this object
@@ -578,7 +602,7 @@ Event OnDestructionStageChanged(int aiOldStage, int aiCurrentStage)
 
 		;UFO4P 2.0.4 Bug #24312: added these lines:
 		;Once repaired, fill unassigned multi-resource objects in the UFO4P object arrays, so they can get assigned:
-		if HasMultiResource() && HasKeyword (WorkshopParent.WorkshopWorkObject) && GetAssignedActor() == none
+		if HasMultiResource() && HasKeyword (WorkshopParent.WorkshopWorkObject) && GetAssignedNPC() == none
 			WorkshopParent.UFO4P_AddObjectToObjectArray (self)
 		endif
 
@@ -612,10 +636,10 @@ function HandlePowerStateChange(bool bPowerOn = true)
 		; we got an ID, clear the counter
 		OnPowerOnTimerCount = 0
 	endif
-	WorkshopParent.UpdateWorkshopRatingsForResourceObject(self, WorkshopParent.GetWorkshop(workshopID), bRecalculateResources = false) ; code handles recalculating resources from power state changes
+	WorkshopParent.UpdateWorkshopRatingsForResourceObject(self, GetWorkshop(), bRecalculateResources = false) ; code handles recalculating resources from power state changes
 
 	; send custom event for this object
-	WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
+	WorkshopScript workshopRef = GetWorkshop()
 	WorkshopParent.SendPowerStateChangedEvent(self, workshopRef)
 endFunction
 
@@ -643,38 +667,51 @@ Event OnActivate(ObjectReference akActionRef)
 	endif
 EndEvent
 
-function ActivatedByWorkshopActor(WorkshopNPCScript workshopNPC)
-	;UFO4P 1.0.3 Bug #20668: Added this check as a failsafe for objects that are not yet assigned to a workshop for whatever reason:
-	If workshopID == -1
+
+; WSFW 2.0.0 - Alternate version for nonWorkshopNPCScript actors
+function ActivatedByWorkshopNPC(Actor akSettlerRef)
+	If(workshopID == -1)
 		Return
 	EndIf
 
-	if workshopNPC && workshopNPC.IsDoingFavor() && workshopNPC.IsInFaction(WorkshopParent.Followers.CurrentCompanionFaction) == false
-		;debug.Trace(self + " activated by " + workshopNPC + " in favor state - assigning")
-		if bAllowPlayerAssignment
+	if(akSettlerRef && akSettlerRef.IsDoingFavor() && akSettlerRef.IsInFaction(WorkshopParent.Followers.CurrentCompanionFaction) == false)
+		if(bAllowPlayerAssignment)
 			; turn off favor state
-			workshopNPC.setDoingFavor(false, false) ; going back to using normal command mode for now
+			akSettlerRef.setDoingFavor(false, false) ; going back to using normal command mode for now
+			
 			; unregister for distance event
-			workshopNPC.UnregisterForDistanceEvents(workshopNPC, WorkshopParent.GetWorkshop(workshopID))
+			akSettlerRef.UnregisterForDistanceEvents(akSettlerRef, GetWorkshop())
+			
 			; assign this NPC to me if this is a work object
-			if RequiresActor() || IsBed()
-				workshopNPC.SayCustom(WorkshopParent.WorkshopParentAssignConfirmTopicType)
-				WorkshopParent.AssignActorToObjectPUBLIC(workshopNPC, self)
+			if(RequiresActor() || IsBed())
+				akSettlerRef.SayCustom(WorkshopParent.WorkshopParentAssignConfirmTopicType)
+				
+				WorkshopFramework:WorkshopFunctions.AssignActorToObject(self, akSettlerRef, abRecalculateWorkshopResources = false)
 				WorkshopParent.WorkshopResourceAssignedMessage.Show()
-				workshopNPC.StartAssignmentTimer()
+				
+				if(akSettlerRef as WorkshopNPCScript)
+					; This will make the AI Package work the assigned object for 2 minutes, regardless of time of day so the player feels like things are responsive
+					(akSettlerRef as WorkshopNPCScript).StartAssignmentTimer()
+				endif
+				
 				; if food/water/safety are missing, run check if this is that kind of object
-				if IsBed() == false
-					WorkshopScript workshopRef = WorkshopParent.GetWorkshop(workshopID)
+				if(IsBed() == false)
+					WorkshopScript workshopRef = GetWorkshop()
 					workshopRef.RecalculateResources()
 				endif
-
 			endif
-			workshopNPC.EvaluatePackage()
+			
+			akSettlerRef.EvaluatePackage()
 		else
 			WorkshopParent.WorkshopResourceNoAssignmentMessage.Show()
 		endif
 	endif
+endFunction
 
+
+function ActivatedByWorkshopActor(WorkshopNPCScript workshopNPC)
+	; WSFW 2.0.0 - Rerouting to our version that doesn't require WorkshopNPCScript
+	ActivatedByWorkshopNPC(workshopNPC as Actor)
 endFunction
 
 ; returns TRUE if object was actually damaged/repaired
@@ -684,8 +721,8 @@ bool function ModifyResourceDamage(ActorValue akActorValue, float aiDamageMod)
 	;/
 	----------------------------------------------------------------------------------------------------------
 		UFO4P 2.0.5 Bug #24637:
-		Some of the operations of this function could be substantially simplified. To keep the code legible
-		the function has been rewritten. Comments on edits prior to UFO4P 2.0.5 have been left out.
+		Some of the operations of this could be substantially simplified. To keep the code legible
+		it has been rewritten. Comments on edits prior to UFO4P 2.0.5 have been left out.
 	----------------------------------------------------------------------------------------------------------
 	/;
 
@@ -801,7 +838,7 @@ function UpdatePosition()
 		endif
 		i += 1
 	endWhile
-
+	
 	;UFO4P 2.0.4 Bug #23755: added a check for deleted damage helpers:
 	;There's evidence that thic ode may run after the HandleDeletion() function if a crop is first moved and then immediately stored in the workbench.
 	if myDamageHelperRef && myDamageHelperRef.IsDeleted() == false
@@ -833,6 +870,7 @@ function HideMarkers()
 		myFurnitureMarkerRefs[i].Disable()
 		i += 1
 	endWhile
+	
 	if myDamageHelperRef
 		myDamageHelperRef.Disable()
 	endif
@@ -876,7 +914,7 @@ function HandleCreation(bool bNewlyBuilt = true)
 		endif	
 
 		;UFO4P 2.0.6 Bug #25215: also initialize the resourceID:
-		resourceID = WorkshopParent.InitResourceID (self)		
+		resourceID = WorkshopParent.InitResourceID (self)	
 	endif
 
 	; if unowned, give player ownership
@@ -890,9 +928,10 @@ endFunction
 ; clean up created refs when deleted
 function HandleDeletion()
 
-	if myFurnitureMarkerRefs.Length > 0
+	if(myFurnitureMarkerRefs != None && myFurnitureMarkerRefs.Length > 0)
 		DeleteFurnitureMarkers()
 	endif
+	
 	if myDamageHelperRef
 		;myDamageHelperRef.Delete()
 		;UFO4P 1.0.5 Bug #20945: Replaced the previous line with a call of the new UFO4P_DeleteDamageHelper function to delete the helper:
@@ -1036,3 +1075,31 @@ int function GetResourceID()
 	endif
 	return resourceID
 endFunction
+
+
+; WSFW - 2.0.0 - Attempting to reduce traffic to WorkshopParent
+WorkshopScript Function GetWorkshop()
+	WorkshopScript thisWorkshop = GetLinkedRef(GetWorkshopItemKeyword()) as WorkshopScript
+	
+	if( ! thisWorkshop)
+		return WorkshopParent.GetWorkshop(workshopID)
+	endif
+	
+	return thisWorkshop
+EndFunction
+
+
+; WSFW - 2.0.0
+Keyword Function GetWorkshopItemKeyword()
+	return Game.GetFormFromFile(0x00054BA6, "Fallout4.esm") as Keyword
+EndFunction
+
+; WSFW - 2.0.0
+String Function GetVendorID()
+	String sVendorID = sCustomVendorID
+	if(sVendorID == "")
+		sVendorID = VendorType as String
+	endif
+	
+	return sVendorID
+EndFunction

@@ -32,7 +32,8 @@ CustomEvent NotEnoughResources
 ; Consts
 ; ---------------------------------------------
 
-int ProductionLoopTimerID = 100 Const
+int iTimerID_Production = 100 Const
+Float fLastTimerStart_Production = 0.0 ; Intentionally not const - placing here to keep timer code organized
 float fThrottleContainerRouting = 0.04 Const
 
 ; ---------------------------------------------
@@ -212,7 +213,7 @@ LeveledItem Property ScavProductionItem_Rare Auto Hidden
 LeveledItem Property FertilizerProductionItem Auto Hidden
 
 
-Float Property fProductionLoopTime = 24.0 Auto Hidden
+Float Property fTimerLength_Production = 24.0 Auto Hidden
 
 ; ---------------------------------------------
 ; Vars
@@ -255,7 +256,7 @@ WorkshopFoodType[] KnownWorkshopFoodTypes
 ; ---------------------------------------------
 
 Event OnTimerGameTime(Int aiTimerID)
-	if(aiTimerID == ProductionLoopTimerID)
+	if(aiTimerID == iTimerID_Production)
 		ProduceAllWorkshopResources()
 		
 		StartProductionTimer()
@@ -350,10 +351,7 @@ EndEvent
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
 	
-	; Register for events
-	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectDestroyed")
-	AddInventoryEventFilter(None)
+	RegisterForEvents()
 	
 	; Init arrays
 	RouteContainers = new ObjectReference[0]
@@ -397,6 +395,15 @@ Function HandleGameLoaded()
 	
 	; Check for changes to WorkshopParent.WorkshopFoodTypes
 	UpdateFoodTypesData()
+	
+	RegisterForEvents()
+	
+	Float fCurrentGameTime = Utility.GetCurrentGameTime()
+	
+	; Check if production timer failed to restart
+	if(fLastTimerStart_Production < fCurrentGameTime - (fTimerLength_Production/24.0))
+		StartProductionTimer()
+	endif
 EndFunction
 
 ; ---------------------------------------------
@@ -407,6 +414,20 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+Function RegisterForEvents()
+	; Register for events
+	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectDestroyed")
+	AddInventoryEventFilter(None)
+	
+	int i = 0
+	while(i < RouteContainers.Length)
+		RegisterForRemoteEvent(RouteContainers[i], "OnItemAdded")
+		
+		i += 1
+	endWhile
+EndFunction
 
 ; 1.0.8 - Making single line function for grabbing the container based on the base item 
 ObjectReference Function GetContainerForItem(WorkshopScript akWorkshopRef, Form akBaseItem)
@@ -782,7 +803,8 @@ Function StartProductionTimer()
 		i += 1
 	endWhile
 	
-	StartTimerGameTime(fProductionLoopTime, ProductionLoopTimerID)
+	fLastTimerStart_Production = Utility.GetCurrentGameTime()
+	StartTimerGameTime(fTimerLength_Production, iTimerID_Production)
 EndFunction
 
 

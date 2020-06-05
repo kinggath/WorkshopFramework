@@ -14,27 +14,35 @@
 Scriptname WorkshopFramework:ObjectRefs:InvisibleWorkshopObject extends WorkshopObjectScript
 { Control object that is visible and interactable in Workshop Mode only. Meant to be used to spawn an otherwise invisible object, such as an animation marker. }
 
+import WorkshopFramework:Library:DataStructures
+import WorkshopFramework:Library:UtilityFunctions
+
 ; ---------------------------------------------
 ; Consts
 ; ---------------------------------------------
 
-String sPlugin_WSFW = "WorkshopFramework.esm"
-String sPlugin_Fallout4 = "Fallout4.esm"
+String sPlugin_WSFW = "WorkshopFramework.esm" Const
+String sPlugin_Fallout4 = "Fallout4.esm" Const
 
-int iFormID_InvisibleWorkshopObjectKeyword = 0x00006B5A
-int iFormID_WorkshopItemKeyword = 0x00054BA6
-int iFormID_WorkshopStackedItemParentKeyword = 0X001C5EDD
-
+int iFormID_InvisibleWorkshopObjectKeyword = 0x00006B5A Const
+int iFormID_WorkshopItemKeyword = 0x00054BA6 Const
+int iFormID_WorkshopWorkObject = 0x00020592 Const
+int iFormID_WorkshopStackedItemParentKeyword = 0X001C5EDD Const
+int iFormID_LayoutExportDisabledKeyword = 0x0002B79D Const ; LinkDisable
 ; ---------------------------------------------
 ; Editor Properties 
 ; ---------------------------------------------
 
 Group InvisibleSettings
-	Form Property ControlledObjectForm Auto Const Mandatory
+	UniversalForm Property UniversalControlledObjectForm Auto Const Mandatory
 	{ One of these will be created and attached. }
 	Bool Property bReverse = false Auto Const
-	{ If set to true, the ControlledObjectForm will be hidden in Workshop Mode, instead of this. }
+	{ If set to true, the UniversalControlledObjectForm will be hidden in Workshop Mode, instead of this. }
 EndGroup
+
+
+	Form Property ControlledObjectForm Auto Const
+	{ Maintained for backward compatibility - use UniversalControlledObjectForm instead. }
 
 Group InvisibleSettings_Advanced Collapsed
 	Bool Property bLinkControlledObjectToWorkshop = true Auto Const
@@ -51,15 +59,22 @@ EndGroup
 ; ---------------------------------------------
 
 Keyword InvisibleWorkshopObjectKeyword
+Keyword LayoutExportDisabledKeyword
 Keyword WorkshopItemKeyword
 Keyword WorkshopStackedItemParentKeyword
-Bool bWorkshopMode = true
+Keyword WorkshopWorkObject
+Bool bWorkshopMode = false
 ObjectReference Property kControlledRef Auto Hidden
-
 
 ; ---------------------------------------------
 ; Events
 ; ---------------------------------------------
+State Deleted
+	Function UpdateDisplay()
+		Self.Disable(false) ; Just make sure it's hidden
+	EndFunction
+EndState
+
 
 Event OnInit()
 	UpdateVars()
@@ -68,7 +83,10 @@ Event OnInit()
 	
 	; Add the keyword so the manager can pick us up
 	Self.AddKeyword(InvisibleWorkshopObjectKeyword)
+	; Add the keyword so the item will be picked up by the layout export system even when disabled
+	Self.AddKeyword(LayoutExportDisabledKeyword)
 	
+	bWorkshopMode = WorkshopFramework:WSFW_API.IsPlayerInWorkshopMode()
 	UpdateDisplay()
 EndEvent
 
@@ -85,6 +103,20 @@ Event OnWorkshopObjectMoved(ObjectReference akWorkshopRef)
 	Parent.OnWorkshopObjectMoved(akWorkshopRef)
 EndEvent
 
+
+; ---------------------------------------------
+; Overrides
+; ---------------------------------------------
+
+Function AssignActorCustom(WorkshopNPCScript newActor)
+	Parent.AssignActorCustom(newActor)
+	
+	if(kControlledRef != None && newActor != None)
+		; Only assign - never send newActor == None, otherwise we'd end up never being able to assign to it. As soon as do assign, we're going to get a call to unassign the NPC from this invisible parent object, and we'd then be passing that unassign to the controlled object. We'll have to instead just rely on this thing being scrapped or someone else being assigned to unassign the actor.
+		AssignToControlledObject(newActor)
+	endif
+EndFunction
+
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
@@ -100,6 +132,15 @@ Function Toggle(Bool abWorkshopMode)
 EndFunction
 
 
+Form Function GetControlledObjectForm()
+	if(UniversalControlledObjectForm != None)
+		return GetUniversalForm(UniversalControlledObjectForm)
+	else
+		return ControlledObjectForm
+	endif
+EndFunction
+
+
 Function UpdateDisplay()
 	if(IsDeleted())
 		Cleanup()
@@ -107,10 +148,24 @@ Function UpdateDisplay()
 	endif	
 	
 	if( ! kControlledRef)
-		kControlledRef = PlaceAtMe(ControlledObjectForm, abDeleteWhenAble = false)
+		Form SpawnMe = GetControlledObjectForm()
+		
+		Bool bStartDisabled = true
+		if(bReverse || bWorkshopMode)
+			bStartDisabled = false
+		endif
+		
+		kControlledRef = PlaceAtMe(SpawnMe, abInitiallyDisabled = bStartDisabled, abDeleteWhenAble = false)
 		
 		if(bLinkControlledObjectToWorkshop)
 			kControlledRef.SetLinkedRef(GetLinkedRef(WorkshopItemKeyword), WorkshopItemKeyword)
+			
+			if(kControlledRef.HasKeyword(WorkshopWorkObject))
+				Actor thisActor = GetAssignedActor()
+				if(thisActor != None)
+					AssignToControlledObject(thisActor)
+				endif
+			endif
 		endif
 	else
 		if(bReverse && bReverseFlipsStacking)
@@ -165,13 +220,33 @@ Function UpdateDisplay()
 EndFunction
 
 
+Function AssignToControlledObject(Actor akActorRef)
+	if( ! kControlledRef.HasKeyword(WorkshopWorkObject))
+		return
+	endif
+	
+	WorkshopParent.AssignActorToObjectPUBLIC(akActorRef as WorkshopNPCScript, kControlledRef as WorkshopObjectScript)
+	
+	; Calling AssignActor will unassign our actor from this object, so let's assign them back to it immediately at the engine level or it will look confusing from an interface standpoint
+	SetActorRefOwner(akActorRef, true)
+EndFunction
+
+
 Function UpdateVars()
 	if( ! InvisibleWorkshopObjectKeyword)
 		InvisibleWorkshopObjectKeyword = Game.GetFormFromFile(iFormID_InvisibleWorkshopObjectKeyword, sPlugin_WSFW) as Keyword
-	endif	
+	endif
+
+	if( ! LayoutExportDisabledKeyword)
+		LayoutExportDisabledKeyword = Game.GetFormFromFile(iFormID_LayoutExportDisabledKeyword, sPlugin_Fallout4) as Keyword
+	endif
 	
 	if( ! WorkshopItemKeyword)
 		WorkshopItemKeyword = Game.GetFormFromFile(iFormID_WorkshopItemKeyword, sPlugin_Fallout4) as Keyword
+	endif
+	
+	if( ! WorkshopWorkObject)
+		WorkshopWorkObject = Game.GetFormFromFile(iFormID_WorkshopWorkObject, sPlugin_Fallout4) as Keyword
 	endif
 	
 	if( ! WorkshopStackedItemParentKeyword)
@@ -185,6 +260,12 @@ Function Delete()
 EndFunction
 
 Function Cleanup()
+	GoToState("Deleted") ; Move to deleted state to ensure UpdateDisplay can't be called again
+	Disable(false)
+	DeleteControlledRef()
+EndFunction
+
+Function DeleteControlledRef()
 	Self.SetLinkedRef(None, WorkshopStackedItemParentKeyword)
 	kControlledRef.SetLinkedRef(None, WorkshopStackedItemParentKeyword)
 	kControlledRef.SetLinkedRef(None, WorkshopItemKeyword)

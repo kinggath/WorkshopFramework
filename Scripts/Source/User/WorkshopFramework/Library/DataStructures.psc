@@ -18,6 +18,11 @@ Struct WorldObject
 	Bool bForceStatic = false
 EndStruct
 
+struct RIDPNodeDisplayData
+	String NodeName
+	Form NodeRealInventoryDisplayPoint
+endStruct
+
 
 Struct ActorValueSet
 	ActorValue AVForm = None
@@ -386,4 +391,102 @@ Struct ProgressBar
 	Float fValue = 0.0
 	Float fLastUpdated = 0.0 ; Holds Utility.GetCurrentGameTime of last update we can use this to monitor for bars that the caller failed to handle correctly and left running
 	Int iBarIndex = -1 ; We need to track the index we are using
+EndStruct
+
+
+; 2.0.0 - Struct to hold GridSettings for grid item creation
+struct GridSettings
+	Float fMaxXDistance = 5000.0
+	;{ Max distance to go in any direction on this axis }
+	Float fMaxYDistance = 5000.0
+	;{ Max distance to go in any direction on this axis }
+	Float fMaxZDistance = 1000.0
+	;{ Max distance to go in any direction on this axis }
+
+	Int iMaxObjectsPerAxisX = 0
+	;{ Max objects to create in each direction on this axis }
+	Int iMaxObjectsPerAxisY = 0
+	;{ Max objects to create in each direction on this axis }
+	Int iMaxObjectsPerAxisZ = 0
+	;{ Max objects to create in each direction on this axis }
+
+	Bool bLinkAsWorkshopItems = false
+	;{ If checked, and a workshop ref is found, these will be linked on WorkshopItemKeyword }
+	Bool bGridWorkshopCellsOnly = true
+	;{ If checked, cells that are part of a Settlement will be used as the boundary instead of the Max Distance or Max Object settings }
+	Int iBoundaryOverlapCount = 1
+	;{ Allow this many on each grid axis to go outside the established range }
+
+	Float fScale = 1.0
+	
+	Float fInitialXOffset = 0.0
+	;{ Offset from origin object to start the grid }
+	Float fInitialYOffset = 0.0
+	;{ Offset from origin object to start the grid }
+	Float fInitialZOffset = 0.0
+	;{ Offset from origin object to start the grid }
+
+	Float fXSpacing = 512.0
+	;{ Space between grid objects on this axis }
+	Float fYSpacing = 512.0
+	;{ Space between grid objects on this axis }
+	Float fZSpacing = 512.0
+	;{ Space between grid objects on this axis }
+
+	Float fXRandomization = 0.0
+    ; Random value +/- added to X coordinate
+    Float fYRandomization = 0.0
+    ; Random value +/- added to Y coordinate
+    Float fZRandomization = 0.0
+    ; Random value +/- added to Z coordinate
+
+	Bool bGridPositiveX = true
+	;{ Grid objects in positive direction on this axis }
+	Bool bGridPositiveY = true
+	;{ Grid objects in positive direction on this axis }
+	Bool bGridPositiveZ = true
+	;{ Grid objects in positive direction on this axis }
+
+	Bool bGridNegativeX = true
+	;{ Grid objects in negative direction on this axis }
+	Bool bGridNegativeY = true
+	;{ Grid objects in negative direction on this axis }
+	Bool bGridNegativeZ = true
+	;{ Grid objects in negative direction on this axis }
+	
+	Bool bAlignToGround = true
+	;{ Grid objects will be placed Z units above the navmesh }
+	
+	Bool bPreventOverlapWhenAligningToGround = true
+    ; When used with bAlignToGround, items will be deleted if they are too close together
+    
+    Bool bHideUntilCellUnloads = false
+    
+    Bool bRandomizeZRotation = false
+endStruct
+
+
+Struct TranslateTarget
+	ObjectReference kTarget
+	Float fPosX
+	Float fPosY
+	Float fPosZ
+	Float fAngleX
+	Float fAngleY
+	Float fAngleZ
+EndStruct
+
+
+
+Struct CustomVendor
+	String sVendorID
+	Faction VendorFaction
+	Keyword VendorKeyword
+	Formlist VendorContainerList
+EndStruct
+
+
+Struct FormCount
+	Form CountedForm
+	Int iCount
 EndStruct

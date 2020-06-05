@@ -129,7 +129,7 @@ Function RegisterResourceProductionType(LeveledItem aProduceMe, ActorValue aReso
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return
 	endif
 	
 	API.WorkshopProductionManager.RegisterProductionResource(aProduceMe, aResourceAV, aTargetContainerKeyword)
@@ -142,7 +142,7 @@ Function UnregisterResourceProductionType(LeveledItem aProduceMe, ActorValue aRe
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return
 	endif
 	
 	API.WorkshopProductionManager.UnregisterProductionResource(aProduceMe, aResourceAV)
@@ -171,7 +171,7 @@ Function RegisterResourceConsumptionType(Form aConsumeMe, ActorValue aResourceAV
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return
 	endif
 	
 	API.WorkshopProductionManager.RegisterConsumptionResource(aConsumeMe, aResourceAV, aSearchContainerKeyword, abIsComponentFormList)
@@ -183,7 +183,7 @@ Function UnregisterResourceConsumptionType(Form aConsumeMe, ActorValue aResource
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return
 	endif
 	
 	API.WorkshopProductionManager.UnregisterConsumptionResource(aConsumeMe, aResourceAV)
@@ -199,7 +199,7 @@ Bool Function IsPlayerInWorkshopMode() global
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return false
 	endif
 	
 	WorkshopScript workshopRef = API.WSFW_Main.LastWorkshopAlias.GetRef() as WorkshopScript
@@ -378,7 +378,7 @@ Bool Function IsF4SERunning() global
 	
 	if( ! API)
 		Debug.Trace("[WSFW] Failed to get API.")
-		return None
+		return false
 	endif
 	
 	return API.F4SEManager.IsF4SERunning
@@ -391,6 +391,7 @@ EndFunction
 	; Advanced
 	; -----------------------------------
 	; -----------------------------------
+
 
 
 ; ------------------------------
@@ -433,6 +434,81 @@ Int Function CreateSimpleBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopS
 	
 	return iBatchID
 EndFunction
+
+
+; ------------------------------
+; GetDefaultPlaceObjectsBatchAV
+;
+; Description: Grabs the default AV to expect from the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated event so you can check that the event data matches what your object is expecting
+; ------------------------------
+ActorValue Function GetDefaultPlaceObjectsBatchAV() global
+	return Game.GetFormFromFile(0x00004CA2, "WorkshopFramework.esm") as ActorValue
+EndFunction
+
+
+; ------------------------------
+; GetDefaultPlaceObjectsBatchAV
+;
+; Description: Grabs the map marker from a location
+; ------------------------------
+ObjectReference Function GetMapMarker(Location akLocation) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	int iReserveID = Utility.RandomInt(1, 999999)
+	if(API.EventKeyword_FetchLocationData.SendStoryEventAndWait(akLocation, aiValue1 = iReserveID))
+		Utility.Wait(0.1) ; Give the event quest a moment to set the reserve ID
+		
+		WorkshopFramework:Quests:FetchLocationData[] FetchLocationDataQuests = API.FetchLocationDataQuests
+		int i = 0
+		while(i < FetchLocationDataQuests.Length)
+			if(FetchLocationDataQuests[i].IsRunning() && FetchLocationDataQuests[i].iReserveID == iReserveID)
+				ObjectReference kMapMarkerRef = FetchLocationDataQuests[i].MapMarker.GetRef()
+				
+				FetchLocationDataQuests[i].Stop()
+				
+				return kMapMarkerRef
+			endif
+			
+			i += 1
+		endWhile
+	endif
+	
+	return None
+EndFunction
+
+
+	; -----------------------------------
+	; -----------------------------------
+	; Do NOT Use - Functions below here are needed by this API script only
+	; -----------------------------------
+	; -----------------------------------	
+
+
+
+; ------------------------------
+; GetAPI
+;
+; Description: Used internally by these functions to get simple access to properties
+; ------------------------------
+
+WorkshopFramework:WSFW_APIQuest Function GetAPI() global
+	WorkshopFramework:WSFW_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSFW_APIQuest
+	
+	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
+		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
+			Utility.WaitMenuMode(0.1)
+		else
+			; Player still hasn't reached a point where the quests are ready to start - let's not queue these up
+			return None
+		endif
+	endif
+	
+	return API
+EndFunction
+
+
+
+
 
 
 
@@ -490,44 +566,4 @@ Int Function CreateBatchSettlementObjects(WorldObject[] PlaceMe, WorkshopScript 
 	int iBatchID = API.PlaceObjectManager.CreateBatchObjects(PlaceMe, akWorkshopRef, None, akPositionRelativeTo, abStartEnabled, bRequestEvents)
 	
 	return iBatchID
-EndFunction
-
-
-; ------------------------------
-; GetDefaultPlaceObjectsBatchAV
-;
-; Description: Grabs the default AV to expect from the WorkshopFramework:PlaceObjectManager.ObjectBatchCreated event so you can check that the event data matches what your object is expecting
-; ------------------------------
-ActorValue Function GetDefaultPlaceObjectsBatchAV() global
-	return Game.GetFormFromFile(0x00004CA2, "WorkshopFramework.esm") as ActorValue
-EndFunction
-
-
-	; -----------------------------------
-	; -----------------------------------
-	; Do NOT Use - Functions below here are needed by this API script only
-	; -----------------------------------
-	; -----------------------------------	
-
-
-
-; ------------------------------
-; GetAPI
-;
-; Description: Used internally by these functions to get simple access to properties
-; ------------------------------
-
-WorkshopFramework:WSFW_APIQuest Function GetAPI() global
-	WorkshopFramework:WSFW_APIQuest API = Game.GetFormFromFile(0x00004CA3, "WorkshopFramework.esm") as WorkshopFramework:WSFW_APIQuest
-	
-	if( ! (API.MasterQuest as WorkshopFramework:MainQuest).bFrameworkReady)
-		if(API.MasterQuest.SafeToStartFrameworkQuests()) 
-			Utility.WaitMenuMode(0.1)
-		else
-			; Player still hasn't reached a point where the quests are ready to start - let's not queue these up
-			return None
-		endif
-	endif
-	
-	return API
 EndFunction

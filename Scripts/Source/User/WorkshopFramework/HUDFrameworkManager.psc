@@ -90,17 +90,24 @@ endEvent
 ; ---------------------------------------------
 
 Function HandleQuestInit()
-	RegisterForMenuOpenCloseEvent("WorkshopMenu")
-	
 	RegisteredProgressBars = new ProgressBar[0]
 	
 	Parent.HandleQuestInit()
+	
+	MustRunOnStartup() 
+EndFunction
+
+
+Function MustRunOnStartup() 
+	RegisterForMenuOpenCloseEvent("WorkshopMenu")
+	PrepareHUDFramework()
 EndFunction
 
 
 Function HandleGameLoaded()
-	Parent.HandleGameLoaded()
-	PrepareHUDFramework()
+	MustRunOnStartup() 
+	
+	Parent.HandleGameLoaded()	
 	
 	if(HudInstance == None || RegisteredWidgets == None)
 		RegisteredWidgets = new String[0]
@@ -134,6 +141,11 @@ Function HandleInstallModChanges()
 	endif
 	
 	Parent.HandleInstallModChanges()
+EndFunction
+
+; Called by HUDFramework
+Function HUD_WidgetLoaded(string asWidgetName)
+	; Do we want to do anything?
 EndFunction
 
 
@@ -281,11 +293,11 @@ Function CompleteProgressBar(Form akHandler, String asCustomIdentifier)
 EndFunction
 
 Function ForceCloseAllProgressBars()
-	int i = 0
-	while(i < RegisteredProgressBars.Length)
+	int i = RegisteredProgressBars.Length - 1
+	while(i >= 0)
 		CompleteProgressBar(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID)
 		
-		i += 1
+		i -= 1
 	endWhile
 EndFunction
 
@@ -348,8 +360,12 @@ EndFunction
 ; ----------------------------------
 
 Bool Function RegisterWidget(ScriptObject akHandler, String asWidgetName, Float afPositionX, Float afPositionY, Bool abLoadNow = true, Bool abAutoLoad = true)
-	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+	if( ! IsHUDFrameworkInstalled || ! IsRunning()) ; 1.0.5 - Needs HF to continue
 		return false
+	endif
+	
+	if(RegisteredWidgets == None)
+		RegisteredWidgets = new String[0]
 	endif
 	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)

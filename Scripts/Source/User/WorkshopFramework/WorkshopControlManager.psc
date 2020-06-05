@@ -98,16 +98,16 @@ EndEvent
 ; ---------------------------------------------
 
 Function HandleQuestInit()
-	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
-	
 	Parent.HandleQuestInit()
+	
+	RegisterForEvents()
 EndFunction
 
 
 Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
 	
-	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
+	RegisterForEvents()
 EndFunction
 
 ; ---------------------------------------------
@@ -118,6 +118,10 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+Function RegisterForEvents() 
+	RegisterForCustomEvent(WorkshopParent, "WorkshopObjectBuilt")
+EndFunction
 
 Function TurnSettlementAgainstPlayer(WorkshopScript akWorkshopRef)
 	CaptureSettlement(akWorkshopRef, None, abSeverEnemySupplyLines = false, abRemoveEnemySettlers = false, abKillEnemySettlers = false, abCaptureTurrets = true, abCaptureContainers = false, abSettlersJoinFaction = false, abTogglePlayerOwnership = false, abPlayerIsEnemy = true, iCreateInvadingSettlers = -1)
@@ -562,4 +566,6 @@ Function SetControllingFaction(WorkshopScript akWorkshopRef, FactionControl aFac
 	Faction thisFaction = GetFactionFromFactionData(aFactionData)
 	akWorkshopRef.ControllingFaction = thisFaction
 	akWorkshopRef.FactionControlData = aFactionData
+	
+	WorkshopParent.UpdateMinutemenRecruitmentAvailable()
 EndFunction

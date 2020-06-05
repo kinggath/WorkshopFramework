@@ -77,6 +77,6 @@ Function RunCode()
 	
 	; Can't find or can't restore, build a new one
 	if(bCreateNew)
-		PlaceObjectManager.CreateObject(RestoreObjectData, kWorkshopRef, abCallbackEventNeeded = false)
+		Int iPlaceObjectCallbackID = PlaceObjectManager.CreateObject(RestoreObjectData, kWorkshopRef, abCallbackEventNeeded = false)
 	endif
 EndFunction

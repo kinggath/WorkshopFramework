@@ -178,61 +178,105 @@
 	]
 	},
 	{
-		"pageDisplayName": "Message Options",   
+		"pageDisplayName": "Door Management Options",   
 		"content": [
 			{ 
-			  "id": "AutoplayMessages:MessageOptions",
-			  "text": "Autoplay Messages",
+			  "id": "DoorManagement:DoorOptions",
+			  "text": "Door Management",
 			  "type": "switcher",
-			  "help": "[Default: OFF] All messages using this system that were queued, will begin displaying as soon as conditions are clear.",
+			  "groupControl": 1,
+			  "help": "[Default: OFF] If on, settlement doors can be configured to auto-open and close based on the conditions defined below.",
 			  "valueOptions": {
 				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|92C6"
-			  }
-			},
-			{ 
-			  "id": "SuppressAllMessages:MessageOptions",
-			  "text": "Suppress All Messages",
-			  "type": "switcher",
-			  "help": "[Default: OFF] All messages using this system should wait for you to read them via holotape activation.",
-			  "valueOptions": {
-				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|92C8"
-			  }
-			},
-			{ 
-			  "id": "SuppressMessagesDuringCombat:MessageOptions",
-			  "text": "Suppress Messages During Combat",
-			  "type": "switcher",
-			  "help": "[Default: OFF] Messages using this system, that are sent during combat, will be queued until you have finished the fight.",
-			  "valueOptions": {
-				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|92C9"
-			  }
-			},
-			{ 
-			  "id": "SuppressMessagesDuringConversation:MessageOptions",
-			  "text": "Suppress Messages During Conversation",
-			  "type": "switcher",
-			  "help": "[Default: OFF] Messages using this system, that are sent during conversations, will be queued until you have finished.",
-			  "valueOptions": {
-				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|92CA"
-			  }
-			},
-			{ 
-			  "id": "WorkshopTutorialMessages:MessageOptions",
-			  "text": "Workshop Tutorial Messages",
-			  "type": "switcher",
-			  "help": "[Default: ON] Toggle the tutorial messages that tell you about how to use the Workshop system.",
-			  "valueOptions": {
-				"sourceType": "GlobalValue",
-				"sourceForm": "WorkshopFramework.esm|7B0B"
+				"sourceForm": "WorkshopFramework.esm|1DB39"
 			  },
 			  "action": {
 					"type": "CallFunction",
-					"form": "WorkshopFramework.esm|F99", 
-					"function": "MCM_ToggleWorkshopTutorials"
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
+				}
+			},
+			{ 
+			  "id": "AutoCloseNPC:DoorOptions",
+			  "text": "Auto-Close NPC Opened",
+			  "type": "switcher",
+			  "groupCondition": 1,
+			  "help": "[Default: ON] Settlement doors opened by NPCs will be auto-closed shortly after opening.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1DB3D"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
+				}
+			},
+			{ 
+			  "id": "AutoClosePlayer:DoorOptions",
+			  "text": "Auto-Close Player Opened",
+			  "type": "switcher",
+			  "groupCondition": 1,
+			  "help": "[Default: ON] Settlement doors opened by the Player will be auto-closed shortly after opening.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1DB3E"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
+				}
+			},
+			{ 
+			  "id": "AutoCloseDelay:DoorOptions",
+			  "text": "Auto-Close Delay",
+			  "type": "slider",
+			  "groupCondition": 1,
+			  "help": "[Default: 5] Number of seconds before the auto-close feature will trigger.",
+			  "valueOptions": {
+				"min": 5,
+				"max": 15,
+				"step": 5,
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1DB3C"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
+				}
+			},
+			{ 
+			  "id": "AutoOpenWSEnter:DoorOptions",
+			  "text": "Auto-Open All In Workshop Mode",
+			  "type": "switcher",
+			  "groupCondition": 1,
+			  "help": "[Default: ON] When in workshop mode, all settlement doors will open.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1DB3B"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
+				}
+			},
+			{ 
+			  "id": "AutoCloseWSExit:DoorOptions",
+			  "text": "Auto-Close All After Workshop Mode",
+			  "type": "switcher",
+			  "groupCondition": 1,
+			  "help": "[Default: ON] After exiting workshop mode, all settlement doors will close.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|1DB3A"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|1DB38", 
+					"function": "SettingsUpdated"
 				}
 			}
 		]
@@ -343,7 +387,67 @@
 			  }
 			}
 		]
-	},		
+	},
+	{
+		"pageDisplayName": "Message Options",   
+		"content": [
+			{ 
+			  "id": "AutoplayMessages:MessageOptions",
+			  "text": "Autoplay Messages",
+			  "type": "switcher",
+			  "help": "[Default: OFF] All messages using this system that were queued, will begin displaying as soon as conditions are clear.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C6"
+			  }
+			},
+			{ 
+			  "id": "SuppressAllMessages:MessageOptions",
+			  "text": "Suppress All Messages",
+			  "type": "switcher",
+			  "help": "[Default: OFF] All messages using this system should wait for you to read them via holotape activation.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C8"
+			  }
+			},
+			{ 
+			  "id": "SuppressMessagesDuringCombat:MessageOptions",
+			  "text": "Suppress Messages During Combat",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Messages using this system, that are sent during combat, will be queued until you have finished the fight.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92C9"
+			  }
+			},
+			{ 
+			  "id": "SuppressMessagesDuringConversation:MessageOptions",
+			  "text": "Suppress Messages During Conversation",
+			  "type": "switcher",
+			  "help": "[Default: OFF] Messages using this system, that are sent during conversations, will be queued until you have finished.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|92CA"
+			  }
+			},
+			{ 
+			  "id": "WorkshopTutorialMessages:MessageOptions",
+			  "text": "Workshop Tutorial Messages",
+			  "type": "switcher",
+			  "help": "[Default: ON] Toggle the tutorial messages that tell you about how to use the Workshop system.",
+			  "valueOptions": {
+				"sourceType": "GlobalValue",
+				"sourceForm": "WorkshopFramework.esm|7B0B"
+			  },
+			  "action": {
+					"type": "CallFunction",
+					"form": "WorkshopFramework.esm|F99", 
+					"function": "MCM_ToggleWorkshopTutorials"
+				}
+			}
+		]
+	},	
 	{                   
 		"pageDisplayName": "Tools",   
 		"content": [
@@ -380,6 +484,16 @@
 				"type": "CallFunction",
 				"form": "WorkshopFramework.esm|269E", 
 				"function": "ForceCloseAllProgressBars"
+			}
+		 },
+		 {
+			"text": "Claim All Settlements",
+			"type": "button",
+			"help": "After exiting MCM, all settlement markers will be revealed, and the workshops will be claimed.",
+			"action": {
+				"type": "CallFunction",
+				"form": "WorkshopFramework.esm|F99", 
+				"function": "ClaimAllSettlements"
 			}
 		 }
 		]
