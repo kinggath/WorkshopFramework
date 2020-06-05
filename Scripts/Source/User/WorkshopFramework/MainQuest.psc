@@ -24,8 +24,8 @@ CustomEvent PlayerExitedSettlement
 ; Consts
 ; ---------------------------------------------
 
-Int iTimerID_BuildableAreaCheck = 100
-Float fTimerLength_BuildableAreaCheck = 3.0
+Int iTimerID_BuildableAreaCheck = 100 Const
+Float fTimerLength_BuildableAreaCheck = 3.0 Const
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -73,6 +73,8 @@ EndGroup
 
 Bool Property bFrameworkReady = false Auto Hidden
 Bool Property bLastSettlementUnloaded = true Auto Hidden
+
+Int Property iSaveFileMonitor Auto Hidden ; Important - only meant to be edited by our Nanny system!
 
 ; ---------------------------------------------
 ; Vars
@@ -259,18 +261,21 @@ Function HandleGameLoaded()
 	; Make sure our debug log is open
 	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
 	
+	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 	UpdatePluginFlags()
 	
-	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> Calling HandleGameLoaded on Parent of WSFW MainQuest")
+	if( ! PlayerRef.HasPerk(ActivationPerk))
+		PlayerRef.AddPerk(ActivationPerk) ; 1.2.0 - Allow for alternate activations
+	endif
+	
+	StartQuests()
+	
 	Parent.HandleGameLoaded()
 EndFunction
 
 
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
-	
-	RegisterForMenuOpenCloseEvent("WorkshopMenu")
-	PlayerRef.AddPerk(ActivationPerk) ; 1.2.0 - Allow for alternate activations
 EndFunction
 
 
@@ -291,7 +296,6 @@ EndFunction
 Bool Function StartQuests()
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> WSFW MainQuest.StartQuests called.")
 	bFrameworkReady = Parent.StartQuests()
-	
 	
 	return bFrameworkReady
 EndFunction
@@ -322,6 +326,7 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
 
 ; 1.2.0 - Adding a new manage pop-up menu to workbenches to avoid the player needing to use MCM or holotape for some things
 Function PresentManageSettlementMenu(WorkshopScript akWorkshopRef)
@@ -418,6 +423,61 @@ Function UpdatePluginFlags()
 		
 		i += 1
 	endWhile
+EndFunction
+
+; 2.0.0 - New utility
+Function ClaimAllSettlements()
+	Int[] iHasBadMapMarkers = new Int[0]
+	; For settlements with known bad map markers we can correct them here
+	iHasBadMapMarkers.Add(0x001F0711) ; Hangman's Alley
+	
+	; Unlock all fast travel points
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		int iFormID = Workshops[i].GetFormID()
+		
+		if(Workshops[i].myMapMarker != None && iHasBadMapMarkers.Find(iFormID) < 0)
+			Workshops[i].myMapMarker.Enable(false)
+			Workshops[i].myMapMarker.AddToMap(true)
+		else
+			ObjectReference thisMapMarker = WorkshopFramework:WSFW_API.GetMapMarker(Workshops[i].myLocation)
+			if(thisMapMarker)
+				WOrkshops[i].myMapMarker = thisMapMarker
+				thisMapMarker.Enable(false)
+				thisMapMarker.AddToMap(true)
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	; Reveal travel locations for NukaWorld and Far Harbor
+	if(Game.IsPluginInstalled("DLCNukaWorld.esm"))
+		ObjectReference kMapMarkerRef = Game.GetFormFromFile(0x00025515, "DLCNukaWorld.esm") as ObjectReference
+		
+		if(kMapMarkerRef)
+			kMapMarkerRef.Enable(false)
+			kMapMarkerRef.AddToMap(true)
+		endif
+	endif
+	
+	if(Game.IsPluginInstalled("DLCCoast.esm"))
+		ObjectReference kEnableParent = Game.GetFormFromFile(0x0003FEE7, "DLCCoast.esm") as ObjectReference
+		
+		if(kEnableParent)
+			kEnableParent.Enable(false)
+			
+			ObjectReference kMapMarkerRef = Game.GetFormFromFile(0x0003FEE5, "DLCCoast.esm") as ObjectReference
+			
+			if(kMapMarkerRef)
+				kMapMarkerRef.AddToMap(true)
+			endif
+		endif
+	endif
+	
+	; Handle claiming of workshops
+	WorkshopParent.ToggleOnAllWorkshops()
 EndFunction
 
 

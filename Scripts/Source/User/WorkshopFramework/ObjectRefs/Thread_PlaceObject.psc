@@ -55,6 +55,8 @@ Scene Property WorkshopRadioScene01 Auto Const Mandatory
 ObjectReference Property WorkshopRadioRef Auto Mandatory ; Do not make Const - we need to clear this ref later
 { Found on WorkshopParent script property of same name }
 
+Keyword Property FauxPoweredKeyword Auto Const Mandatory
+
 Keyword Property ForceStaticKeyword Auto Const Mandatory
 { Keyword to tag objects so we can monitor for their onload event }
 
@@ -90,6 +92,8 @@ Bool Property bForceWorkshopItemLink = true Auto Hidden
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
+RefCollectionAlias Property AddPlacedObjectToCollection Auto Hidden ; 2.0.0 - Simple way for calling function to remotely gain access to these - they'll be in charge of unpersisting these
+
 
 Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of threads
 
@@ -431,6 +435,12 @@ Function RunCode()
 					kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
 				endif
 			endif
+			
+			if(AddPlacedObjectToCollection != None)
+				AddPlacedObjectToCollection.AddRef(kResult)
+			endif
+			
+			;ModTrace("[Placed Object] " + kResult)
 		endif
 	endif
 	
@@ -442,29 +452,34 @@ EndFunction
 
 Function HandleSimSettlementsData(ObjectReference akPlacedRef)
 	ScriptObject PlotRef = akPlacedRef.CastAs("SimSettlements:SimPlot")
-				
-	; Pause init and send plot to Sim Settlements for queued initilization - this prevents SS Plots from mass spamming functions as soon as they are spawned
-	PlotRef.SetPropertyValue("bPauseInit", true)
 	
-	Form WSFWRelay = Game.GetFormFromFile(0x0000BD42, "SimSettlements.esm")
-	ScriptObject CastWSFWRelay = WSFWRelay.CastAs("SimSettlements:WorkshopFrameworkIntegration")
-	
-	Var[] kArgs = new Var[1]
-	kArgs[0] = akPlacedRef ; Don't send PlotRef here or you'll get a type mismatch error
-	CastWSFWRelay.CallFunction("RegisterSpawnedPlot", kArgs)
-	
-	; Prep BuildingPlan
-	PlotRef.SetPropertyValue("ForcedBuildingPlan", BuildingPlan)
-	PlotRef.SetPropertyValue("iForceStartingLevel", iStartingLevel) ; This will force to appropriate level
-	
-	; Prep Skin
-	if(SkinPlan != None)
-		PlotRef.SetPropertyValue("ForcedSkin", SkinPlan)
-	endif
-	
-	; Prep VIP Story
-	if(StoryPlan != None)
-		PlotRef.SetPropertyValue("ForcedVIP", StoryPlan)
+	if(PlotRef != None)
+		; Pause init and send plot to Sim Settlements for queued initilization - this prevents SS Plots from mass spamming functions as soon as they are spawned
+		PlotRef.SetPropertyValue("bPauseInit", true)
+		
+		Form WSFWRelay = Game.GetFormFromFile(0x0000BD42, "SimSettlements.esm")
+		ScriptObject CastWSFWRelay = WSFWRelay.CastAs("SimSettlements:WorkshopFrameworkIntegration")
+		
+		Var[] kArgs = new Var[1]
+		kArgs[0] = akPlacedRef ; Don't send PlotRef here or you'll get a type mismatch error
+		CastWSFWRelay.CallFunction("RegisterSpawnedPlot", kArgs)
+		
+		; Prep BuildingPlan
+		if(BuildingPlan != None)
+			PlotRef.SetPropertyValue("ForcedBuildingPlan", BuildingPlan)
+		endif
+		
+		PlotRef.SetPropertyValue("iForceStartingLevel", iStartingLevel) ; This will force to appropriate level
+		
+		; Prep Skin
+		if(SkinPlan != None)
+			PlotRef.SetPropertyValue("ForcedSkin", SkinPlan)
+		endif
+		
+		; Prep VIP Story
+		if(StoryPlan != None)
+			PlotRef.SetPropertyValue("ForcedVIP", StoryPlan)
+		endif
 	endif
 EndFunction
 
@@ -513,12 +528,14 @@ Function FauxPowered(ObjectReference akRef)
 	
 	akRef.SetValue(PowerGenerated, 0.1)
 	akRef.SetValue(WorkshopResourceObject, 1.0)
+	akRef.AddKeyword(FauxPoweredKeyword)
 EndFunction
 
 
 Function SendExtraData(ObjectReference akRef)
 	if(ExtraData_Form01Set || ExtraData_Form02Set || ExtraData_Form03Set || ExtraData_Number01Set || ExtraData_Number02Set || ExtraData_Number03Set || ExtraData_String01Set || ExtraData_String02Set || ExtraData_String03Set || ExtraData_Bool01Set || ExtraData_Bool02Set || ExtraData_Bool03Set)
 		; Users should grab this data with GetExtraData and then trigger a timer or a CallFunctionNoWait to ensure this thread isn't held up while they process the data
+		
 		akRef.OnTriggerEnter(Self) ; Send import notice - objects can define this vanilla event to be treated like a function so they grab the ExtraData stored on this thread
 	endif
 EndFunction

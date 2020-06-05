@@ -158,7 +158,11 @@ Function HandleQuestInit()
 	; init arrays
 	RunningQuests = new ReservedAssaultQuest[0]
 	
-	RegisterDefaultAssaultQuests()
+	RegisterForEvents()
+EndFunction
+
+Function HandleGameLoaded()
+	RegisterForEvents()
 EndFunction
 
 
@@ -177,6 +181,10 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+Function RegisterForEvents() 
+	RegisterDefaultAssaultQuests()
+EndFunction
 
 Function RegisterDefaultAssaultQuests()
 	int i = 0

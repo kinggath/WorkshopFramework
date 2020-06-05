@@ -1,5 +1,5 @@
 ; ---------------------------------------------
-; WorkshopFramework:ObjectRefs:Thread_ToggleInvisibleWorkshopObjects.psc - by kinggath
+; WorkshopFramework:ObjectRefs:Thread_UpdateClutteredItems.psc - by kinggath
 ; ---------------------------------------------
 ; Reusage Rights ------------------------------
 ; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below).
@@ -11,7 +11,7 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:ObjectRefs:Thread_ToggleInvisibleWorkshopObjects extends WorkshopFramework:Library:ObjectRefs:Thread
+Scriptname WorkshopFramework:ObjectRefs:Thread_UpdateClutteredItems extends WorkshopFramework:Library:ObjectRefs:Thread
 
 ; -
 ; Consts
@@ -27,7 +27,6 @@ Scriptname WorkshopFramework:ObjectRefs:Thread_ToggleInvisibleWorkshopObjects ex
 ; Properties
 ; -
 
-Bool Property bInWorkshopMode Auto Hidden
 ObjectReference[] Property kObjectRefs Auto Hidden
 
 ; -
@@ -47,9 +46,9 @@ EndFunction
 Function RunCode()
 	int i = 0
 	while(i < kObjectRefs.Length)
-		WorkshopFramework:ObjectRefs:InvisibleWorkshopObject asInvis = kObjectRefs[i] as WorkshopFramework:ObjectRefs:InvisibleWorkshopObject
-		if(asInvis)
-			asInvis.Toggle(bInWorkshopMode)
+		WorkshopFramework:ObjectRefs:ClutteredItem asCluttered = kObjectRefs[i] as WorkshopFramework:ObjectRefs:ClutteredItem
+		if(asCluttered)
+			asCluttered.DisplayClutter()
 		endif
 		
 		i += 1

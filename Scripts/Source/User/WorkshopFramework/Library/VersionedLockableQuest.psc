@@ -1,5 +1,5 @@
 ; ---------------------------------------------
-; WorkshopFramework:Library:ControlledQuest.psc - by kinggath
+; WorkshopFramework:Library:VersionedLockableQuest.psc - by kinggath
 ; ---------------------------------------------
 ; Reusage Rights ------------------------------
 ; You are free to use this script or portions of it in your own mods, provided you give me credit in your description and maintain this section of comments in any released source code (which includes the IMPORTED SCRIPT CREDIT section to give credit to anyone in the associated Import scripts below).

@@ -90,7 +90,7 @@ int Property VendorTopLevel = 2 Auto Const
 ; Vars
 ; ---------------------------------------------
 
-Bool bSetupListsBlock ; Unlike a lock, with the block we will just reject any incoming calls if a block is held
+Bool bSetupListsBlock = false ; Unlike a lock, with the block we will just reject any incoming calls if a block is held
 
 
 ; ---------------------------------------------
@@ -114,6 +114,8 @@ Function HandleQuestInit()
 		
 		i += 1
 	endWhile
+	
+	SetupLeveledLists()
 EndFunction
 
 

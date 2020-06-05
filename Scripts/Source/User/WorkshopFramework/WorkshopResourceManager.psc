@@ -25,12 +25,15 @@ CustomEvent ResourceShortageExpired
 ; ---------------------------------------------
 ; Consts
 ; ---------------------------------------------
-int RecheckWithinSettlementTimerID = 100 Const
-int FixSettlerCountTimerID = 101 Const
+int iTimerID_RecheckWithinSettlement = 100 Const
+Float fTimerLength_RecheckWithinSettlement = 5.0 Const
+int iTimerID_FixSettlerCount = 101 Const ; TODO - This doesn't appear to be started anywhere
 int iTimerID_DoubleCheckRemoteBuiltResources = 102 Const ; 1.0.5 - Switching remote resource management to a queue system
+Float fTimerLength_DoubleCheckRemoteBuiltResources = 3.0 Const
 
 int iTimerID_CheckResourceShortages = 103 ; 1.0.8 - Adding new ResourceShortage system
-float fTimerLength_CheckResourceShortages = 1.0 ; 1.0.8 - Checking daily
+float fTimerLength_CheckResourceShortages = 24.0 ; 1.0.8 - Checking daily
+Float fLastTimerStart_CheckResourceShortages = 0.0 ; Intentionally not const - organizing timer vars
 
 float fResourceShortageExpirationPeriod = 2.0 ; 1.0.8 - The amount of time before a ResourceShortage expires (in game days), this should be longer than the daily check in case the daily check hasn't completed within the expiration period
 
@@ -259,9 +262,9 @@ EndEvent
 
 
 Event OnTimer(Int aiTimerID)
-	if(aiTimerID == RecheckWithinSettlementTimerID)
+	if(aiTimerID == iTimerID_RecheckWithinSettlement)
 		CheckForWorkshopChange(true)
-	elseif(aiTimerID == FixSettlerCountTimerID)
+	elseif(aiTimerID == iTimerID_FixSettlerCount)
 		Bool bSettlerCountStable = false
 		ObjectReference kWorkshopRef = LatestWorkshop.GetRef()
 		if(kWorkshopRef)
@@ -291,7 +294,7 @@ Event OnTimerGameTime(Int aiTimerID)
 	if(aiTimerID == iTimerID_CheckResourceShortages)
 		UpdateAllResourceShortages()
 		
-		StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)
+		StartCheckResourceShortagesTimer()
 	endif
 EndEvent
 
@@ -423,11 +426,7 @@ Function HandleQuestInit()
 	Workshops = new WorkshopScript[0]
 	WorkshopLocations = new Location[0]
 	
-	; Register for events
-	RegisterForRemoteEvent(PlayerRef, "OnLocationChange") ; We want to be directly aware of this for settlements like Spectacle Island
-	RegisterForCustomEvent(WorkshopParent, "WorkshopInitializeLocation")
-	
-	WorkshopParent.RegisterForWorkshopEvents(Self, bRegister = true)
+	RegisterForEvents()
 	
 	if(WorkshopParent.GetStageDone(iWorkshopParentInitializedStage))
 		SetupAllWorkshopProperties()
@@ -438,6 +437,8 @@ EndFunction
 
 
 Function HandleGameLoaded()
+	RegisterForEvents()
+	
 	Parent.HandleGameLoaded()
 	
 	if( ! Workshops)
@@ -449,6 +450,12 @@ Function HandleGameLoaded()
 	endif
 	
 	CleanFormList(WorkshopTrackedAVs)
+	
+	Float fCurrentGameTime = Utility.GetCurrentGameTime()
+	
+	if(fLastTimerStart_CheckResourceShortages < fCurrentGameTime - (fTimerLength_CheckResourceShortages/24.0))
+		StartCheckResourceShortagesTimer()
+	endif
 EndFunction
 
 
@@ -502,7 +509,7 @@ Function HandleInstallModChanges()
 	
 	if(iInstalledVersion < 12)
 		; 1.0.8 - Starting resource shortage loop
-		StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)
+		StartCheckResourceShortagesTimer()
 	endif
 	
 	
@@ -586,6 +593,20 @@ EndFunction
 ; Functions
 ; ---------------------------------------------
 
+Function RegisterForEvents()
+	; Register for events
+	RegisterForRemoteEvent(PlayerRef, "OnLocationChange") ; We want to be directly aware of this for settlements like Spectacle Island
+	RegisterForCustomEvent(WorkshopParent, "WorkshopInitializeLocation")
+	
+	WorkshopParent.RegisterForWorkshopEvents(Self, bRegister = true)
+EndFunction
+
+
+Function StartCheckResourceShortagesTimer()
+	fLastTimerStart_CheckResourceShortages = Utility.GetCurrentGameTime()
+	StartTimerGameTime(fTimerLength_CheckResourceShortages, iTimerID_CheckResourceShortages)
+EndFunction
+
 Function SetupAllWorkshopProperties()
 	int i = 0
 	WorkshopScript[] WorkshopsArray = WorkshopParent.Workshops
@@ -626,7 +647,7 @@ Function CheckForWorkshopChange(Bool abTimedDoubleCheck = false)
 		if(thisWorkshop != previousWorkshop)		
 			if( ! PlayerRef.IsWithinBuildableArea(thisWorkshop))
 				if( ! abTimedDoubleCheck)
-					StartTimer(5.0, RecheckWithinSettlementTimerID) ; Check again in a few seconds, the player could just be hanging out near the border
+					StartTimer(fTimerLength_RecheckWithinSettlement, iTimerID_RecheckWithinSettlement) ; Check again in a few seconds, the player could just be hanging out near the border
 				endif
 			elseif( ! previousWorkshop || ! PlayerRef.IsWithinBuildableArea(previousWorkshop))
 				HandleWorkshopChange(thisWorkshop)
@@ -706,9 +727,9 @@ Function FixSettlerCount()
 	int i = 0
 	int iPopulation = 0
 	while(i < LatestSettlementResources.GetCount())
-		WorkshopNPCScript asWorkshopNPC = LatestSettlementResources.GetAt(i) as WorkshopNPCScript
+		Actor asActor = LatestSettlementResources.GetAt(i) as Actor
 		
-		if(asWorkshopNPC && asWorkshopNPC.bCountsForPopulation)
+		if(asActor && WorkshopFramework:WorkshopFunctions.CountsForPopulation(asActor))
 			iPopulation += 1
 		endif
 		
@@ -1011,7 +1032,7 @@ Function HandleRemoteBuiltResources()
 	
 	if(RemoteBuiltResources.GetCount() > 0)
 		; Some more resources were added while we were running, just in case a follow-up event doesn't trigger this, we'll check again shortly
-		StartTimer(3.0, iTimerID_DoubleCheckRemoteBuiltResources)
+		StartTimer(fTimerLength_DoubleCheckRemoteBuiltResources, iTimerID_DoubleCheckRemoteBuiltResources)
 	endif
 EndFunction
 

@@ -59,6 +59,7 @@ Function HandleGameLoaded()
 	Parent.HandleGameLoaded()
 	
 	CleanMenus()
+	ProcessQueuedRegistrations()
 EndFunction
 
 ; ---------------------------------------------
@@ -75,8 +76,6 @@ Function CleanMenus()
 	CleanFormListRecursively(WorkshopMenuMain)
 	
 	bMenuCleaningInProgress = false
-	
-	ProcessQueuedRegistrations()
 EndFunction
 
 

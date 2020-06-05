@@ -25,7 +25,7 @@ CustomEvent WorkshopNPCSpawned ; 1.1.1
 ; Consts
 ; ---------------------------------------------
 
-int RecruitmentLoopTimerID = 100 Const
+int iTimerID_Recruitment = 100 Const
 int iDefaultRecruitmentGuardChance = 20 Const ; Copy of value defined in WorkshopScript
 
 ; ---------------------------------------------
@@ -40,14 +40,23 @@ Group Controllers
 	GlobalVariable Property WorkshopCurrentWorkshopID Auto Const Mandatory
 	GlobalVariable Property WSFW_Setting_RobotsCountTowardsMaxPopulation Auto Const Mandatory
 	GlobalVariable Property WSFW_Setting_RecruitSettlersOnFirstBeaconActivation Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_AutoAssign_Beds Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_AutoAssign_Defense Auto Const Mandatory
+	GlobalVariable Property WSFW_Setting_AutoAssign_Food Auto Const Mandatory
 EndGroup
 
 
 Group Aliases
 	ReferenceAlias Property WorkshopNewSettlerAlias Auto Const Mandatory
 	{ Point to WorkshopNewSettler on WorkshopParent }
-	ReferenceAlias Property WorkshopAIAlias Auto Const Mandatory
+	ReferenceAlias Property WorkshopActorApply Auto Const Mandatory
 	{ Point to alias with our AI package }
+	RefCollectionAlias Property CaravanActorAliases Auto Const Mandatory
+	{ Linked to WorkshopParent alias of same name }
+	RefCollectionAlias Property CaravanActorRenameAliases Auto Const Mandatory
+	{ Linked to WorkshopParent alias of same name }
+	RefCollectionAlias Property CaravanBrahminAliases Auto Const Mandatory
+	{ Linked to WorkshopParent alias of same name }
 EndGroup
 
 
@@ -57,12 +66,20 @@ Group ActorValues
 	ActorValue Property RobotPopulation Auto Const Mandatory
 	ActorValue Property BrahminPopulation Auto Const Mandatory
 	ActorValue Property UnassignedPopulation Auto Const Mandatory
+	ActorValue Property PopulationDamage Auto Const Mandatory
 	ActorValue Property SynthPopulation Auto Const Mandatory
 	ActorValue Property Happiness Auto Const Mandatory
 	{ Actual happiness, not bonus }
 	ActorValue Property HappinessModifier Auto Const Mandatory
+	ActorValue Property HappinessTarget Auto Const Mandatory
 	ActorValue Property LastAttackDaysSince Auto Const Mandatory
 	ActorValue Property WorkshopGuardPreference Auto Const Mandatory
+	ActorValue Property BedAV Auto Const Mandatory
+	ActorValue Property FoodAV Auto Const Mandatory
+	ActorValue Property SafetyAV Auto Const Mandatory
+	ActorValue Property ScavengeAV Auto Const Mandatory
+	ActorValue Property WorkshopProhibitRename Auto Const Mandatory
+	ActorValue Property CaravanDestinationIDAV Auto Const Mandatory
 EndGroup
 
 
@@ -76,8 +93,15 @@ Group Keywords
 	Keyword Property WorkshopLinkSandbox Auto Const Mandatory
 	Keyword Property WorkshopLinkHome Auto Const Mandatory
 	Keyword Property WorkshopLinkCenter Auto Const Mandatory
+	Keyword Property WorkshopWorkObject Auto Const Mandatory
+	Keyword Property WorkshopCaravanKeyword Auto Const Mandatory
+	
+	Keyword Property WorkshopAssignCaravan Auto Const Mandatory
+	Keyword Property WorkshopAssignHome Auto Const Mandatory
+	Keyword Property WorkshopAssignHomePermanentActor Auto Const Mandatory
 	
 	LocationRefType Property WorkshopSynthRefType Auto Const Mandatory
+	LocationRefType Property WorkshopCaravanRefType Auto Const Mandatory
 EndGroup
 
 
@@ -88,6 +112,8 @@ Group Assets
 	{ Actorbase that should be using InjectionManger.SettlerLCharHolder as its template source }
 	ActorBase Property SettlerGuardActorBase Auto Const Mandatory
 	{ Actorbase that should be using InjectionManger.SettlerLCharHolder as its template source }
+	Faction Property WorkshopEnemyFaction Auto Const Mandatory
+	Form Property SynthDeathItem Auto Const Mandatory
 EndGroup
 
 Group Settings
@@ -112,7 +138,8 @@ Bool Property bOverrideInjectedSettlers = false Auto Hidden
 ; Properties
 ; ---------------------------------------------
 
-Float Property fRecruitmentLoopTime = 24.0 Auto Hidden
+Float Property fTimerLength_Recruitment = 24.0 Auto Hidden
+Float fLastTimerStart_Recruitment = 0.0 ; Will record when this timer starts so we can restart it if it is lost due to save file issues
 Float[] Property FirstSettlersRecruitmentChances Auto Hidden
 
 ; ---------------------------------------------
@@ -126,7 +153,7 @@ Bool bRecruitmentUnderwayBlock ; Unlike a lock, with the block we will just reje
 ; ---------------------------------------------
 
 Event OnTimerGameTime(Int aiTimerID)
-	if(aiTimerID == RecruitmentLoopTimerID)
+	if(aiTimerID == iTimerID_Recruitment)
 		RecruitAllWorkshopNPCs()
 		
 		StartRecruitmentTimer()
@@ -196,16 +223,7 @@ EndEvent
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
 	
-	; Register for events
-	RegisterForCustomEvent(WorkshopParent, "WorkshopAddActor")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToWork")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopActorUnassigned")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanAssign")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanUnassign")
-	; Custom WSFW events from WorkshopParent
-	RegisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToBed")
-	RegisterForCustomEvent(WorkshopParent, "WorkshopRemoveActor")
-	RegisterForCustomEvent(WorkshopParent, "AssignmentRulesOverriden")
+	RegisterForEvents()
 	
 	; Configure Initial Settler Chances
 	FirstSettlersRecruitmentChances = new Float[0]
@@ -226,6 +244,8 @@ EndFunction
 
 
 Function HandleGameLoaded()
+	RegisterForEvents()
+	
 	Parent.HandleGameLoaded()
 	
 	int i = 0
@@ -237,6 +257,13 @@ Function HandleGameLoaded()
 		
 		i += 1
 	endWhile
+	
+	Float fCurrentGameTime = Utility.GetCurrentGameTime()
+	
+	; Has recruitment timer failed to restart?
+	if(fLastTimerStart_Recruitment < fCurrentGameTime - (fTimerLength_Recruitment/24.0))
+		StartRecruitmentTimer()
+	endif
 EndFunction
 
 ; ---------------------------------------------
@@ -248,8 +275,23 @@ EndFunction
 ; Functions
 ; ---------------------------------------------
 
+Function RegisterForEvents() 
+	; Register for events
+	RegisterForCustomEvent(WorkshopParent, "WorkshopAddActor")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToWork")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopActorUnassigned")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanAssign")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopActorCaravanUnassign")
+	; Custom WSFW events from WorkshopParent
+	RegisterForCustomEvent(WorkshopParent, "WorkshopActorAssignedToBed")
+	RegisterForCustomEvent(WorkshopParent, "WorkshopRemoveActor")
+	RegisterForCustomEvent(WorkshopParent, "AssignmentRulesOverriden")
+EndFunction
+
+
 Function StartRecruitmentTimer()
-	StartTimerGameTime(fRecruitmentLoopTime, RecruitmentLoopTimerID)
+	fLastTimerStart_Recruitment = Utility.GetCurrentGameTime()
+	StartTimerGameTime(fTimerLength_Recruitment, iTimerID_Recruitment)
 EndFunction
 
 
@@ -522,7 +564,7 @@ WorkshopNPCScript Function CreateWorkshopNPC(ActorBase aActorForm, WorkshopScrip
 		
 		; try to automatically assign to do something:
 		If(aActorForm != BrahminActorBase)
-			WorkshopParent.TryToAutoAssignActor(akWorkshopRef, asWorkshopNPC)
+			WorkshopParent.TryToAutoAssignNPC(akWorkshopRef, asWorkshopNPC)
 		endif
 
 		WorkshopNewSettlerAlias.ForceRefTo(asWorkshopNPC)
@@ -610,9 +652,9 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 	akActorRef.ClearFromOldLocations()
 	akActorRef.SetWorker(false)
 
-	;If workshop is currently loaded, also save all new actors that are not robots in the UFO4P_ActorsWithoutBeds array. Otherwise, the new version of the TryToAssignBeds function won't find them.
+	;If workshop is currently loaded, also save all new actors that are not robots in the UFO4P_ActorsWithoutBeds array. Otherwise, the new version of TryToAssignBeds won't find them.
 	if(akActorRef.GetBaseValue(RobotPopulation) == 0 && iNewWorkshopID == iCurrentWorkshopID)
-		WorkshopParent.UFO4P_ActorsWithoutBeds.Add(akActorRef)
+		WorkshopParent.WSFW_AddToActorsWithoutBedsArray(akActorRef)
 	endif
 	
 	if(iNewWorkshopID == iCurrentWorkshopID)
@@ -629,5 +671,1320 @@ endFunction
 
 
 Function ApplyAliasData(Actor akActorRef)
-	WorkshopAIAlias.ApplyToRef(akActorRef)
+	WorkshopActorApply.ApplyToRef(akActorRef)
 EndFunction
+
+; Alternative to WorkshopParent.AddActorToWorkshop that does not require the WorkshopNPCScript
+Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool abResetMode = false)
+	int iLockKey = GetLock()
+		
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("NPCManager.AddNPCToWorkshop: Unable to get lock!", 2)
+		
+		return
+	endif
+	
+	Location WorkshopLocation = akWorkshopRef.myLocation
+	
+	bool bResetHappiness = false
+	bool bAutoAssignBeds = (WSFW_Setting_AutoAssign_Beds.GetValueInt() == 1) as Bool
+	if( ! akWorkshopRef.OwnedByPlayer)
+		bAutoAssignBeds = true
+	endif
+	
+	int iCurrentWorkshopID = WorkshopCurrentWorkshopID.GetValueInt()
+	int iNewWorkshopID = akWorkshopRef.GetWorkshopID()
+	
+	WorkshopScript oldWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	int iOldWorkshopID = -1
+	if(oldWorkshopRef)
+		iOldWorkshopID = oldWorkshopRef.GetWorkshopID()
+	endIf	
+	
+	if(iOldWorkshopID > -1 && iOldWorkshopID != iNewWorkshopID)
+		RemoveNPCFromWorkshop(akActorRef, akWorkshopRef, abNPCTransfer = true)
+		
+		SetNewSettler(akActorRef, false)
+	endif
+
+	SetWorkshopID(akActorRef, iNewWorkshopID)
+	
+	Bool bCountsForPopulation = CountsForPopulation(akActorRef)
+	Faction SettlementOwnershipFaction = akWorkshopRef.SettlementOwnershipFaction
+	
+	if(SettlementOwnershipFaction && akWorkshopRef.UseOwnershipFaction && ApplyWorkshopOwnerFaction(akActorRef))
+		if(bCountsForPopulation)
+			akActorRef.SetCrimeFaction(SettlementOwnershipFaction)
+		else
+			akActorRef.SetFactionOwner(SettlementOwnershipFaction)
+		endif
+	endif
+	
+	if(iOldWorkshopID < 0)
+		; Only apply if a new settler, this will allow for mods to have removed this set of packages if they wanted to create alternate AI sets
+		ApplyWorkshopAliasStamp(akActorRef)	
+	endif
+	
+	akActorRef.SetLinkedRef(akWorkshopRef, WorkshopItemKeyword)
+	AssignHomeMarkerToActor(akActorRef, akWorkshopRef)
+	UpdatePlayerOwnership(akActorRef, akWorkshopRef)
+
+	; Recalc workshop ratings on old workshop (if there is one) now that actor is linked to new workshop
+	if(oldWorkshopRef)
+		oldWorkshopRef.RecalculateWorkshopResources()
+	endif
+
+	if(bCountsForPopulation)
+		int iTotalPopulation = akWorkshopRef.GetBaseValue(Population) as int
+		float currentHappiness = akWorkshopRef.GetValue(Happiness)
+		
+		if(iTotalPopulation == 0)
+			if(abResetMode)
+				SetResourceData(Happiness, akWorkshopRef, 50.0)
+				SetResourceData(HappinessTarget, akWorkshopRef, 50.0)
+			else
+				bResetHappiness = true
+			endif
+			
+			SetResourceData(LastAttackDaysSince, akWorkshopRef, 99.0)
+		endif
+		
+		akActorRef.SetValue(UnassignedPopulation, 1)
+		UpdateVendorFlagsAll(akWorkshopRef)
+	endif
+
+	Bool bIsCreated = akActorRef.IsCreated()
+	
+	if(bIsCreated)
+		akActorRef.SetPersistLoc(WorkshopLocation)
+		
+		if(IsSynth(akActorRef))
+			akActorRef.SetLocRefType(WorkshopLocation, WorkshopSynthRefType)
+		elseif(bCountsForPopulation)
+			SetAsBoss(akActorRef, WorkshopLocation)			
+		endif
+		
+		akActorRef.ClearFromOldLocations() ; make sure location data is correct
+	else
+		bAutoAssignBeds = true
+	endif
+
+	if(akWorkshopRef.PlayerHasVisited)
+		SetWorker(akActorRef, false)
+	endif
+
+	;If workshop is currently loaded, also save all new actors that are not robots in the UFO4P_ActorsWithoutBeds array.
+	if(akActorRef.GetBaseValue(RobotPopulation) == 0 && iNewWorkshopID == iCurrentWorkshopID)
+		WorkshopParent.WSFW_AddToActorsWithoutBedsArray(akActorRef)
+	endif
+
+	if(abResetMode)
+		SetMultiResourceProduction(akActorRef, 0.0)
+		
+		ActorValue multiResourceValue = GetAssignedMultiResource(akActorRef)
+		
+		if(multiResourceValue)
+			WorkshopParent.WSFW_AddActorToWorkerArray(akActorRef, GetMultiResourceIndex(multiResourceValue))
+		endif
+	endif
+
+	; Even if not in reset mode, this should not run if the workshop is not loaded:
+	if( ! abResetMode && akActorRef && iNewWorkshopID == iCurrentWorkshopID && bAutoAssignBeds)
+		WorkshopParent.TryToAssignBeds(akWorkshopRef)
+	endif
+
+	akActorRef.EvaluatePackage()
+
+	if( ! akWorkshopRef.RecalculateWorkshopResources())
+		if(bCountsForPopulation)
+			ModifyResourceData(Population, akWorkshopRef, 1)
+		endif
+	endif
+
+	if( ! abResetMode && bResetHappiness)
+		WorkshopParent.ResetHappinessPUBLIC(akWorkshopRef)
+	endif	
+	
+	if( ! bIsCreated || akActorRef.GetActorBase().IsUnique())
+		; Send WorkshopParent event for a new actor being added
+		Var[] kargs = new Var[2]
+		kargs[0] = akActorRef
+		kargs[1] = iNewWorkshopID
+		WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
+	endif
+	
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("NPCManager.AddNPCToWorkshop: Failed to release lock " + iLockKey + "!", 2)
+	endif
+endFunction
+
+
+; Alternative to WorkshopParent.RemoveActorFromWorkshopPUBLIC that does not require the WorkshopNPCScript
+Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = None, Bool abNPCTransfer = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if(akWorkshopRef == None)
+			return
+		endif
+	endif
+	
+	
+	int iLockKey = GetLock()
+		
+	if(iLockKey <= GENERICLOCK_KEY_NONE)
+		ModTrace("NPCManager.RemoveNPCFromWorkshop: Unable to get lock!", 2)
+		
+		return
+	endif
+	
+	UnassignNPC(akActorRef, abSendUnassignEvent = true, abResetMode = false, abNPCTransfer = abNPCTransfer, abRemovingFromWorkshop = true, akWorkshopRef = akWorkshopRef, abGetLock = false)
+	
+	akActorRef.SetLinkedRef(None, WorkshopItemKeyword)
+	akActorRef.SetLinkedRef(None, WorkshopLinkHome)
+	
+	if( ! abNPCTransfer)
+		; Completely removed from workshop system
+		WorkshopParent.WorkshopActorApply.RemoveFromRef(akActorRef)
+		WorkshopParent.PermanentActorAliases.RemoveRef(akActorRef)
+		akActorRef.SetValue(GetWorkshopPlayerOwnedAV(), 0)
+	endif
+
+	SetWorkshopID(akActorRef, -1)
+
+	; update population rating on workshop's location
+	if(akWorkshopRef.RecalculateWorkshopResources() == false)
+		if(CountsForPopulation(akActorRef))
+			ModifyResourceData(GetPopulationAV(), akWorkshopRef, -1.0)
+		elseif(akActorRef.GetActorBase() == GetWorkshopBrahminForm())
+			; This is unintuitively increasing the brahmin AV. This is to prevent an issue where the value gets set to 0 by recalculateWorkshopResources which results in the player receiving a brahmin with every new "farmer" settler until they return to the settlement
+			ModifyResourceData(GetWorkshopBrahminAV(), akWorkshopRef, 1.0)
+		endif
+	endif	
+
+	; WSFW New Event
+	Var[] kArgs = new Var[0]
+	kArgs.Add(akActorRef)
+	kArgs.Add(akWorkshopRef)
+	WorkshopParent.SendCustomEvent("WorkshopRemoveActor", kArgs)
+	
+	; Trigger autoassignment to redistribute those owned objects
+	Bool bOwnedByPlayer = akWorkshopRef.OwnedByPlayer
+		
+	if(WSFW_Setting_AutoAssign_Food.GetValueInt() == 1 || ! bOwnedByPlayer)
+		WorkshopParent.TryToAssignResourceType(akWorkshopRef, GetFoodAV())
+	endif
+		
+	if(WSFW_Setting_AutoAssign_Defense.GetValueInt() == 1 || ! bOwnedByPlayer)
+		WorkshopParent.TryToAssignResourceType(akWorkshopRef, GetSafetyAV())
+	endif
+	
+	;If actor was removed from workshop, there may be an unassigned bed now:
+	if(WSFW_Setting_AutoAssign_Beds.GetValueInt() == 1 || ! bOwnedByPlayer)
+		WorkshopParent.TryToAssignBeds(akWorkshopRef)
+	endif
+	
+	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+		ModTrace("NPCManager.RemoveNPCFromWorkshop: Failed to release lock " + iLockKey + "!", 2)
+	endif
+EndFunction
+
+; Alternative to WorkshopParent.AssignActorToObject that does not require the WorkshopNPCScript
+;
+;/
+ Note: Two parts of the functionality are broken off into their own functions so they can be called independently. They are called automatically from this function unless abAutoHandleNPCAssignmentRules or abAutoUpdateWorkshopNPCStatus are set to false to prevent the corresponding calls to HandleNPCAssignmentRules and UpdateWorkshopNPCStatus, respectively
+/;
+;
+Function AssignNPCToObject(WorkshopObjectScript akWorkshopObject, Actor akNewActor = None, Bool abAutoHandleNPCAssignmentRules = true, Bool abAutoUpdateWorkshopNPCStatus = true, Bool abRecalculateWorkshopResources = true, Bool abGetLock = false)
+	if( ! akWorkshopObject)
+		return
+	endif
+	
+	int iLockKey 
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.AssignNPCToObject: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	WorkshopScript thisWorkshop = akWorkshopObject.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	
+	Actor kCurrentOwner = akWorkshopObject.GetActorRefOwner()
+	bool bAssignmentChanged = (kCurrentOwner != akNewActor)
+	
+	if(akNewActor)
+		if(abAutoHandleNPCAssignmentRules)
+			; Trigger appropriate unassignment for current and previous owner
+			HandleNPCAssignmentRules(akNewActor, akWorkshopObject, kCurrentOwner, abGetLock = false)
+		endif
+			
+		Bool bIsBed = akWorkshopObject.IsBed()
+		; Don't assign robots to beds
+		if( ! bIsBed || akNewActor.GetBaseValue(GetRobotPopulationAV()) <= 0)
+			; Let workshopObject handle most code - this allows to have item level overrides
+			akWorkshopObject.AssignNPC(akNewActor)
+			
+			if(abAutoUpdateWorkshopNPCStatus)
+				UpdateWorkshopNPCStatus(akNewActor, akWorkshopRef = thisWorkshop, abGetLock = false)
+			endif
+		endif
+	else
+		; Let workshopObject handle most code - this allows to have item level overrides
+		akWorkshopObject.AssignNPC(None)
+	endif
+	
+	UpdateWorkshopRatingsForResourceObject(akWorkshopObject, thisWorkshop, bRecalculateResources = bAssignmentChanged && abRecalculateWorkshopResources)
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.AssignNPCToObject: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+EndFunction
+
+Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef = None, Bool abHandleMultiResourceAssignment = true, Bool abGetLock = false)
+	if( ! akActorRef)
+		return
+	endif
+	
+	if( ! akWorkshopRef)
+		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if( ! akWorkshopRef)
+			return
+		endif
+	endif
+	
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UpdateWorkshopNPCStatus: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	int iWorkshopID = akWorkshopRef.GetWorkshopID()
+	int iCurrentWorkshopID = GetCurrentWorkshopIDGlobal().GetValueInt()
+	
+	; Check for work objects
+	ObjectReference[] ResourceObjects = akWorkshopRef.GetWorkshopOwnedObjects(akActorRef)
+	
+	Bool bMultiResourceFound = false
+	Bool bScavengerFound = false
+	Bool bWork24HoursFound = false
+	Bool bWorkObjectFound = false
+	
+	if(ResourceObjects.Length == 0)
+		akActorRef.SetValue(UnassignedPopulation, 1)
+		SetAssignedMultiResource(akActorRef, None)
+		SetWorker(akActorRef, false)
+		SetWork24Hours(akActorRef, false)
+		SetScavenger(akActorRef, false)
+	else
+		SetNewSettler(akActorRef, false)
+		
+		ActorValue SettlerMultiResource = None
+		int i = 0
+		while(i < ResourceObjects.Length)
+			WorkshopObjectScript asWorkshopObject = ResourceObjects[i] as WorkshopObjectScript
+			
+			if(asWorkshopObject)
+				if( ! asWorkshopObject.IsBed())
+					bWorkObjectFound = true
+					
+					SetWorker(akActorRef, true)
+					
+					if(asWorkshopObject.bWork24Hours)
+						SetWork24Hours(akActorRef, true)
+						bWork24HoursFound = true
+					endif
+					
+					ActorValue thisMultiResourceAV = asWorkshopObject.GetMultiResourceValue()
+					if(thisMultiResourceAV)
+						SetAssignedMultiResource(akActorRef, thisMultiResourceAV)
+						SettlerMultiResource = thisMultiResourceAV
+						
+						bMultiResourceFound = true
+					endif
+					
+					if(asWorkshopObject.HasResourceValue(ScavengeAV))
+						SetScavenger(akActorRef, true)
+						bScavengerFound = true
+					endif
+					
+					if(akWorkshopRef && (asWorkshopObject.VendorType >= 0 || asWorkshopObject.sCustomVendorID != ""))
+						SetVendorData(akWorkshopRef, akActorRef, asWorkshopObject)		
+					endif
+				endif
+			endif
+			
+			i += 1
+		endWhile
+		
+		; Update all properties and AVs based on results of checking all
+		if(bWorkObjectFound)			
+			akActorRef.SetValue(UnassignedPopulation, 0)
+		else
+			SetWorker(akActorRef, false)
+			akActorRef.SetValue(UnassignedPopulation, 1)
+		endif
+		
+		if( ! bMultiResourceFound)
+			SetAssignedMultiResource(akActorRef, None)
+		elseif(abHandleMultiResourceAssignment && iWorkshopID == iCurrentWorkshopID)
+			Bool bShouldTryToAssignResources = false
+			
+			float currentProduction = GetMultiResourceProduction(akActorRef)
+			int iResourceIndex = GetMultiResourceIndex(SettlerMultiResource)
+			if(currentProduction >= GetMaxProductionPerNPC(iResourceIndex))
+				WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef)
+			elseif(iResourceIndex >= 0)
+				WorkshopParent.WSFW_AddActorToWorkerArray(akActorRef, iResourceIndex)
+				
+				bShouldTryToAssignResources = true
+			endif
+			
+			if(bShouldTryToAssignResources)
+				; Trigger resource type assignment so NPC will be bulk assigned to other resources of the same type
+				WorkshopParent.TryToAssignResourceType(akWorkshopRef, FoodAV)
+				WorkshopParent.TryToAssignResourceType(akWorkshopRef, SafetyAV)
+			endif
+		endif
+		
+		if( ! bScavengerFound)
+			SetScavenger(akActorRef, false)
+		endif
+		
+		if( ! bWork24HoursFound)
+			SetWork24Hours(akActorRef, false)
+		endif
+	endif	
+			
+	if(akWorkshopRef)
+		SetUnassignedPopulationRating(akWorkshopRef)
+	endif
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UpdateWorkshopNPCStatus: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+EndFunction
+
+function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastAssigned, Actor akCurrentOwner = None, bool abResetMode = false, bool abGetLock = false)
+	int workshopID = akLastAssigned.workshopID
+	if(workshopID < 0)
+		return
+	endIf
+	
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.HandleNPCAssignmentRules: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	WorkshopScript workshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	
+	Bool bExcludedFromAssignmentRules = IsExcludedFromAssignmentRules(akLastAssigned)
+	Var[] kExcludedArgs = new Var[0]
+	kExcludedArgs.Add(akLastAssigned)
+	kExcludedArgs.Add(workshopRef)
+	kExcludedArgs.Add(akActorRef)
+	kExcludedArgs.Add(akLastAssigned)
+	
+	bool bAlreadyAssigned = (akCurrentOwner == akActorRef)
+
+	if(akLastAssigned.IsBed())
+		bool bIsRobot = (akActorRef.GetBaseValue(RobotPopulation) > 0)
+	
+		if(bAlreadyAssigned)
+			if(bIsRobot)
+				; WSFW Exclusion from assignment rules
+				if(bExcludedFromAssignmentRules)
+					WorkshopParent.SendCustomEvent("AssignmentRulesOverriden", kExcludedArgs)
+				else
+					akLastAssigned.AssignActor(None)
+					WorkshopParent.UFO4P_AddUnassignedBedToArray(akLastAssigned)
+				endif
+			endif
+		elseif( ! bIsRobot)
+			ObjectReference[] WorkshopBeds = workshopRef.GetWorkshopResourceObjects(BedAV)
+
+			int countBeds = WorkshopBeds.Length
+			
+			; Unassign this actor from other beds
+			int i = 0
+			while(i < countBeds)
+				WorkshopObjectScript theBed = WorkshopBeds[i] as WorkshopObjectScript
+				
+				if(theBed && theBed.GetActorRefOwner() == akActorRef)
+					if(IsExcludedFromAssignmentRules(theBed))
+						Var[] kBedExcludedArgs = new Var[0]
+						kBedExcludedArgs.Add(theBed)
+						kBedExcludedArgs.Add(workshopRef)
+						kBedExcludedArgs.Add(akActorRef)
+						kBedExcludedArgs.Add(akLastAssigned) 
+						
+						WorkshopParent.SendCustomEvent("AssignmentRulesOverriden", kBedExcludedArgs)
+					else
+						theBed.AssignActor(None)
+						WorkshopParent.UFO4P_AddUnassignedBedToArray(theBed)
+					endif
+				endif
+				i += 1
+			endWhile
+			
+			;If there was no previous owner, this bed must have been in the unassigned beds array, so it should be removed now.
+			if(akCurrentOwner == none)
+				WorkshopParent.UFO4P_RemoveFromUnassignedBedsArray(akLastAssigned)
+			endif
+		endif
+	elseif(akLastAssigned.HasKeyword(WorkshopWorkObject))
+		bool bShouldUnassignAllObjects = true
+		bool bShouldUnassignSingleObject = false
+		actorValue multiResourceValue = GetAssignedMultiResource(akActorRef)
+
+		if(bAlreadyAssigned)
+			bShouldUnassignAllObjects = false
+		endif
+	
+		if(multiResourceValue)
+			if(akLastAssigned.HasResourceValue(multiResourceValue))
+				int iResourceIndex = GetMultiResourceIndex(multiResourceValue)
+				float fMaxProduction = GetMaxProductionPerNPC(iResourceIndex)
+				
+				float currentProduction = GetMultiResourceProduction(akActorRef)
+				if( ! abResetMode && bAlreadyAssigned && currentProduction <= fMaxProduction)
+					bShouldUnassignAllObjects = false
+				else
+					float totalProduction = currentProduction
+					if(abResetMode || bAlreadyAssigned)
+						totalProduction = totalProduction + akLastAssigned.GetBaseValue(multiResourceValue)
+					endif
+
+					if(totalProduction <= fMaxProduction)
+						bShouldUnassignAllObjects = false
+					elseif(bAlreadyAssigned)
+						bShouldUnassignSingleObject = true
+					endif
+				endif
+			else
+				bShouldUnassignAllObjects = true
+			endif
+		endif
+
+		; if bShouldUnassignSingleObject
+		if(bShouldUnassignSingleObject)
+			; WSFW Exclusion from assignment rules
+			if(bExcludedFromAssignmentRules)
+				WorkshopParent.SendCustomEvent("AssignmentRulesOverriden", kExcludedArgs)
+			else
+				UnassignNPCFromObject(akActorRef, akLastAssigned, abResetMode, akWorkshopRef = workshopRef)
+			endif
+		elseif(bShouldUnassignAllObjects && IsObjectOwner(workshopRef, akActorRef))
+			UnassignNPCSkipExclusions(akActorRef, workshopRef, akLastAssigned)
+		endif
+
+		; unassign current owner, if any (and different from new owner)
+		if(akCurrentOwner && akCurrentOwner != akActorRef)
+			UnassignNPCFromObject(akCurrentOwner, akLastAssigned, abResetMode, akWorkshopRef = workshopRef)
+		endif	
+	endif
+	
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.HandleNPCAssignmentRules: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+Function UnassignNPCFromObject(Actor akActorRef, WorkshopObjectScript akWorkshopObject, bool abSendUnassignEvent = true, bool abResetMode = false, WorkshopScript akWorkshopRef = None, bool abGetLock = false)
+	int iLockKey
+	
+	if(akWorkshopObject.GetActorRefOwner() == akActorRef)
+		if(abGetLock)
+			iLockKey = GetLock()
+			
+			if(iLockKey <= GENERICLOCK_KEY_NONE)
+				ModTrace("NPCManager.UnassignNPCFromObject: Unable to get lock!", 2)
+				
+				return
+			endif
+		endif
+	
+		; Handle unassignment of object
+		UnassignWorkshopObject(akWorkshopObject, abUnassigningMultipleResources = abResetMode, abGetLock = false)
+		
+		if(abSendUnassignEvent)
+			if( ! akWorkshopRef)
+				akWorkshopRef = akWorkshopObject.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+			endif
+	
+			if(akWorkshopRef)
+				Var[] kargs = new Var[0]
+				kargs.Add(akWorkshopObject)
+				kargs.Add(akWorkshopRef)
+				kargs.Add(akActorRef)
+				
+				WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+			endif			
+		endif
+	endif
+		
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UnassignNPCFromObject: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+; UnassignNPC from all objects
+Function UnassignNPC(Actor akActorRef, bool abSendUnassignEvent = true, bool abResetMode = false, bool abNPCTransfer = false, bool abRemovingFromWorkshop = false, WorkshopScript akWorkshopRef = None, bool abGetLock = false)
+	if( ! akActorRef)
+		return
+	endif
+	
+	if( ! akWorkshopRef)
+		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if( ! akWorkshopRef)
+			return
+		endif
+	endif
+	
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UnassignNPC: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	int iCaravanActorIndex = CaravanActorAliases.Find(akActorRef)
+	if(iCaravanActorIndex >= 0)
+		UnassignNPCFromCaravan(akActorRef, akWorkshopRef, abRemovingFromWorkshop, abGetLock = false)
+	endif
+	
+	bool bShouldTryToAssignResources = false
+	bool bSendCollectiveEvent = false
+	
+	Bool bWorkshopLoaded = akWorkshopRef.Is3dLoaded()
+	if(bWorkshopLoaded == false)
+		WorkshopParent.UFO4P_RegisterUnassignedActor(akActorRef)
+		
+		;Also set a tracking bool on the actor's workshop:
+		akWorkshopRef.UFO4P_HandleUnassignedActors = true
+	endif
+
+	ObjectReference[] ResourceObjects = akWorkshopRef.GetWorkshopOwnedObjects(akActorRef)
+	int iCountResourceObjects = ResourceObjects.Length
+	int i = 0
+	while(i < iCountResourceObjects)
+		ObjectReference objectRef = ResourceObjects[i]
+		WorkshopObjectScript thisWorkshopObject = objectRef as WorkshopObjectScript
+		
+		if(thisWorkshopObject != none)
+			if(thisWorkshopObject.HasKeyword(WorkshopWorkObject))
+				bool bIsBed = thisWorkshopObject.IsBed()
+				
+				;don't remove the bed if the actor is not removed from the workshop:
+				if(bIsBed == false || abRemovingFromWorkshop)
+					UnassignWorkshopObject(thisWorkshopObject, abUnassigningMultipleResources = true, abGetLock = false)
+					
+					if(abSendUnassignEvent && ! bIsBed)
+						if(thisWorkshopObject.HasMultiResource())
+							if(bWorkshopLoaded)
+								bSendCollectiveEvent = true
+							else
+								thisWorkshopObject.bResetDone = true
+							endif
+						else
+							Var[] kargs = new Var[0]
+							kargs.Add(thisWorkshopObject)
+							kargs.Add(akWorkshopRef)
+							kargs.Add(akActorRef)
+							
+							WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+						endif
+					endif
+				endif
+			endif
+		endif
+		i += 1
+	endWhile
+	
+	;if workshop is loaded, also make sure that the actor gets removed from the worker arrays to prevent him from automatically becoming reassigned:
+	if(bWorkshopLoaded && iCaravanActorIndex < 0)
+		WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef)
+	endif
+	
+	if( ! abNPCTransfer) ; If transferring, they will be updated by the add call
+		UpdateWorkshopNPCStatus(akActorRef, akWorkshopRef, abHandleMultiResourceAssignment = false, abGetLock = false)
+	endif
+
+	if(bSendCollectiveEvent)
+		Var[] kargs = new Var[3]
+		kargs[0] = None
+		kargs[1] = akWorkshopRef
+		kargs[2] = akActorRef
+		
+		WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+	endif
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UnassignNPC: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRef = None, Form aLastAssigned = None, Bool abAutoUpdateWorkshopNPCStatus = true, bool abGetLock = false)
+	if( ! akActorRef)
+		return
+	endif
+	
+	if( ! akWorkshopRef)
+		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if( ! akWorkshopRef)
+			return
+		endif
+	endif
+	
+	
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UnassignNPCSkipExclusions: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	; Check caravan
+	int iCaravanActorIndex = CaravanActorAliases.Find(akActorRef)
+	if(iCaravanActorIndex >= 0)
+		if(WorkshopParent.ExcludeProvisionersFromAssignmentRules)
+			Var[] kargs = new Var[0]
+			kargs.Add(WorkshopCaravanKeyword)
+			kargs.Add(akWorkshopRef)
+			kargs.Add(akActorRef)
+			kargs.Add(aLastAssigned)
+			
+			WorkshopParent.SendCustomEvent("AssignmentRulesOverriden", kargs)
+		else
+			UnassignNPCFromCaravan(akActorRef, akWorkshopRef, bRemoveFromWorkshop = false, abGetLock = false)
+		endif
+	endif
+	
+	bool bWorkshopLoaded = akWorkshopRef.Is3dLoaded()
+	bool bShouldTryToAssignResources = false
+	bool bSendCollectiveEvent = false	
+	bool bAssignmentRulesOverridden = false
+	
+	if(bWorkshopLoaded == false)
+		WorkshopParent.UFO4P_RegisterUnassignedActor(akActorRef)
+		;Also set a tracking bool on the actor's workshop:
+		akWorkshopRef.UFO4P_HandleUnassignedActors = true
+	endif
+	
+	ObjectReference[] ResourceObjects = akWorkshopRef.GetWorkshopOwnedObjects(akActorRef)
+	int iCountResourceObjects = ResourceObjects.Length
+	int i = 0
+	while(i < iCountResourceObjects)
+		ObjectReference objectRef = ResourceObjects[i]
+		WorkshopObjectScript thisWorkshopObject = objectRef as WorkshopObjectScript
+		if(thisWorkshopObject != none)
+			if(thisWorkshopObject.HasKeyword(WorkshopWorkObject))
+				bool bHasMultiResource = thisWorkshopObject.HasMultiResource()
+				
+				if(IsExcludedFromAssignmentRules(thisWorkshopObject))
+					Var[] kargs = new Var[0]
+					kargs.Add(thisWorkshopObject)
+					kargs.Add(akWorkshopRef)
+					kargs.Add(akActorRef)
+					kargs.Add(aLastAssigned) 
+					
+					WorkshopParent.SendCustomEvent("AssignmentRulesOverriden", kargs)
+					
+					bAssignmentRulesOverridden = true
+				else
+					UnassignWorkshopObject(thisWorkshopObject, abUnassigningMultipleResources = true, abGetLock = false)
+					
+					bShouldTryToAssignResources = bWorkshopLoaded
+											
+					if(bHasMultiResource)
+						bSendCollectiveEvent = true
+					else
+						Var[] kargs = new Var[0]
+						kargs.Add(thisWorkshopObject)
+						kargs.Add(akWorkshopRef)
+						kargs.Add(akActorRef)
+						
+						WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+					endif
+				endif
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	if(abAutoUpdateWorkshopNPCStatus)
+		UpdateWorkshopNPCStatus(akActorRef, akWorkshopRef, abHandleMultiResourceAssignment = false, abGetLock = false)
+	endif
+			
+	;Note: bShouldTryToAssignResources is never true if bWorkshopLoaded = false:
+	if(bShouldTryToAssignResources)
+		akWorkshopRef.RecalculateWorkshopResources()
+	endif
+	
+	if(bSendCollectiveEvent)
+		Var[] kargs = new Var[3]
+		kargs[0] = None
+		kargs[1] = akWorkshopRef
+		kargs[2] = akActorRef
+		
+		WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+	endif
+	
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UnassignNPCSkipExclusions: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+EndFunction
+
+Function AssignCaravanNPC(Actor akActorRef, Location destinationLocation, bool abGetLock = false)
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.AssignCaravanNPC: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	; get destination workshop
+	WorkshopScript workshopDestination = WorkshopParent.GetWorkshopFromLocation(destinationLocation)
+
+	; current workshop
+	WorkshopScript workshopStart = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	
+	; unassign this actor from any current job
+	UnassignNPCSkipExclusions(akActorRef, workshopStart, WorkshopCaravanKeyword)
+
+	; is this actor already assigned to a caravan?
+	int iCaravanIndex = CaravanActorAliases.Find(akActorRef)
+	if(iCaravanIndex < 0)
+		; add to caravan actor alias collections on WorkshopParent (ours is just a linked mirror to WorkshopParents)
+		WorkshopParent.CaravanActorAliases.AddRef(akActorRef)
+		if(akActorRef.GetActorBase().IsUnique() == false && akActorRef.GetValue(WorkshopProhibitRename) == 0)
+			; put in "rename" alias
+			WorkshopParent.CaravanActorRenameAliases.AddRef(akActorRef)
+		endif
+	else
+		; clear current location link
+		Location oldDestination = WorkshopParent.GetWorkshop(GetCaravanDestinationID(akActorRef)).myLocation
+		workshopStart.myLocation.RemoveLinkedLocation(oldDestination, WorkshopCaravanKeyword)
+	endif
+	
+	int destinationID = workshopDestination.GetWorkshopID()
+
+	; set destination actor value (used to find destination workshop from actor)
+	akActorRef.SetValue(CaravanDestinationIDAV, destinationID)
+	
+	; make caravan ref type
+	if(akActorRef.IsCreated())
+		akActorRef.SetLocRefType(workshopStart.myLocation, WorkshopCaravanRefType)
+	endif
+
+	; add linked refs to actor (for caravan package)
+	akActorRef.SetLinkedRef(workshopStart.GetLinkedRef(WorkshopLinkCenter), GetWorkshopLinkCaravanStartKeyword())
+	akActorRef.SetLinkedRef(workshopDestination.GetLinkedRef(WorkshopLinkCenter), GetWorkshopLinkCaravanEndKeyword())
+
+	; add link between locations
+	workshopStart.myLocation.AddLinkedLocation(workshopDestination.myLocation, WorkshopCaravanKeyword)
+
+	; Update workshop rating - provisioners should count as jobs:
+	akActorRef.SetValue(UnassignedPopulation, 0)
+
+	Var[] kargs = new Var[2]
+	kargs[0] = akActorRef
+	kargs[1] = workshopStart
+	
+	WorkshopParent.SendCustomEvent("WorkshopActorCaravanAssign", kargs)
+
+	; stat update
+	Game.IncrementStat("Supply Lines Created")
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.AssignCaravanNPC: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+Function UnassignNPCFromCaravan(Actor akActorRef, WorkshopScript workshopRef, Bool bRemoveFromWorkshop = false, bool abGetLock = false)
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UnassignNPCFromCaravan: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	CaravanActorAliases.RemoveRef(akActorRef)
+	CaravanActorRenameAliases.RemoveRef(akActorRef)
+	
+	; unlink locations
+	Location startLocation = workshopRef.myLocation
+	Location endLocation = WorkshopParent.GetWorkshop(GetCaravanDestinationID(akActorRef)).myLocation
+	startLocation.RemoveLinkedLocation(endLocation, WorkshopCaravanKeyword)
+	
+	; clear caravan brahmin
+	CaravanActorBrahminCheck(akActorRef)
+
+	if(akActorRef.IsCreated() && ! bRemoveFromWorkshop)
+		; Patch 1.4: allow custom loc ref type on workshop NPC
+		SetAsBoss(akActorRef, startLocation)
+	endif
+
+	if( ! bRemoveFromWorkshop && ! IsObjectOwner(workshopRef, akActorRef))
+		; update workshop rating - increment unassigned actors total
+		akActorRef.SetValue(UnassignedPopulation, 1)
+	endif
+
+	Var[] kargs = new Var[2]
+	kargs[0] = akActorRef
+	kargs[1] = workshopRef
+	
+	WorkshopParent.SendCustomEvent("WorkshopActorCaravanUnassign", kargs)
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UnassignNPCFromCaravan: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+EndFunction
+
+function UpdateNPCsWorkObjects(Actor akActorRef, WorkshopScript akWorkshopRef = NONE, bool bRecalculateResources = false, Bool abGetLock = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+
+		if( ! akWorkshopRef)
+			return
+		endif
+	endif
+
+	;Better bail out here instead of wasting resources by trying it anyway.
+	if( ! akWorkshopRef.Is3dLoaded())
+		return
+	endif
+
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UpdateNPCsWorkObjects: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	ObjectReference[] ResourceObjects = akWorkshopRef.GetWorkshopOwnedObjects(akActorRef)
+	int countResourceObjects = ResourceObjects.Length
+	int i = 0
+	
+	while i < countResourceObjects
+		WorkshopObjectScript theObject = ResourceObjects[i] as WorkshopObjectScript
+		if(theObject)
+			UpdateWorkshopRatingsForResourceObject(theObject, akWorkshopRef, bRecalculateResources = false)
+		endif
+		i += 1
+	endWhile
+
+	if(bRecalculateResources)
+		akWorkshopRef.RecalculateWorkshopResources()
+	endif
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UpdateNPCsWorkObjects: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+Function ClearCaravansFromSettlement(WorkshopScript workshopRef, bool abGetLock = false)
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.ClearCaravansFromWorkshop: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	; check all caravan actors for either belonging to this workshop, or targeting it - unassign them
+	int i = CaravanActorAliases.GetCount() - 1 ; start at top of list since we may be removing things from it
+
+	while(i	> -1)
+		Actor theActor = CaravanActorAliases.GetAt(i) as Actor
+		
+		if(theActor)
+			; check start and end locations
+			int destinationWorkshopID = GetCaravanDestinationID(theActor)
+			
+			WorkshopScript endWorkshop = WorkshopParent.GetWorkshop(destinationWorkshopID)
+			WorkshopScript startWorkshop = theActor.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+			
+			if(endWorkshop == workshopRef || startWorkshop == workshopRef)
+				; unassign this actor
+				UnassignNPCFromCaravan(theActor, workshopRef, false, abGetLock = false)
+			endif
+		endif
+		
+		i += -1 ; decrement
+	endWhile
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.ClearCaravansFromWorkshop: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+Function RemoveWorkshopObjectFromWorkshop(WorkshopObjectScript akWorkshopObject, WorkshopScript akWorkshopRef = None, bool abGetLock = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = akWorkshopObject.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if(akWorkshopRef == None)
+			return
+		endif
+	endif
+	
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.RemoveWorkshopObjectFromWorkshop: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	if(akWorkshopObject.IsBed())
+		WorkshopParent.UFO4P_RemoveFromUnassignedBedsArray(akWorkshopObject)
+	elseif(akWorkshopObject.HasMultiResource())
+		WorkshopParent.UFO4P_RemoveFromUnassignedObjectsArray(akWorkshopObject, akWorkshopObject.GetResourceID())
+	endif
+	
+	UnassignWorkshopObject(akWorkshopObject, abRemovingObject = true, abUnassigningMultipleResources = false, akWorkshopRef = akWorkshopRef, abGetLock = false)
+	
+	; clear workshopID
+	akWorkshopObject.workshopID = -1
+	; tell object it's being deleted
+	akWorkshopObject.HandleDeletion()
+		
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.RemoveWorkshopObjectFromWorkshop: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+EndFunction
+
+Function UnassignWorkshopObject(WorkshopObjectScript akWorkshopObject, bool abRemovingObject = false, bool abUnassigningMultipleResources = false, WorkshopScript akWorkshopRef = None, bool abGetLock = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = akWorkshopObject.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		
+		if(akWorkshopRef == None)
+			return
+		endif
+	endif
+	
+	int iWorkshopID = akWorkshopObject.workshopID
+	if(iWorkshopID < 0)
+		iWorkshopID = akWorkshopRef.GetWorkshopID()
+		
+		if(iWorkshopID < 0)
+			return
+		endif
+	endif
+
+	int iLockKey
+	
+	if(abGetLock)
+		iLockKey = GetLock()
+		
+		if(iLockKey <= GENERICLOCK_KEY_NONE)
+			ModTrace("NPCManager.UnassignWorkshopObject: Unable to get lock!", 2)
+			
+			return
+		endif
+	endif
+	
+	Int iCurrentWorkshopID = WorkshopCurrentWorkshopID.GetValueInt()
+	Actor kAssignedActor = akWorkshopObject.GetActorRefOwner()
+	
+	bool bShouldTryToAssignBeds = false
+	int iResourceIndexToAssign = -1
+	ActorValue multiResourceValue = None
+	
+	if(kAssignedActor)
+		akWorkshopObject.AssignActor(None)
+
+		Keyword actorLinkKeyword = akWorkshopObject.AssignedActorLinkKeyword
+		if(actorLinkKeyword)
+			kAssignedActor.SetLinkedRef(None, actorLinkKeyword)
+		endif
+
+		if(iWorkshopID >= 0)
+			if(akWorkshopObject.VendorType > -1 || akWorkshopObject.sCustomVendorID != "")
+				SetVendorData(akWorkshopRef, kAssignedActor, akWorkshopObject, false)
+			endif
+
+			bool bIsBed = akWorkshopObject.IsBed()
+
+			if(iWorkshopID == iCurrentWorkshopID)
+				if(abRemovingObject && bIsBed)
+					WorkshopParent.WSFW_AddToActorsWithoutBedsArray(kAssignedActor)
+					
+					bShouldTryToAssignBeds = true
+				elseif( ! abRemovingObject)
+					if(bIsBed)
+						WorkshopParent.UFO4P_AddUnassignedBedToArray(akWorkshopObject)
+					elseif(akWorkshopObject.HasMultiResource())
+						WorkshopParent.UFO4P_AddObjectToObjectArray(akWorkshopObject)
+					endif
+				endif
+			endif
+
+			if(bIsBed == false && ! abUnassigningMultipleResources)				
+				multiResourceValue = GetAssignedMultiResource(kAssignedActor)
+				
+				if(multiResourceValue && akWorkshopObject.HasResourceValue(multiResourceValue))
+					float previousProduction = GetMultiResourceProduction(kAssignedActor)
+					
+					if(iWorkshopID == iCurrentWorkshopID)
+						iResourceIndexToAssign = GetMultiResourceIndex(multiResourceValue)
+						
+						WorkshopParent.WSFW_AddActorToWorkerArray(kAssignedActor, iResourceIndexToAssign)
+					endif
+				endif
+			endif
+		endif	
+	endif
+
+	if(iWorkshopID >= 0 && (kAssignedActor || abRemovingObject))
+		UpdateWorkshopRatingsForResourceObject(akWorkshopObject, akWorkshopRef, abRemovingObject, bRecalculateResources = ! abUnassigningMultipleResources)
+	endif
+	
+	if(iResourceIndexToAssign >= 0)
+		bool bAllowAssign = true
+		if(iResourceIndexToAssign == 0) ; Food
+			if(akWorkshopRef.OwnedByPlayer && ! WSFW_Setting_AutoAssign_Food.GetValueInt() == 1)
+				bAllowAssign = false
+			endif
+		elseif(iResourceIndexToAssign == 3) ; Safety
+			if(akWorkshopRef.OwnedByPlayer && ! WSFW_Setting_AutoAssign_Defense.GetValueInt() == 1)
+				bAllowAssign = false
+			endif
+		endif
+		
+		if(bAllowAssign)
+			WorkshopParent.TryToAssignResourceType(akWorkshopRef, multiResourceValue)
+		endif
+	endif
+	
+	if(bShouldTryToAssignBeds && WSFW_Setting_AutoAssign_Beds.GetValueInt() == 1)
+		WorkshopParent.TryToAssignBeds(akWorkshopRef)
+	endif	
+	
+	if(abGetLock)
+		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+			ModTrace("NPCManager.UnassignWorkshopObject: Failed to release lock " + iLockKey + "!", 2)
+		endif
+	endif
+endFunction
+
+
+function WoundNPC(Actor woundedActor, bool bWoundMe = true, Bool abRecalculateResources = true)
+	if(IsWounded(woundedActor) == bWoundMe)
+		return
+	endif
+
+	; get actor's workshop
+	WorkshopScript workshopRef = woundedActor.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	
+	; wound/heal actor
+	SetWounded(woundedActor, bWoundMe)
+
+	; increase or decrease damage?
+	int damageValue = 1
+	if( ! bWoundMe)
+		damageValue = -1
+	endif
+
+	; update damage rating
+	; RESOURCE CHANGE:
+	; reduce extra pop damage if > 0 ; otherwise, damage is normally tracked within WorkshopRatingPopulation (difference between base value and current value)
+	if(bWoundMe == false && workshopRef.GetValue(PopulationDamage) > 0)
+		ModifyResourceData(PopulationDamage, workshopRef, damageValue)
+	endif
+	
+	UpdateNPCsWorkObjects(woundedActor, workshopRef, abRecalculateResources, abGetLock = false)
+endFunction
+
+
+function NonWorkshopNPCScriptWorkshopChanged(Actor akActorRef, Int aiNewWorkshopID)
+	if(aiNewWorkshopID < 0)
+		; Unregister for all events
+		UnregisterForRemoteEvent(akActorRef, "OnActivate")
+		UnregisterForRemoteEvent(akActorRef, "OnCommandModeGiveCommand")
+		UnregisterForRemoteEvent(akActorRef, "OnDeath")
+		UnregisterForRemoteEvent(akActorRef, "OnLoad")
+		UnregisterForRemoteEvent(akActorRef, "OnWorkshopNPCTransfer")
+	else
+		; Register for all events
+		RegisterForRemoteEvent(akActorRef, "OnActivate")
+		RegisterForRemoteEvent(akActorRef, "OnCommandModeGiveCommand")
+		RegisterForRemoteEvent(akActorRef, "OnDeath")
+		RegisterForRemoteEvent(akActorRef, "OnLoad")
+		RegisterForRemoteEvent(akActorRef, "OnWorkshopNPCTransfer")
+	endif
+EndFunction
+
+function HandleNPCDeath(Actor deadActor, Actor akKiller)
+	; get actor's workshop
+	WorkshopScript workshopRef = deadActor.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+
+	RemoveNPCFromWorkshop(deadActor, workshopRef)
+	
+	if( ! IsSynth(deadActor) && CountsForPopulation(deadActor) && deadActor.IsInFaction(WorkshopEnemyFaction) == false)
+		WorkshopParent.ModifyHappinessModifier(workshopRef, workshopRef.actorDeathHappinessModifier)
+	endif	
+endFunction
+
+
+
+;
+; Non-WorkshopNPCScript Actor Events
+;
+Event ObjectReference.OnLoad(ObjectReference akSender)
+	Actor asActor = akSender as Actor
+	
+	if(asActor)
+		if(asActor.IsDead())
+			RemoveNPCFromWorkshop(asActor)
+			
+			return
+		endif
+
+		; Note: Removed the checks for resetting command, move, and caravan - there was mentions in the original code about cell resets requiring this. Due to the location persistence, this should not be an issue, but if it turns out to be, there's really nothing we can do as our setting of those is based on the same keywords that the vanilla system was using. Ie. if those keywords get cleared, we have no way to detect that they were set in the first place.
+		
+		; WOUNDED STATE: removing visible wounded state for now
+		if(asActor.IsDead() == false && IsWounded(asActor))
+			WoundNPC(asActor, false, false)
+		endif		
+
+		; check if I should create caravan brahmin
+		CaravanActorBrahminCheck(asActor)
+	endif
+EndEvent
+	
+Event ObjectReference.OnActivate(ObjectReference akSender, ObjectReference akActionRef)
+	Actor asActor = akSender as Actor
+	
+	if(asActor)
+		WorkshopScript thisWorkshop = akSender.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+		if(thisWorkshop.OwnedByPlayer)			
+			if(asActor && asActor.IsDoingFavor() && akActionRef == asActor && IsCommandable(asActor)) ; must be commandable so this doesn't trigger for companions
+				int iSelfActivationCount = GetSelfActivationCount(asActor)
+				iSelfActivationCount += 1
+				
+				if(iSelfActivationCount > 1)
+					; toggle favor state
+					asActor.SetDoingFavor(false, true)
+				endif
+			endif
+		endif
+	endif
+EndEvent
+
+
+Event Actor.OnCommandModeGiveCommand(Actor akSender, int aeCommandType, ObjectReference akTarget)
+	WorkshopObjectScript workObject = akTarget as WorkshopObjectScript
+	if(workObject && aeCommandType == 10) ; workshop assign command
+		workObject.ActivatedByWorkshopNPC(akSender)
+	endif
+endEvent
+
+
+Event Actor.OnDeath(Actor akSender, Actor akKiller)
+	; death item if synth
+	if(IsSynth(akSender))
+		akSender.AddItem(SynthDeathItem)
+	endif
+	
+	; remove me from the workshop
+	HandleNPCDeath(akSender, akKiller)
+EndEvent
+
+
+Event ObjectReference.OnWorkshopNPCTransfer(ObjectReference akSender, Location akNewWorkshopLocation, Keyword akActionKW)
+	; what kind of transfer?
+	Actor asActor = akSender as Actor
+	if(akActionKW == WorkshopAssignCaravan)
+		AssignCaravanNPC(asActor, akNewWorkshopLocation, abGetLock = true)
+	else
+		WorkshopScript newWorkshop = WorkshopParent.GetWorkshopFromLocation(akNewWorkshopLocation)
+		if(newWorkshop)
+			if(akActionKW == WorkshopAssignHome || akActionKW == WorkshopAssignHomePermanentActor)
+				AddNPCToWorkshop(asActor, newWorkshop, abResetMode = false)
+			endif
+		
+			; Send event that an NPC transfer occurred
+			WorkshopParent.SendWorkshopNPCTransferEvent(asActor, newWorkshop, akActionKW)
+		else
+			; TODO - Allow settlers to be assigned to non-Workshop Locations (for things like harvesting resources or guarding locations
+		endif
+	endif
+EndEvent

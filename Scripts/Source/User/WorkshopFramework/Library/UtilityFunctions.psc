@@ -987,6 +987,126 @@ EndFunction
 
 
 ; ------------------------------
+; AddFormlistItemsToContainer 
+; 
+; Description: Add items to a container from a formlist. Idea is to thread this via CallGlobalFunctionNoWait. See function ShowFormlistBarterSelectMenu in WorkshopFramework:UIManager for an example of usage
+;
+; Parameters:
+; aFormlist, akContainerRef, iIndexStart, iEntries
+; 
+; Added: 2.0.0
+; ------------------------------
+Function AddFormlistItemsToContainer(Formlist aFormlist, ObjectReference akContainerRef, Int aiIndexStart = 0, Int iMaxEntriesToAdd = -1) global
+	int iListSize = aFormlist.GetSize()
+	
+	if(iMaxEntriesToAdd < 0)
+		iMaxEntriesToAdd = iListSize - aiIndexStart
+	endif
+	
+	int i = aiIndexStart
+	int iCounter = 0
+	while(i < iListSize && iCounter < iMaxEntriesToAdd)
+		iCounter += 1 ; Intentionally incrementing her instead of inside if(thisForm) 
+		
+		Form thisForm = aFormlist.GetAt(i)
+		if(thisForm)
+			akContainerRef.AddItem(thisForm)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+
+; ------------------------------
+; IsPlayerInFirstPerson 
+; 
+; Description: Returns true or false depending on whether the player is in 1st or 3rd person
+; 
+; Added: 2.0.0
+; ------------------------------
+
+Bool Function IsPlayerInFirstPerson() global
+	return (Game.GetPlayer() as Actor).GetAnimationVariableBool("IsFirstPerson")
+EndFunction
+
+
+; ------------------------------
+; RandomizeArray 
+; 
+; Description: Randomizes an array's order
+;
+; Parameters:
+; Var[] myArray
+; 
+; Added: 2.0.0
+; ------------------------------
+
+Var[] Function RandomizeArray(Var[] myArray) global
+	Var[] TempArray = new Var[0]
+	
+	int i = 0
+	while(myArray.Length > 0)
+		int index = Utility.RandomInt(0, myArray.Length - 1)
+		
+		TempArray.Add(myArray[index])
+		
+		if(myArray.Length > 1)
+			myArray.Remove(index)
+		else
+			myArray = new Var[0]
+		endif
+		
+		i += 1
+	endWhile
+
+	return TempArray
+EndFunction
+
+
+; ------------------------------
+; GenerateRandomizedIntegerRangeArray 
+; 
+; Description: Randomizes a range of integers into an array
+;
+; Parameters:
+; Int iStart, Int iEnd
+; 
+; Added: 2.0.0
+; ------------------------------
+
+int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
+	Int[] Indexes = new Int[0]
+	Int[] ReturnIndexes = new Int[0]
+	
+	if(iStart > iEnd)
+		return Indexes
+	endif
+	
+	while(iStart < iEnd && Indexes.Length < 128)
+		Indexes.Add(iStart)
+		
+		iStart += 1
+	endWhile
+	
+	Var[] Temp = RandomizeArray(Indexes as Var[])
+	
+	int i = 0
+	while(i < Temp.Length)
+		ReturnIndexes.Add(Temp[i] as Int)
+		
+		i += 1
+	endWhile
+	
+	return Indexes
+EndFunction
+
+
+; ************************************
+; Math
+; ************************************
+
+; ------------------------------
 ; Mod 
 ; 
 ; Description: Basic math function to find remainder

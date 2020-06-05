@@ -289,6 +289,14 @@ EndEvent
 ; Event Handler Functions
 ; ---------------------------------------------
 
+Function HandleGameLoaded()
+	; Make sure the queue never gets stuck due to things like externally deleted threads, or mods using the threading engine being uninstalled
+	iRunningThreads = 0 
+	
+	Parent.HandleGameLoaded()
+	
+	TryToProcessNextQueuedThread()
+EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
@@ -410,13 +418,13 @@ Function TryToProcessNextQueuedThread()
 				; loop past any None entries which could happen due to mods being uninstalled
 				kTemp = QueuedThreads.GetAt(i)
 			
-				if(kTemp)
+				if(kTemp != None && kTemp.GetBaseObject() != None && kTemp.GetBaseObject().GetFormID() != 0x00000000)
 					WorkshopFramework:Library:ObjectRefs:Thread thisThread = kTemp as WorkshopFramework:Library:ObjectRefs:Thread
 					
 					; Clear from queue - even if it isn't a thread object, should never happen, but just in case
 					QueuedThreads.RemoveRef(kTemp)
 					
-					if(thisThread)
+					if(thisThread && thisThread.IsBoundGameObjectAvailable())
 						ProcessThreadObject(thisThread)
 					endif
 				endif

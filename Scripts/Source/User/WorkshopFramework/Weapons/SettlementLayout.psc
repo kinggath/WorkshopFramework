@@ -197,7 +197,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex && aiExtraDataIndexes[2] < ExtraData_Forms01.Length)
+			if(aiCurrentIndex > ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex && aiExtraDataIndexes[2] < ExtraData_Forms01.Length - 1)
 				; The current iterator is already past the index we were at, so increment this extra data counter so in the next chunk we grab the next IndexMapped iIndex field for testing against
 				aiExtraDataIndexes[2] += 1
 			else
@@ -213,7 +213,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex && aiExtraDataIndexes[4] < ExtraData_Forms02.Length)
+			if(aiCurrentIndex > ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex && aiExtraDataIndexes[4] < ExtraData_Forms02.Length - 1)
 				aiExtraDataIndexes[4] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -227,7 +227,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex && aiExtraDataIndexes[6] < ExtraData_Forms03.Length)
+			if(aiCurrentIndex > ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex && aiExtraDataIndexes[6] < ExtraData_Forms03.Length - 1)
 				aiExtraDataIndexes[6] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -241,7 +241,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex && aiExtraDataIndexes[8] < ExtraData_Numbers01.Length)
+			if(aiCurrentIndex > ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex && aiExtraDataIndexes[8] < ExtraData_Numbers01.Length - 1)
 				aiExtraDataIndexes[8] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -255,7 +255,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex && aiExtraDataIndexes[10] < ExtraData_Numbers02.Length)
+			if(aiCurrentIndex > ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex && aiExtraDataIndexes[10] < ExtraData_Numbers02.Length - 1)
 				aiExtraDataIndexes[10] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -269,7 +269,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex && aiExtraDataIndexes[12] < ExtraData_Numbers03.Length)
+			if(aiCurrentIndex > ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex && aiExtraDataIndexes[12] < ExtraData_Numbers03.Length - 1)
 				aiExtraDataIndexes[12] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -283,7 +283,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex && aiExtraDataIndexes[14] < ExtraData_Strings01.Length)
+			if(aiCurrentIndex > ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex && aiExtraDataIndexes[14] < ExtraData_Strings01.Length - 1)
 				aiExtraDataIndexes[14] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -297,7 +297,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex && aiExtraDataIndexes[16] < ExtraData_Strings02.Length)
+			if(aiCurrentIndex > ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex && aiExtraDataIndexes[16] < ExtraData_Strings02.Length - 1)
 				aiExtraDataIndexes[16] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -311,7 +311,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex && aiExtraDataIndexes[18] < ExtraData_Strings03.Length)
+			if(aiCurrentIndex > ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex && aiExtraDataIndexes[18] < ExtraData_Strings03.Length - 1)
 				aiExtraDataIndexes[18] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -325,7 +325,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex && aiExtraDataIndexes[20] < ExtraData_Bools01.Length)
+			if(aiCurrentIndex > ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex && aiExtraDataIndexes[20] < ExtraData_Bools01.Length - 1)
 				aiExtraDataIndexes[20] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -339,7 +339,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex && aiExtraDataIndexes[22] < ExtraData_Bools02.Length)
+			if(aiCurrentIndex > ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex && aiExtraDataIndexes[22] < ExtraData_Bools02.Length - 1)
 				aiExtraDataIndexes[22] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -353,7 +353,7 @@ Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCur
 		Bool bContinue = false
 		
 		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex && aiExtraDataIndexes[24] < ExtraData_Bools03.Length)
+			if(aiCurrentIndex > ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex && aiExtraDataIndexes[24] < ExtraData_Bools03.Length - 1)
 				aiExtraDataIndexes[24] += 1
 			else
 				bContinue = true ; We have the next index queued or are at the end of the array
@@ -391,7 +391,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Form01 = GetIndexMappedUniversalForm(ExtraData_Forms01[aiExtraDataIndexes[2]])
 			akThreadRef.ExtraData_Form01Set = true
 			
-			if(aiExtraDataIndexes[2] < ExtraData_Forms01.Length)
+			if(aiExtraDataIndexes[2] < ExtraData_Forms01.Length - 1)
 				aiExtraDataIndexes[2] += 1
 				aiExtraDataIndexes[1] = ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex
 			endif
@@ -402,7 +402,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Form02 = GetIndexMappedUniversalForm(ExtraData_Forms02[aiExtraDataIndexes[4]])
 			akThreadRef.ExtraData_Form02Set = true
 			
-			if(aiExtraDataIndexes[4] < ExtraData_Forms02.Length)
+			if(aiExtraDataIndexes[4] < ExtraData_Forms02.Length - 1)
 				aiExtraDataIndexes[4] += 1
 				aiExtraDataIndexes[3] = ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex
 			endif
@@ -413,7 +413,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Form03 = GetIndexMappedUniversalForm(ExtraData_Forms03[aiExtraDataIndexes[6]])
 			akThreadRef.ExtraData_Form03Set = true
 			
-			if(aiExtraDataIndexes[6] < ExtraData_Forms03.Length)
+			if(aiExtraDataIndexes[6] < ExtraData_Forms03.Length - 1)
 				aiExtraDataIndexes[6] += 1
 				aiExtraDataIndexes[5] = ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex
 			endif
@@ -424,7 +424,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Number01 = ExtraData_Numbers01[aiExtraDataIndexes[8]].fNumber
 			akThreadRef.ExtraData_Number01Set = true
 			
-			if(aiExtraDataIndexes[8] < ExtraData_Numbers01.Length)
+			if(aiExtraDataIndexes[8] < ExtraData_Numbers01.Length - 1)
 				aiExtraDataIndexes[8] += 1
 				aiExtraDataIndexes[7] = ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex
 			endif
@@ -435,7 +435,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Number02 = ExtraData_Numbers02[aiExtraDataIndexes[10]].fNumber
 			akThreadRef.ExtraData_Number02Set = true
 			
-			if(aiExtraDataIndexes[10] < ExtraData_Numbers02.Length)
+			if(aiExtraDataIndexes[10] < ExtraData_Numbers02.Length - 1)
 				aiExtraDataIndexes[10] += 1
 				aiExtraDataIndexes[9] = ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex
 			endif
@@ -446,7 +446,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Number03 = ExtraData_Numbers03[aiExtraDataIndexes[12]].fNumber
 			akThreadRef.ExtraData_Number03Set = true
 			
-			if(aiExtraDataIndexes[12] < ExtraData_Numbers03.Length)
+			if(aiExtraDataIndexes[12] < ExtraData_Numbers03.Length - 1)
 				aiExtraDataIndexes[12] += 1
 				aiExtraDataIndexes[11] = ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex
 			endif
@@ -457,7 +457,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_String01 = ExtraData_Strings01[aiExtraDataIndexes[14]].sString
 			akThreadRef.ExtraData_String01Set = true
 			
-			if(aiExtraDataIndexes[14] < ExtraData_Strings01.Length)
+			if(aiExtraDataIndexes[14] < ExtraData_Strings01.Length - 1)
 				aiExtraDataIndexes[14] += 1
 				aiExtraDataIndexes[13] = ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex
 			endif
@@ -468,7 +468,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_String02 = ExtraData_Strings02[aiExtraDataIndexes[16]].sString
 			akThreadRef.ExtraData_String02Set = true
 			
-			if(aiExtraDataIndexes[16] < ExtraData_Strings02.Length)
+			if(aiExtraDataIndexes[16] < ExtraData_Strings02.Length - 1)
 				aiExtraDataIndexes[16] += 1
 				aiExtraDataIndexes[15] = ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex
 			endif
@@ -479,7 +479,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_String03 = ExtraData_Strings03[aiExtraDataIndexes[18]].sString
 			akThreadRef.ExtraData_String03Set = true
 			
-			if(aiExtraDataIndexes[18] < ExtraData_Strings03.Length)
+			if(aiExtraDataIndexes[18] < ExtraData_Strings03.Length - 1)
 				aiExtraDataIndexes[18] += 1
 				aiExtraDataIndexes[17] = ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex
 			endif
@@ -490,7 +490,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Bool01 = ExtraData_Bools01[aiExtraDataIndexes[20]].bBool
 			akThreadRef.ExtraData_Bool01Set = true
 			
-			if(aiExtraDataIndexes[20] < ExtraData_Bools01.Length)
+			if(aiExtraDataIndexes[20] < ExtraData_Bools01.Length - 1)
 				aiExtraDataIndexes[20] += 1
 				aiExtraDataIndexes[19] = ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex
 			endif
@@ -501,7 +501,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Bool02 = ExtraData_Bools02[aiExtraDataIndexes[22]].bBool
 			akThreadRef.ExtraData_Bool02Set = true
 			
-			if(aiExtraDataIndexes[22] < ExtraData_Bools02.Length)
+			if(aiExtraDataIndexes[22] < ExtraData_Bools02.Length - 1)
 				aiExtraDataIndexes[22] += 1
 				aiExtraDataIndexes[21] = ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex
 			endif
@@ -512,7 +512,7 @@ Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akT
 			akThreadRef.ExtraData_Bool03 = ExtraData_Bools03[aiExtraDataIndexes[24]].bBool
 			akThreadRef.ExtraData_Bool03Set = true
 			
-			if(aiExtraDataIndexes[24] < ExtraData_Bools03.Length)
+			if(aiExtraDataIndexes[24] < ExtraData_Bools03.Length - 1)
 				aiExtraDataIndexes[24] += 1
 				aiExtraDataIndexes[23] = ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex
 			endif
@@ -559,6 +559,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 	Keyword PowerArmorKeyword = GetPowerArmorKeyword()
 	Keyword WorkshopKeyword = GetWorkshopKeyword()
 	Keyword PreventScrappingKeyword = GetPreventScrappingKeyword()
+	Keyword InvisibleWorkshopObjectKeyword = GetInvisibleWorkshopObjectKeyword()
 	
 	WorkshopFramework:SettlementLayoutManager SettlementLayoutManager = GetSettlementLayoutManager()
 	UniversalForm[] UF_AlwaysAllowedActorTypes = SettlementLayoutManager.AlwaysAllowedActorTypes
@@ -615,7 +616,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 		if(bShouldPlace)
 			WorkshopFramework:ObjectRefs:Thread_PlaceObject kThread = ThreadManager.CreateThread(PlaceObjectThread) as WorkshopFramework:ObjectRefs:Thread_PlaceObject
 			
-			if(kThread)			
+			if(kThread)	
 				; Configure threading so we can correctly identify when layer construction is complete
 				kThread.bAutoDestroy = false
 				kThread.iBatchID = aiCustomCallbackID ; Reusing PlaceObjectManager's batch field to tie our layout items together
@@ -625,7 +626,9 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				kThread.AddTagAVSet(LayoutIndexTypeAV, aiObjectsGroupType as float)
 				
 				; Tag items with the layer keyword
-				kThread.AddTagKeyword(TagKeyword)
+				if(TagKeyword != None)
+					kThread.AddTagKeyword(TagKeyword)
+				endif
 				
 				if(abProtectFromScrapPhase)
 					; If scrap phase is delayed for some reason, we need to protect this from it
@@ -634,7 +637,13 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				
 				; Setup spawning info on thread
 				kThread.bFadeIn = false
-				kThread.bStartEnabled = true
+				
+				if(FormToPlace.HasKeyword(InvisibleWorkshopObjectKeyword))
+					kThread.bStartEnabled = false ; Let those objects handle themselves
+				else
+					kThread.bStartEnabled = true
+				endif
+				
 				kThread.bForceStatic = aObjectsToPlace[i].bForceStatic
 				kThread.kSpawnAt = PlayerRef
 				kThread.SpawnMe = FormToPlace
@@ -1086,6 +1095,10 @@ EndFunction
 
 Keyword Function GetPowerArmorKeyword()
 	return Game.GetFormFromFile(0x0003430B, "Fallout4.esm") as Keyword
+EndFunction
+
+Keyword Function GetInvisibleWorkshopObjectKeyword()
+	return Game.GetFormFromFile(0x00006B5A, "WorkshopFramework.esm") as Keyword
 EndFunction
 
 Form Function GetFindAndScrapObjectThread()

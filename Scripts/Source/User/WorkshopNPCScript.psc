@@ -1,7 +1,7 @@
 Scriptname WorkshopNPCScript extends Actor Conditional
 {script for all NPCs that can be assigned to a workshop}
 
-WorkshopParentScript Property WorkshopParent Auto Const
+WorkshopParentScript Property WorkshopParent Auto Const Mandatory
 
 Group WorkerData
 
@@ -94,6 +94,15 @@ int workshopID = -1 conditional
 
 ; for dropping out of command state
 int iSelfActivationCount = 0
+
+; Adding handlers for our exter WorkshopFunctions global functions to access this var
+Function SetSelfActivationCount(Int aiCount)
+	iSelfActivationCount = aiCount
+EndFunction
+
+Int Function GetSelfActivationCount()
+	return iSelfActivationCount
+EndFunction
 
 ;---------------------------------------------
 ;	Added by UFO4P 2.0 for Bug #21578
@@ -267,52 +276,29 @@ state assigned
 		endif
 	endEvent
 
-	;---------------------------------------------------------------------------------------------------------------------------------------------------------------
-	;	UFO4P 2.0 Bug #21578: Notes on modifications to OnEnterBleedout() and OnCombatStateChanged():
-	;---------------------------------------------------------------------------------------------------------------------------------------------------------------
-	;
-	;If an actor was wounded, the vanilla OnEnterBleedout() event always called the WoundActor function on WorkshopParentScript to unassign him from all of his
-	;work objects and to update the workshop resource data values accordingly. However, in most cases of an actor getting wounded, an OnCombatStateChanged event
-	;will fire immediately after OnEnterBleedout. In the vanilla script, that event did reset the actor to not wounded and called the WoundActor function again,
-	;this time to reassign the actor to any available work objects and to update the workshop resource data values again.
-	;
-	;Thus, there were alweys two calls of WoundActor() every time an actor got wounded. The second call did occur a short time after the first call and did effec-
-	;tively cancel everything the first call did. This is a complete waste of performance. To make things even worse, this could happen half a dozen of times for
-	;every workshop actor while an attack was running (this was found out by evaluating the workshop logs recorded during workshop attacks). Simply speaking, the
-	;scripts wasted a significant bit of performance at times when the workload on the engine is particularly high anyway.
-	;
-	;To stop this from happening, the OnEnterBleedout() event will now wait for 10 seconds for the OnCombatStateChanged event to fire, and then checks again whether
-	;the actor is still wounded before it calls the WoundActor function. If the latter event fired within that period of time, he will not be wounded anymore, and
-	;the competing calls are cancelled.
-	;
-	;---------------------------------------------------------------------------------------------------------------------------------------------------------------
+	;/
+	Kinggath Thoughts: The system of temporarily wounding the actor to not count their assigned objects ratings during combat seems rather pointless and wasteful. The combat will only last a few minutes and the assignments and corresponding values have no impact during that short a timespan. As soon as combat ends, the wound is removed.
 	
+	If the system was designed to leave people in a wounded state where they couldn't work for several days, this would make more sense.
+	
+	Leaving it for now to not break vanilla behavior, but will not be implementing this functionality for the nonWorkshopNPCScript actor support.
+	/;
 	Event OnEnterBleedout()
 		; set this guy as "wounded"
-		;WorkshopParent.wstrace(self + " OnEnterBleedout")
-		if IsWounded()
-			;WorkshopParent.wstrace(self + " already wounded - do nothing")
-		else
-			
-			;WorkshopParent.WoundActor(self)
-
-			;UFO4P 2.0 Bug #21578: Replaced the previous line with the following code:
+		if( ! IsWounded())
 			SetValue(WorkshopParent.WorkshopActorWounded, 1)
 			UFO4P_WaitingForNPCRecovering = true
-			WorkshopParent.wstrace(self + " OnEnterBleedout: IsWounded = true")
+			
 			int counter = 0
 			while IsWounded() && !IsDead() && (counter < 20)
 				Utility.Wait(1.0)
 				counter += 1
 			endWhile
+			
 			UFO4P_WaitingForNPCRecovering = false
-			if IsWounded() && !IsDead()
-				WorkshopParent.wstrace(self + " OnEnterBleedout: IsWounded = true. Calling WoundActor.")
+			if(IsWounded() && !IsDead())
 				WorkshopParent.WoundActor(self)
-			else
-				WorkshopParent.wstrace(self + " OnEnterBleedout: IsWounded = false. Skipping WoundActor.")
-			endIf
-	
+			endIf	
 		endIf
 	EndEvent
 
