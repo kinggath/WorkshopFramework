@@ -181,7 +181,7 @@ Int Function FindDisplayPoint(Form akDisplayMe)
 	elseif(DisplayRackPositions != None)
 		int i = 0
 		while(i < DisplayRackPositions.Length)
-			if(DisplayedPositionOrNodeIndex.Find(i) <= 0 && DoesItemMatchDisplayPoint(akDisplayMe, DisplayRackPositions[i].ObjectForm))
+			if(DisplayedPositionOrNodeIndex.Find(i) < 0 && DoesItemMatchDisplayPoint(akDisplayMe, DisplayRackPositions[i].ObjectForm))
 				; Position not in use, and form matches
 				return i
 			endif
