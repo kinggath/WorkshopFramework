@@ -1619,3 +1619,22 @@ Function ScrappingCompleted()
 	
 	bManualScrapTriggered = false
 EndFunction
+
+
+; Test Functions
+Function DumpSettlementLayoutInfo(WorkshopScript akWorkshopRef, Int aiType)
+	int i = 0
+	while(i < akWorkshopRef.AppliedLayouts.Length)
+		WorkshopFramework:Weapons:SettlementLayout thisLayout = akWorkshopRef.AppliedLayouts[i]
+		
+		if(aiType == 0)
+			thisLayout.DumpNonResourceObjects()
+		elseif(aiType == 1)
+			thisLayout.DumpWorkshopResources()
+		elseif(aiType == 2)
+			thisLayout.DumpPowerConnections()
+		endif
+		
+		i += 1
+	endWhile	
+EndFunction

@@ -965,7 +965,7 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 				endif
 				
 				if(kObjectRefA && kObjectRefB)
-					;ModTrace("[PowerUpAttempt] Creating Wire between: " + kObjectRefA + " and " + kObjectRefB)
+					ModTrace("[PowerUpAttempt] Creating Wire between: " + kObjectRefA + " and " + kObjectRefB)
 					
 					; Both found - create wire
 					ObjectReference kWireRef = F4SEManager.AttachWire(kObjectRefA, kObjectRefB)
@@ -1136,4 +1136,58 @@ EndFunction
 
 GlobalVariable Function GetSetting_Import_SpawnPowerArmor()
 	return Game.GetFormFromFile(0x000158D5, "WorkshopFramework.esm") as GlobalVariable
+EndFunction
+
+
+; Test Commands
+
+Function DumpNonResourceObjects()
+	ModTrace("==============================")
+	ModTrace("Starting dump of NonResourceObjects for " + Self)
+	ModTrace("==============================")
+	
+	int i = 0
+	while(i < NonResourceObjects.Length)
+		ModTrace("[" + i + "] " + NonResourceObjects[i])
+		
+		i += 1
+	endWhile
+	
+	ModTrace("==============================")
+	ModTrace("Completed dump of NonResourceObjects for " + Self)
+	ModTrace("==============================")
+EndFunction
+
+Function DumpWorkshopResources()
+	ModTrace("==============================")
+	ModTrace("Starting dump of WorkshopResources for " + Self)
+	ModTrace("==============================")
+	
+	int i = 0
+	while(i < WorkshopResources.Length)
+		ModTrace(WorkshopResources[i])
+		
+		i += 1
+	endWhile
+	
+	ModTrace("==============================")
+	ModTrace("Completed dump of WorkshopResources for " + Self)
+	ModTrace("==============================")
+EndFunction
+
+Function DumpPowerConnections()
+	ModTrace("==============================")
+	ModTrace("Starting dump of PowerConnections for " + Self)
+	ModTrace("==============================")
+	
+	int i = 0
+	while(i < PowerConnections.Length)
+		ModTrace(PowerConnections[i])
+		
+		i += 1
+	endWhile
+	
+	ModTrace("==============================")
+	ModTrace("Completed dump of PowerConnections for " + Self)
+	ModTrace("==============================")
 EndFunction

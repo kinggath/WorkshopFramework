@@ -1425,6 +1425,41 @@ EndFunction
 
 
 ; -----------------------------------
+; GetSettlements
+;
+; Description: Returns an array of settlements based on criteria
+;
+; Parameters: abIncludeOutposts - if true, settlements which are flagged as Outposts will be included, abIncludeVassals - if true, settlements which are flagged as Vassals will be included, abIncludeVirtual - if true, settlements from the virtual workshops will be included, abIncludeHelpers - if true, settlements like the helper settlement set up for Nukaworld for tributes to go to will be included
+; -----------------------------------
+
+WorkshopScript[] Function GetSettlements(Bool abIncludeOutposts = true, Bool abIncludeVassals = false, Bool abIncludeVirtual = false, Bool abIncludeHelpers = false) global
+	WorkshopScript[] Settlements = new WorkshopScript[0]
+	
+	WorkshopParentScript WorkshopParent = GetWorkshopParent()
+	Keyword OutpostKeyword = GetOutpostKeyword()
+	Keyword VassalKeyword = GetVassalKeyword()
+	Keyword VRWorkshopKeyword = GetVRWorkshopKeyword()	
+	
+	WorkshopScript[] AllWorkshops = WorkshopParent.Workshops
+	WorkshopScript NukaWorldTributeWorkshop = None
+	if(Game.IsPluginInstalled("DLCNukaWorld.esm"))
+		NukaWorldTributeWorkshop = Game.GetFormFromFile(0x00047DFB, "DLCNukaWorld.esm") as WorkshopScript
+	endIf
+	
+	int i = 0 
+	while(i < AllWorkshops.Length)
+		if((abIncludeHelpers || AllWorkshops[i] != NukaWorldTributeWorkshop) && (abIncludeOutposts || ! AllWorkshops[i].HasKeyword(OutpostKeyword)) && (abIncludeVassals || ! AllWorkshops[i].HasKeyword(VassalKeyword)) && (abIncludeVirtual || ! AllWorkshops[i].HasKeyword(VRWorkshopKeyword)))
+			Settlements.Add(AllWorkshops[i])
+		endif
+		
+		i += 1
+	endWhile
+	
+	return Settlements
+EndFunction
+
+
+; -----------------------------------
 ; GetPlayerOwnedSettlements
 ;
 ; Description: Returns an array of player owned settlements

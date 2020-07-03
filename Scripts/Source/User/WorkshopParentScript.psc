@@ -1905,6 +1905,8 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 			if(previousOwner == none)
 				UFO4P_RemoveFromUnassignedBedsArray (assignedObject)
 			endif
+			
+			SendWorkshopActorAssignedToWorkEvent(assignedActor, assignedObject, workshopRef)
 		endif
 	elseif(assignedObject.HasKeyword(WorkshopWorkObject))
 		assignedActor.bNewSettler = false
@@ -1932,6 +1934,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 				endif
 				
 				float currentProduction = assignedActor.multiResourceProduction
+				
 				if( ! bResetMode && bAlreadyAssigned && currentProduction <= maxProduction)
 					bShouldUnassignAllObjects = false
 				else
@@ -2031,12 +2034,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		endif
 
 		if(bAlreadyAssigned == false)
-			Var[] kargs = new Var[0]
-			kargs.Add(assignedObject)
-			kargs.Add(workshopRef)
-			kargs.Add(assignedActor)
-			
-			SendCustomEvent ("WorkshopActorAssignedToWork", kargs)		
+			SendWorkshopActorAssignedToWorkEvent(assignedActor, assignedObject, workshopRef)
 		endif
 
 		; WSWF - Ignore AutoAssign properties here so multi-assignment still works
@@ -2237,11 +2235,7 @@ function AssignCaravanActorPUBLIC(WorkshopNPCScript assignedActor, Location dest
 	assignedActor.SetValue (WorkshopRatings[WorkshopRatingPopulationUnassigned].resourceValue, 0)
 
 	; 1.6: send custom event for this actor
-	Var[] kargs = new Var[2]
-	kargs[0] = assignedActor
-	kargs[1] = workshopStart
-	
-	SendCustomEvent("WorkshopActorCaravanAssign", kargs)
+	SendWorkshopActorCaravanAssignEvent(assignedActor, workshopStart, workshopDestination)
 
 	; stat update
 	Game.IncrementStat("Supply Lines Created")
@@ -2477,7 +2471,8 @@ function AddCollectionToWorkshopPUBLIC(RefCollectionAlias thecollection, Worksho
 			WorkshopNPCScript asWorkshopNPC = theActor as WorkshopNPCScript
 			if(asWorkshopNPC)
 				AddActorToWorkshop(asWorkshopNPC, workshopRef, bResetMode)
-			else
+			elseif( ! bResetMode && theActor.GetValue(WorkshopRatings[WorkshopRatingPopulation].resourceValue) > 0)
+				; WSFW 2.0.1 - Checking for bResetMode, as that is used by initialization scripts and we don't want to add random NPCs to the workshop like that. We only want the AddCollectionToWorkshopPUBLIC to function when modders are trying to bulk add NPCs
 				; WSFW 2.0.0 - Switching to global function for nonWorkshopNPCScript actors
 				WorkshopFramework:WorkshopFunctions.AddActorToWorkshop(theActor, workshopRef, abResetMode = bResetMode)
 			endif
@@ -2728,13 +2723,7 @@ function UnassignActorFromObjectV2(WorkshopNPCScript theActor, WorkshopObjectScr
 		
 		if(bSendUnassignEvent)
 			WorkshopScript workshopRef = GetWorkshop(theActor.GetWorkshopID())
-			
-			Var[] kargs = new Var[0]
-			kargs.Add(theObject)
-			kargs.Add(workshopRef)
-			kargs.Add(theActor)
-			
-			SendCustomEvent("WorkshopActorUnassigned", kargs)
+			SendWorkshopActorUnassignedEvent(theObject, workshopRef, theActor)
 		endif
 	endif
 endFunction
@@ -2811,13 +2800,8 @@ function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWor
 							;using the bResetDone flag on WorkshopObjectScript to tag the object:
 							theObject.bResetDone = true
 						endif
-					else								
-						Var[] kargs = new Var[0]
-						kargs.Add(theObject)
-						kargs.Add(workshopRef)
-						kargs.Add(theActor)
-						
-						SendCustomEvent("WorkshopActorUnassigned", kargs)
+					else	
+						SendWorkshopActorUnassignedEvent(theObject, workshopRef, theActor)
 					endif
 				endif
 			endif
@@ -2874,12 +2858,7 @@ function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWor
 	endif
 
 	if(bSendCollectiveEvent)
-		Var[] kargs = new Var[3]
-		kargs[0] = None
-		kargs[1] = workshopRef
-		kargs[2] = theActor
-		
-		SendCustomEvent("WorkshopActorUnassigned", kargs)
+		SendWorkshopActorUnassignedEvent(None, workshopRef, theActor)
 	endif
 
 	if( ! bResetMode && bRemoveFromWorkshop && bShouldTryToAssignResources && ! UFO4P_AttackRunning)
@@ -2923,11 +2902,7 @@ Function UnassignActorFromCaravan(WorkshopNPCScript theActor, WorkshopScript wor
 	endif
 
 	; 1.6: send custom event for this actor
-	Var[] kargs = new Var[2]
-	kargs[0] = theActor
-	kargs[1] = workshopRef
-	
-	SendCustomEvent("WorkshopActorCaravanUnassign", kargs)
+	SendWorkshopActorCaravanUnassignEvent(theActor, workshopRef)
 EndFunction
 
 ; WSFW - Reverting this to its original signature to avoid causing conflicts with mods that opted to call this directly based on it's original design
@@ -3013,6 +2988,8 @@ function UnassignObject_Private(WorkshopObjectScript theObject, bool bRemoveObje
 					
 					if(multiResourceValue && theObject.HasResourceValue(multiResourceValue))
 						float previousProduction = WorkshopFramework:WorkshopFunctions.GetMultiResourceProduction(assignedActor)
+						
+						WorkshopFramework:WorkshopFunctions.SetMultiResourceProduction(assignedActor, previousProduction - theObject.GetBaseValue(multiResourceValue))
 						
 						if(UFO4P_WorkshopID == currentWorkshopID)
 							iResourceIndexToAssign = GetResourceIndex(multiResourceValue)
@@ -3176,13 +3153,8 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 				UpdateWorkshopRatingsForResourceObject (workObject, workshopRef, bRecalculateResources = true)
 				
 				UFO4P_ShouldUpdateRatings = false
-									
-				Var[] kargs = new Var[3]
-				kargs[0] = workObject
-				kargs[1] = workshopRef
-				kargs[2] = owner
 				
-				SendCustomEvent("WorkshopActorUnassigned", kargs)		
+				SendWorkshopActorUnassignedEvent(workObject, workshopRef, owner)	
 			endif
 		endif
 		
@@ -3362,6 +3334,7 @@ function TryToAssignBeds(WorkshopScript workshopRef)
 			if(bedToAssign)
 				; WSFW 2.0.0 - Switching to nonWorkshopNPCScript version
 				bedToAssign.AssignNPC(theActor)
+				SendWorkshopActorAssignedToWorkEvent(theActor, bedToAssign, workshopRef)
 			endif
 		endif
 		
@@ -3463,7 +3436,7 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 							
 							if(resourceTotal == maxProduction)
 								actorAssigned = true
-							endif							
+							endif
 						endif
 					endif
 					
@@ -4071,6 +4044,46 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	EditLock = false
 	UFO4P_ResetRunning = false
 endFunction
+
+; WSFW 2.0.1
+function SendWorkshopActorAssignedToWorkEvent(Actor assignedActor, WorkshopObjectScript assignedObject, WorkshopScript workshopRef)
+	Var[] kargs = new Var[0]
+	kargs.Add(assignedObject)
+	kargs.Add(workshopRef)
+	kargs.Add(assignedActor)
+	
+	SendCustomEvent("WorkshopActorAssignedToWork", kargs)		
+endFunction
+
+; WSFW 2.0.1
+function SendWorkshopActorCaravanAssignEvent(Actor assignedActor, WorkshopScript workshopStart, WorkshopScript workshopDestination)
+	Var[] kargs = new Var[0]
+	kargs.Add(assignedActor)
+	kargs.Add(workshopStart)
+	kArgs.Add(workshopDestination) ; Added by WSFW
+	
+	SendCustomEvent("WorkshopActorCaravanAssign", kargs)
+endFunction
+
+; WSFW 2.0.1
+Function SendWorkshopActorUnassignedEvent(WorkshopObjectScript akWorkshopObjectRef, WorkshopScript akWorkshopRef, Actor akActorRef)
+	Var[] kargs = new Var[0]
+	kargs.Add(akWorkshopObjectRef)
+	kargs.Add(akWorkshopRef)
+	kargs.Add(akActorRef)
+	
+	SendCustomEvent("WorkshopActorUnassigned", kargs)
+EndFunction
+
+
+; WSFW 2.0.1
+Function SendWorkshopActorCaravanUnassignEvent(Actor akActorRef, WorkshopScript akWorkshopOrigin)
+	Var[] kargs = new Var[0]
+	kargs.Add(akActorRef)
+	kargs.Add(akWorkshopOrigin)
+	
+	SendCustomEvent("WorkshopActorCaravanUnassign", kargs)
+EndFunction
 
 ; utility function to send custom destruction state change event (because it has to be sent from the defining script)
 function SendDestructionStateChangedEvent(WorkshopObjectScript workObject, WorkshopScript workshopRef)

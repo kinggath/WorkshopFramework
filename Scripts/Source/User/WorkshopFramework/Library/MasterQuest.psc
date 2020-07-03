@@ -130,7 +130,7 @@ EndFunction
 
 
 Function HandleGameLoaded()
-	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> GameLoaded called on MasterQuest")
+	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> GameLoaded called on MasterQuest " + Self)
 	JustStartedQuests = new Quest[0]
 		
 	if(iInstalledVersion < gCurrentVersion.GetValue())
@@ -150,6 +150,7 @@ Function HandleGameLoaded()
 	OnPlayerTeleport() 
 	
 	; Trigger all quests registered for the OnPlayerLoadGameEvent
+	;Debug.MessageBox("TriggerGameLoaded called.")
 	TriggerGameLoaded()
 	
 	; Process parent game loaded actions
@@ -199,10 +200,17 @@ Function TriggerLocationChange()
 	int i = 0
 	
 	while(i < LocationChangedQuests.GetSize())
+		Quest thisQuest = LocationChangedQuests.GetAt(i) as Quest
+		
+		String sCastAs = "Quest"
+		if(thisQuest is WorkshopFramework:Library:SlaveQuest)
+			sCastAs = "WorkshopFramework:Library:SlaveQuest"
+		endif
+		
 		Var[] kArgs = new Var[2]
 		kArgs[0] = EVENTSTAGE_FromMasterQuest
 		kArgs[1] = EVENTSTAGEITEM_PlayerChangedLocation
-		ThreadManager.QueueRemoteFunctionThread("TriggerLocationChange", LocationChangedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
+		ThreadManager.QueueRemoteFunctionThread("TriggerLocationChange", thisQuest, sCastAs, "OnStageSet", kArgs)
 		
 		i += 1
 	endWhile
@@ -219,10 +227,18 @@ Function TriggerGameLoaded()
 	
 	int i = 0
 	while(i < GameLoadedQuests.GetSize())
+		Quest thisQuest = GameLoadedQuests.GetAt(i) as Quest
+		
+		String sCastAs = "Quest"
+		if(thisQuest is WorkshopFramework:Library:SlaveQuest)
+			sCastAs = "WorkshopFramework:Library:SlaveQuest"
+		endif
+		
+		ModTrace("[" + Self + "] TriggerGameLoaded called on " + thisQuest)
 		Var[] kArgs = new Var[2]
 		kArgs[0] = EVENTSTAGE_FromMasterQuest
 		kArgs[1] = EVENTSTAGEITEM_PlayerLoadedGame
-		ThreadManager.QueueRemoteFunctionThread("TriggerGameLoaded", GameLoadedQuests.GetAt(i), "Quest", "OnStageSet", kArgs)
+		ThreadManager.QueueRemoteFunctionThread("TriggerGameLoaded", thisQuest, sCastAs, "OnStageSet", kArgs)
 		
 		i += 1
 	endWhile
