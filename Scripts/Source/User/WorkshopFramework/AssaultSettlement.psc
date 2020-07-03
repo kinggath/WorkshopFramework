@@ -97,6 +97,7 @@ Group Aliases
 	
 	ReferenceAlias Property SettlementLeader Auto Const Mandatory
 	RefCollectionAlias Property Settlers Auto Const Mandatory
+	RefCollectionAlias Property Synths Auto Const Mandatory
 	RefCollectionAlias Property NonSpeakingSettlers Auto Const Mandatory
 	RefCollectionAlias Property Robots Auto Const Mandatory
 	RefCollectionAlias Property Children Auto Const Mandatory
@@ -115,6 +116,7 @@ Group Keywords
 	Keyword Property BleedoutRecoveryStopped Auto Const Mandatory
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
+	Keyword Property WorkshopLinkHome Auto Const Mandatory ;2.0.1
 EndGroup
 
 
@@ -493,6 +495,8 @@ Function SetupAssault()
 		DefenderFactionAlias.AddRefCollection(Settlers)
 		Defenders.AddRefCollection(NonSpeakingSettlers)
 		DefenderFactionAlias.AddRefCollection(NonSpeakingSettlers)
+		Defenders.AddRefCollection(Synths)
+		DefenderFactionAlias.AddRefCollection(Synths)
 		
 		Actor kLeaderRef = SettlementLeader.GetRef() as Actor
 		
@@ -508,6 +512,7 @@ Function SetupAssault()
 		if(iCurrentAssaultType != AssaultManager.iType_Defend) 
 			AddCollectionToCompleteAliases(Settlers, abDefenders = true)
 			AddCollectionToCompleteAliases(NonSpeakingSettlers, abDefenders = true)
+			AddCollectionToCompleteAliases(Synths, abDefenders = true)
 			
 			if(kLeaderRef && ! kLeaderRef.IsInFaction(CaptiveFaction))
 				if(kLeaderRef.IsInFaction(WorkshopNPCFaction) && (ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue))
@@ -698,6 +703,17 @@ Function RemoveInvalidSettlers()
 		
 		if(thisActor != None && ( ! thisActor.IsInFaction(WorkshopNPCFaction) || thisActor.IsInFaction(CaptiveFaction)))
 			Settlers.RemoveRef(thisActor)
+		endif
+		
+		i -= 1
+	endWhile
+	
+	i = Synths.GetCount() - 1
+	while(i >= 0)
+		Actor thisActor = Synths.GetAt(i) as Actor
+		
+		if(thisActor != None && ( ! thisActor.IsInFaction(WorkshopNPCFaction) || thisActor.IsInFaction(CaptiveFaction)))
+			Synths.RemoveRef(thisActor)
 		endif
 		
 		i -= 1
@@ -1004,6 +1020,16 @@ Function ProcessCapture()
 				
 				i += 1
 			endWhile
+			
+			i = 0
+			while(i < Synths.GetCount())
+				Actor thisActor = Synths.GetAt(i) as Actor
+				if(thisActor)
+					AssaultManager.RemainPlayerEnemy.RemoveFromRef(thisActor)
+				endif
+				
+				i += 1
+			endWhile
 		endif
 		
 		ControlManager.CaptureSettlement(WorkshopAlias.GetRef() as WorkshopScript, AttackingFactionData, bSeverEnemySupplyLines, bRemoveEnemySettlers, bKillEnemySettlers, bCaptureTurrets, bCaptureContainers, bSettlersJoinFaction, bTogglePlayerOwnership, bPlayerIsEnemy, iCreateInvadingSettlers)
@@ -1047,8 +1073,8 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 		
 		if(thisActor)
 			Bool bSkipActor = false
-			if(aCollection == Settlers || aCollection == NonSpeakingSettlers)
-				if( ! (thisActor as Actor) as WorkshopNPCScript)
+			if(aCollection == Settlers || aCollection == NonSpeakingSettlers || aCollection == Synths)
+				if( ! (thisActor as WorkshopNPCScript) && thisActor.GetLinkedRef(WorkshopLinkHome) == None) ; 2.0.1 - Added check for link via WorkshopLinkHome in addition to WorkshopNPCScript so we have two potential catches for settlers
 					bSkipActor = true
 				endif
 			endif

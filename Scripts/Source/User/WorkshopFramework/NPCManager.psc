@@ -940,6 +940,8 @@ Function AssignNPCToObject(WorkshopObjectScript akWorkshopObject, Actor akNewAct
 	
 	UpdateWorkshopRatingsForResourceObject(akWorkshopObject, thisWorkshop, bRecalculateResources = bAssignmentChanged && abRecalculateWorkshopResources)
 	
+	WorkshopParent.SendWorkshopActorAssignedToWorkEvent(akNewActor, akWorkshopObject, thisWorkshop)
+	
 	if(abGetLock)
 		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
 			ModTrace("NPCManager.AssignNPCToObject: Failed to release lock " + iLockKey + "!", 2)
@@ -993,6 +995,7 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 		SetNewSettler(akActorRef, false)
 		
 		ActorValue SettlerMultiResource = None
+		Float fResourceTotal = 0.0
 		int i = 0
 		while(i < ResourceObjects.Length)
 			WorkshopObjectScript asWorkshopObject = ResourceObjects[i] as WorkshopObjectScript
@@ -1012,6 +1015,7 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 					if(thisMultiResourceAV)
 						SetAssignedMultiResource(akActorRef, thisMultiResourceAV)
 						SettlerMultiResource = thisMultiResourceAV
+						fResourceTotal += asWorkshopObject.GetBaseValue(thisMultiResourceAV)
 						
 						bMultiResourceFound = true
 					endif
@@ -1040,12 +1044,13 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 		
 		if( ! bMultiResourceFound)
 			SetAssignedMultiResource(akActorRef, None)
+			SetMultiResourceProduction(akActorRef, 0.0)
 		elseif(abHandleMultiResourceAssignment && iWorkshopID == iCurrentWorkshopID)
-			Bool bShouldTryToAssignResources = false
+			Bool bShouldTryToAssignResources = false			
+			SetMultiResourceProduction(akActorRef, fResourceTotal)
 			
-			float currentProduction = GetMultiResourceProduction(akActorRef)
 			int iResourceIndex = GetMultiResourceIndex(SettlerMultiResource)
-			if(currentProduction >= GetMaxProductionPerNPC(iResourceIndex))
+			if(fResourceTotal >= GetMaxProductionPerNPC(iResourceIndex))
 				WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef)
 			elseif(iResourceIndex >= 0)
 				WorkshopParent.WSFW_AddActorToWorkerArray(akActorRef, iResourceIndex)
@@ -1158,7 +1163,7 @@ function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastA
 		bool bShouldUnassignAllObjects = true
 		bool bShouldUnassignSingleObject = false
 		actorValue multiResourceValue = GetAssignedMultiResource(akActorRef)
-
+		
 		if(bAlreadyAssigned)
 			bShouldUnassignAllObjects = false
 		endif
@@ -1169,6 +1174,7 @@ function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastA
 				float fMaxProduction = GetMaxProductionPerNPC(iResourceIndex)
 				
 				float currentProduction = GetMultiResourceProduction(akActorRef)
+				
 				if( ! abResetMode && bAlreadyAssigned && currentProduction <= fMaxProduction)
 					bShouldUnassignAllObjects = false
 				else
@@ -1237,12 +1243,7 @@ Function UnassignNPCFromObject(Actor akActorRef, WorkshopObjectScript akWorkshop
 			endif
 	
 			if(akWorkshopRef)
-				Var[] kargs = new Var[0]
-				kargs.Add(akWorkshopObject)
-				kargs.Add(akWorkshopRef)
-				kargs.Add(akActorRef)
-				
-				WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+				WorkshopParent.SendWorkshopActorUnassignedEvent(akWorkshopObject, akWorkshopRef, akActorRef)
 			endif			
 		endif
 	endif
@@ -1319,12 +1320,7 @@ Function UnassignNPC(Actor akActorRef, bool abSendUnassignEvent = true, bool abR
 								thisWorkshopObject.bResetDone = true
 							endif
 						else
-							Var[] kargs = new Var[0]
-							kargs.Add(thisWorkshopObject)
-							kargs.Add(akWorkshopRef)
-							kargs.Add(akActorRef)
-							
-							WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+							WorkshopParent.SendWorkshopActorUnassignedEvent(thisWorkshopObject, akWorkshopRef, akActorRef)
 						endif
 					endif
 				endif
@@ -1343,12 +1339,7 @@ Function UnassignNPC(Actor akActorRef, bool abSendUnassignEvent = true, bool abR
 	endif
 
 	if(bSendCollectiveEvent)
-		Var[] kargs = new Var[3]
-		kargs[0] = None
-		kargs[1] = akWorkshopRef
-		kargs[2] = akActorRef
-		
-		WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+		WorkshopParent.SendWorkshopActorUnassignedEvent(None, akWorkshopRef, akActorRef)
 	endif
 	
 	if(abGetLock)
@@ -1439,12 +1430,7 @@ Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRe
 					if(bHasMultiResource)
 						bSendCollectiveEvent = true
 					else
-						Var[] kargs = new Var[0]
-						kargs.Add(thisWorkshopObject)
-						kargs.Add(akWorkshopRef)
-						kargs.Add(akActorRef)
-						
-						WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+						WorkshopParent.SendWorkshopActorUnassignedEvent(thisWorkshopObject, akWorkshopRef, akActorRef)
 					endif
 				endif
 			endif
@@ -1463,12 +1449,7 @@ Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRe
 	endif
 	
 	if(bSendCollectiveEvent)
-		Var[] kargs = new Var[3]
-		kargs[0] = None
-		kargs[1] = akWorkshopRef
-		kargs[2] = akActorRef
-		
-		WorkshopParent.SendCustomEvent("WorkshopActorUnassigned", kargs)
+		WorkshopParent.SendWorkshopActorUnassignedEvent(None, akWorkshopRef, akActorRef)
 	endif
 	
 	
@@ -1536,11 +1517,7 @@ Function AssignCaravanNPC(Actor akActorRef, Location destinationLocation, bool a
 	; Update workshop rating - provisioners should count as jobs:
 	akActorRef.SetValue(UnassignedPopulation, 0)
 
-	Var[] kargs = new Var[2]
-	kargs[0] = akActorRef
-	kargs[1] = workshopStart
-	
-	WorkshopParent.SendCustomEvent("WorkshopActorCaravanAssign", kargs)
+	WorkshopParent.SendWorkshopActorCaravanAssignEvent(akActorRef, workshopStart, workshopDestination)
 
 	; stat update
 	Game.IncrementStat("Supply Lines Created")
@@ -1586,11 +1563,10 @@ Function UnassignNPCFromCaravan(Actor akActorRef, WorkshopScript workshopRef, Bo
 		akActorRef.SetValue(UnassignedPopulation, 1)
 	endif
 
+	WorkshopParent.SendWorkshopActorCaravanUnassignEvent(akActorRef, workshopRef)
 	Var[] kargs = new Var[2]
 	kargs[0] = akActorRef
 	kargs[1] = workshopRef
-	
-	WorkshopParent.SendCustomEvent("WorkshopActorCaravanUnassign", kargs)
 	
 	if(abGetLock)
 		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )

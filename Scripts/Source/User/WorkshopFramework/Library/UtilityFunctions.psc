@@ -368,6 +368,10 @@ EndFunction
 ; -----------------------------------
 
 Bool Function CheckForPlugin(String asPluginBaseName, Bool abAvailableAsESP = true, Bool abAvailableAsESL = true, Bool abAvailableAsESM = true) global
+	if(Game.IsPluginInstalled(asPluginBaseName)) ; Full name was used
+		return true
+	endif
+	
 	if( ! abAvailableAsESP && ! abAvailableAsESL && ! abAvailableAsESM)
 		; This should never happen, so we'll just fall back and check for esp
 		if(Game.IsPluginInstalled(asPluginBaseName + ".esp"))
@@ -711,11 +715,11 @@ Function SetAndRestoreActorValue(ObjectReference akObjectRef, ActorValue someVal
 		return
 	endif
 	
-    Float BaseValue = akObjectRef.GetBaseValue(someValue)
-    Float CurrentValue = akObjectRef.GetValue(someValue)
+    Float fBaseValue = akObjectRef.GetBaseValue(someValue)
+    Float fCurrentValue = akObjectRef.GetValue(someValue)
 
-    if(CurrentValue < BaseValue)
-        akObjectRef.RestoreValue(someValue, BaseValue - CurrentValue)
+    if(fCurrentValue < fBaseValue)
+        akObjectRef.RestoreValue(someValue, fBaseValue - fCurrentValue)
     endif
 
     akObjectRef.SetValue(someValue, afNewValue)
@@ -1028,6 +1032,21 @@ EndFunction
 
 Bool Function IsPlayerInFirstPerson() global
 	return (Game.GetPlayer() as Actor).GetAnimationVariableBool("IsFirstPerson")
+EndFunction
+
+; ------------------------------
+; IsPlayerInPipboyMenu 
+; 
+; Description: Returns true or false depending on whether the player is in 1st or 3rd person
+; 
+; Added: 2.0.1
+; ------------------------------
+Bool Function IsPlayerInPipboyMenu() global
+	if(Game.GetPlayer().GetAnimationVariableInt("pipboyState") == 0)
+		return true
+	else
+		return false
+	endIf	
 EndFunction
 
 

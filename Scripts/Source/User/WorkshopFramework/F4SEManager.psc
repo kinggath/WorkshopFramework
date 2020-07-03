@@ -181,6 +181,7 @@ EndFunction
 String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPluginsOnly = false)
 	if(aFormOrReference != None)
 		int iFormID = aFormOrReference.GetFormID()
+		iFormID = GetLoadOrderAgnosticFormID(iFormID) ; TESTING THIS
 		Game:PluginInfo[] Plugins = Game.GetInstalledPlugins()
 		Game:PluginInfo[] LightPlugins = Game.GetInstalledLightPlugins()
 		
@@ -189,7 +190,7 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 			while(i < Plugins.Length)
 				Form FetchForm = Game.GetFormFromFile(iFormID, Plugins[i].Name)
 				
-				if(FetchForm != None && FetchForm == aFormOrReference)
+				if(FetchForm != None && FetchForm == aFormOrReference && Plugins[i].Name != "")
 					return Plugins[i].Name
 				endif
 				
@@ -197,13 +198,13 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 			endWhile
 		endif
 		
-		iFormID = GetLoadOrderAgnosticFormID(iFormID)
+		;iFormID = GetLoadOrderAgnosticFormID(iFormID)
 		int i = 0
 		while(i < LightPlugins.Length)
 			Form FetchForm = Game.GetFormFromFile(iFormID, LightPlugins[i].Name)
 			
 			if(FetchForm != None)
-				if(FetchForm == aFormOrReference)
+				if(FetchForm == aFormOrReference && Plugins[i].Name != "")
 					return LightPlugins[i].Name
 				else
 					;ModTrace("LightPlugin: Form " + FetchForm + " found, but doesn't match requested form " + aFormOrReference)
@@ -214,7 +215,39 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 			
 			i += 1
 		endWhile
+		
+		ModTrace("[GetPluginNameFromForm] Failed to find plugin name for " + aFormOrReference)
+	else
+		ModTrace("Could not find plugin to match " + aFormOrReference)
 	endif
 	
 	return ""
+EndFunction
+
+
+Function DumpLoadOrder()
+	Game:PluginInfo[] Plugins = Game.GetInstalledPlugins()
+	Game:PluginInfo[] LightPlugins = Game.GetInstalledLightPlugins()
+	
+	ModTrace("======================================")
+	ModTrace("Dumping Load Order > Light Plugins")
+	ModTrace("======================================")
+	
+	int i = 0
+	while(i < LightPlugins.Length)
+		ModTrace("[" + i + "] " + LightPlugins[i]) 
+		
+		i += 1
+	endWhile
+	
+	ModTrace("======================================")
+	ModTrace("Dumping Load Order > Plugins")
+	ModTrace("======================================")
+	
+	i = 0
+	while(i < Plugins.Length)
+		ModTrace("[" + i + "] " + Plugins[i]) 
+		
+		i += 1
+	endWhile
 EndFunction

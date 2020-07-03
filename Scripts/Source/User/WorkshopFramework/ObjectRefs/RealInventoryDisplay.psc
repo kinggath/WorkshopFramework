@@ -35,7 +35,7 @@ EndGroup
 
 Group VendorDetails	
 	String Property sVendorID Auto Const
-	{ The vendor type or custom vendor ID to pull inventory data from. NOTE: If this script is on an object that has WorkshopObjectScript as well, and that script has VendorType or sCustomVendorID set, this can read that information so you can skip this field if you like. }
+	{ The vendor type or custom vendor ID to pull inventory data from. Vanilla vendor IDs: 0 = General Store, 1 = Armor, 2 = Weapons, 3 = Bar, 4 = Clinic, 5 = Clothing. NOTE: If this script is on an object that has WorkshopObjectScript as well, and that script has VendorType or sCustomVendorID set, this can read that information so you can skip this field if you like. }
 	
 	Int Property iVendorLevel = -1 Auto Const
 	{ The vendor level to pull inventory data from (0, 1, or 2). NOTE: If this script is on an object that has WorkshopObjectScript as well, and that script has VendorType or sCustomVendorID set, this can read that information so you can skip this field if you like. }
@@ -76,6 +76,10 @@ Event OnWorkshopObjectMoved(ObjectReference akReference)
 EndEvent
 
 Event OnWorkshopObjectGrabbed(ObjectReference akReference)
+	DeleteRealInventoryDisplayMarkerRefs()
+EndEvent
+
+Event OnWorkshopObjectDestroyed(ObjectReference akActionRef)
 	DeleteRealInventoryDisplayMarkerRefs()
 EndEvent
 
