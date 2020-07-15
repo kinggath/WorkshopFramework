@@ -27,7 +27,7 @@ String sPlugin_Fallout4 = "Fallout4.esm" Const
 int iFormID_InvisibleWorkshopObjectKeyword = 0x00006B5A Const
 int iFormID_WorkshopItemKeyword = 0x00054BA6 Const
 int iFormID_WorkshopWorkObject = 0x00020592 Const
-int iFormID_WorkshopStackedItemParentKeyword = 0X001C5EDD Const
+int iFormID_WorkshopStackedItemParentKeyword = 0x001C5EDD Const
 int iFormID_LayoutExportDisabledKeyword = 0x0002B79D Const ; LinkDisable
 ; ---------------------------------------------
 ; Editor Properties 
