@@ -1,5 +1,5 @@
 ;BEGIN FRAGMENT CODE - Do not edit anything between this and the end comment
-Scriptname Fragments:Quests:QF_SS2_PlotManager_02002ABD Extends Quest Hidden Const
+Scriptname WorkshopFramework:Fragments:Quests:QF_SS2_PlotManager_02002ABD Extends Quest Hidden Const
 
 ;BEGIN FRAGMENT Fragment_Stage_0100_Item_00
 Function Fragment_Stage_0100_Item_00()

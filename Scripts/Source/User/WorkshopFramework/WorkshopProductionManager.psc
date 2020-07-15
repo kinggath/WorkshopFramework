@@ -951,7 +951,7 @@ EndFunction
 
 ; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false, Bool abLinkedWorkshopConsumption = false)
-	ConsumeFromWorkshopV2(aConsumeMe, aiCount, akWorkshopRef, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption, abCheckOnly = false)
+	return ConsumeFromWorkshopV2(aConsumeMe, aiCount, akWorkshopRef, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption, abCheckOnly = false)
 EndFunction
 
 
@@ -1170,7 +1170,7 @@ EndFunction
 
 ; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeResource(ObjectReference akContainerRef, Form aConsumeMe, Int aiCount, Bool abComponentFormList = false)
-	ConsumeResourceV2(akContainerRef, aConsumeMe, aiCount, abComponentFormList, abCheckOnly = false)
+	return ConsumeResourceV2(akContainerRef, aConsumeMe, aiCount, abComponentFormList, abCheckOnly = false)
 EndFunction
 
 

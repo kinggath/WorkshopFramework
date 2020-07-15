@@ -274,7 +274,7 @@ EndFunction
 
 
 Bool Function SetupOptions(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true)
-	SetupOptionsV2(aiReserveID, abDisableFastTravel, abSettlersAreDefenders, abRobotsAreDefenders, abAutoStartAssaultOnLoad, abAutoStartAssaultWhenPlayerReachesAttackFrom, abMoveAttackersToStartPoint, abMoveDefendersToCenterPoint, abAttackersDeadFailsAssault, abAutoHandleObjectives, abGuardsKillableEvenOnSubdue, abAttackersKillableEvenOnSubdue, abAlwaysSubdueUniques, abChildrenFleeDuringAttack)
+	return SetupOptionsV2(aiReserveID, abDisableFastTravel, abSettlersAreDefenders, abRobotsAreDefenders, abAutoStartAssaultOnLoad, abAutoStartAssaultWhenPlayerReachesAttackFrom, abMoveAttackersToStartPoint, abMoveDefendersToCenterPoint, abAttackersDeadFailsAssault, abAutoHandleObjectives, abGuardsKillableEvenOnSubdue, abAttackersKillableEvenOnSubdue, abAlwaysSubdueUniques, abChildrenFleeDuringAttack)
 EndFunction
 
 

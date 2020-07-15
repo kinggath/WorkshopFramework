@@ -495,6 +495,7 @@ EndFunction
 ; 1.0.5 - Added Private version so we could add additional args
 Int Function CreateObject(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = None, ActorValueSet aSetAV = None, Int aiFormlistIndex = -1, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Bool abCallbackEventNeeded = true)
 	int iThreadCallbackID = CreateObject_Private(aPlaceMe, akWorkshopRef, aSetAV, aiFormlistIndex, akPositionRelativeTo, abStartEnabled, abCallbackEventNeeded, sThreadID_ObjectCreated, aiBatchID = -1)
+	return iThreadCallbackID
 EndFunction
 
 Int Function CreateObject_Private(WorldObject aPlaceMe, WorkshopScript akWorkshopRef = None, ActorValueSet aSetAV = None, Int aiFormlistIndex = -1, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true, Bool abCallbackEventNeeded = true, String asCustomCallBackID = "", Int aiBatchID = -1)

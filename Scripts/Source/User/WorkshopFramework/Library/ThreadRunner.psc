@@ -383,7 +383,8 @@ Bool Function RunGlobalFunctionThread(Int aiCallBackID, String asCustomCallbackI
 	; Release Edit Lock
 	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
         ModTrace("Failed to release lock " + iLockKey + "!", 2)
-    endif	
+    endif
+	return false
 EndFunction
 
 

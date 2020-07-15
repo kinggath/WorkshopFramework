@@ -2625,7 +2625,7 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 
 	assignedActor.EvaluatePackage()
 
-	if( ! workshopRef.RecalculateWorkshopResources())
+	if(!bResetMode && !workshopRef.RecalculateWorkshopResources())
 		; WSWF - Added if(assignedActor.bCountsForPopulation) to ensure it isn't increased when sending those NPCs
 		if(assignedActor.bCountsForPopulation)
 			ModifyResourceData(WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, 1)
