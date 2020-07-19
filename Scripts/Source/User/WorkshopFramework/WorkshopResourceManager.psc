@@ -265,25 +265,7 @@ Event OnTimer(Int aiTimerID)
 	if(aiTimerID == iTimerID_RecheckWithinSettlement)
 		CheckForWorkshopChange(true)
 	elseif(aiTimerID == iTimerID_FixSettlerCount)
-		Bool bSettlerCountStable = false
-		ObjectReference kWorkshopRef = LatestWorkshop.GetRef()
-		if(kWorkshopRef)
-			Float fPopulationValue = kWorkshopRef.GetValue(Population)
-			
-			while( ! bSettlerCountStable)
-				; Wait for recalculateResources to complete - this can take several seconds real time and there is no event for it
-				Utility.Wait(1.0)
-				Float fCurrentPop = kWorkshopRef.GetValue(Population)
-				
-				if(fCurrentPop != fPopulationValue)
-					fPopulationValue = fCurrentPop
-				else
-					bSettlerCountStable = true
-				endif
-			endWhile
-			
-			FixSettlerCount()
-		endif
+		; do nothing
 	elseif(aiTimerID == iTimerID_DoubleCheckRemoteBuiltResources)
 		HandleRemoteBuiltResources()
 	endif
@@ -704,7 +686,6 @@ EndFunction
 
 
 Function HandleWorkshopChange(WorkshopScript akWorkshopRef)
-	FixSettlerCount() ; Do one last settler count fix before we leave - this should eliminate the pipboy display bug
 	LatestWorkshop.ForceRefTo(akWorkshopRef)
 	ClearLatestSettlementResources()
 	GatherLatestSettlementResources()
@@ -765,24 +746,7 @@ EndFunction
 
 
 Function FixSettlerCount()
-	; There is a frequent bug in the game where the settler count will end up doubled in the UI, this will attempt to fix that
-	
-	int i = 0
-	int iPopulation = 0
-	while(i < LatestSettlementResources.GetCount())
-		Actor asActor = LatestSettlementResources.GetAt(i) as Actor
-		
-		if(asActor && WorkshopFramework:WorkshopFunctions.CountsForPopulation(asActor))
-			iPopulation += 1
-		endif
-		
-		i += 1
-	endWhile
-	
-	if(iPopulation > 0)
-		ObjectReference thisWorkshop = LatestWorkshop.GetRef()
-		thisWorkshop.SetValue(Population, iPopulation as Float)
-	endif
+	; No longer necessary after fixing the WorkshopParentScript.AddActorToWorkshop() bug
 EndFunction
 
 
