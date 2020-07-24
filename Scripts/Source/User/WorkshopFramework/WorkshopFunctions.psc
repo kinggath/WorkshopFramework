@@ -1489,6 +1489,22 @@ WorkshopScript[] Function GetPlayerOwnedSettlements(Bool abIncludeOutposts = tru
 	return OwnedSettlements
 EndFunction
 
+ObjectReference Function GetWorkshopSpawnPoint(WorkshopScript akWorkshopRef) global
+	ObjectReference kSpawnPoint = None
+	Keyword WorkshopLinkSpawn = GetWorkshopLinkSpawnKeyword()
+	kSpawnPoint = akWorkshopRef.GetLinkedRef(WorkshopLinkSpawn)
+	if(kSpawnPoint == None)
+		Keyword WorkshopLinkCenter = GetWorkshopLinkCenterKeyword()
+		kSpawnPoint = akWorkshopRef.GetLinkedRef(WorkshopLinkCenter)
+		
+		if(kSpawnPoint == None)
+			kSpawnPoint = akWorkshopRef
+		endif
+	endif
+	
+	return kSpawnPoint
+EndFunction
+
 ;<<
 
 ; -----------------------------------
@@ -1606,6 +1622,11 @@ EndFunction
 
 Keyword Function GetWorkshopLinkFollowKeyword() global
 	return Game.GetFormFromFile(0x00020C3E, "Fallout4.esm") as Keyword
+EndFunction
+
+
+Keyword Function GetWorkshopLinkSpawnKeyword() global
+	return Game.GetFormFromFile(0x0002A198, "Fallout4.esm") as Keyword
 EndFunction
 
 Keyword Function GetWorkshopLinkCenterKeyword() global
@@ -1806,4 +1827,6 @@ Keyword[] Function GetTerminalKeywords() global
 	
 	return TerminalKeywords
 EndFunction
+
+
 ;<<

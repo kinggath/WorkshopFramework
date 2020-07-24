@@ -353,6 +353,7 @@ Event WorkshopParentScript.WorkshopActorAssignedToWork(WorkshopParentScript akSe
 	kargs[1] = workshopRef
 	kargs[2] = actorRef ; Added with our version of scripts
 	/;
+	;ModTrace("[WorkshopActorAssignedToWork Event Received] AssignedObject: " + akArgs[0] + ", Workshop: " + akArgs[1] + ", ActorRef: " + akArgs[2])
 EndEvent
 
 Event WorkshopParentScript.WorkshopActorUnassigned(WorkshopParentScript akSenderRef, Var[] akArgs)
@@ -450,6 +451,7 @@ Function HandleGameLoaded()
 	endif
 	
 	CleanFormList(WorkshopTrackedAVs)
+	SyncWorkshopArrayIndexes()
 	
 	Float fCurrentGameTime = Utility.GetCurrentGameTime()
 	
@@ -638,6 +640,47 @@ Function SetupNewWorkshopProperties(WorkshopScript akWorkshopRef)
 	ModTrace("Marking properties configured for workshop: " + akWorkshopRef)
 	akWorkshopRef.bPropertiesConfigured = true
 EndFunction
+
+Function SyncWorkshopArrayIndexes()
+	; Ensure our workshop array indexes match the workshopID - TODO: We should probably stick this on workshop parent as well
+	WorkshopScript[] kRearrangedWorkshops = new WorkshopScript[0]
+	Location[] kRearrangedLocations = new Location[0]
+	
+	Int[] iWorkshopIDs = new Int[0]
+	
+	int i = 0
+	while(i < Workshops.Length)
+		iWorkshopIDs.Add(Workshops[i].GetWorkshopID())
+		
+		i += 1
+	endWhile
+	
+	int iSearchingFor = 0
+	Bool bAdded = false
+	while(iSearchingFor < iWorkshopIDs.Length)
+		Int iIndex = iWorkshopIDs.Find(iSearchingFor)
+		
+		if(iIndex < 0)
+			; Not found, insert blanks
+			kRearrangedWorkshops.Add(None)
+			kRearrangedLocations.Add(None)
+		else
+			kRearrangedWorkshops.Add(Workshops[iIndex])
+			Location thisLocation = Workshops[iIndex].myLocation
+			if( ! thisLocation)
+				thisLocation = Workshops[iIndex].GetCurrentLocation()
+			endif
+			
+			kRearrangedLocations.Add(thisLocation)
+		endif
+		
+		iSearchingFor += 1
+	endWhile
+	
+	Workshops = kRearrangedWorkshops
+	WorkshopLocations = kRearrangedLocations
+EndFunction
+
 
 Function CheckForWorkshopChange(Bool abTimedDoubleCheck = false)
 	WorkshopScript thisWorkshop = GetNearestWorkshop(PlayerRef)
