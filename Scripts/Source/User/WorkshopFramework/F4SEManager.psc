@@ -181,7 +181,7 @@ EndFunction
 String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPluginsOnly = false)
 	if(aFormOrReference != None)
 		int iFormID = aFormOrReference.GetFormID()
-		iFormID = GetLoadOrderAgnosticFormID(iFormID) ; TESTING THIS
+		iFormID = GetLoadOrderAgnosticFormID(iFormID)
 		Game:PluginInfo[] Plugins = Game.GetInstalledPlugins()
 		Game:PluginInfo[] LightPlugins = Game.GetInstalledLightPlugins()
 		

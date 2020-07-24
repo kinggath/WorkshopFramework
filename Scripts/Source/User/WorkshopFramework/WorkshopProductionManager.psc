@@ -951,7 +951,7 @@ EndFunction
 
 ; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeFromWorkshop(Form aConsumeMe, Int aiCount, WorkshopScript akWorkshopRef, Keyword aTargetContainerKeyword = None, Bool abIsComponentFormList = false, Bool abLinkedWorkshopConsumption = false)
-	ConsumeFromWorkshopV2(aConsumeMe, aiCount, akWorkshopRef, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption, abCheckOnly = false)
+	return ConsumeFromWorkshopV2(aConsumeMe, aiCount, akWorkshopRef, aTargetContainerKeyword, abIsComponentFormList, abLinkedWorkshopConsumption, abCheckOnly = false)
 EndFunction
 
 
@@ -1170,7 +1170,7 @@ EndFunction
 
 ; 1.0.8 - Calling V2 for backwards compatibility
 Int Function ConsumeResource(ObjectReference akContainerRef, Form aConsumeMe, Int aiCount, Bool abComponentFormList = false)
-	ConsumeResourceV2(akContainerRef, aConsumeMe, aiCount, abComponentFormList, abCheckOnly = false)
+	return ConsumeResourceV2(akContainerRef, aConsumeMe, aiCount, abComponentFormList, abCheckOnly = false)
 EndFunction
 
 
@@ -1195,7 +1195,27 @@ Int Function ConsumeResourceV2(ObjectReference akContainerRef, Form aConsumeMe, 
 		
 		if( ! abCheckOnly)
 			if(bComponents)
-				akContainerRef.RemoveItemByComponent(aConsumeMe, iConsumedCount)
+				if(aConsumeMe as Component)
+					akContainerRef.RemoveComponents(aConsumeMe as Component, iConsumedCount)
+				else
+					Formlist ComponentList = aConsumeMe as Formlist
+					
+					int iRemainingToConsume = iConsumedCount
+					int i = 0
+					while(i < ComponentList.GetSize() && iRemainingToConsume > 0)
+						Component thisComponent = ComponentList.GetAt(i) as Component
+						iContainerItemCount = akContainerRef.GetComponentCount(thisComponent)
+						if(iContainerItemCount >= iRemainingToConsume)
+							akContainerRef.RemoveComponents(thisComponent, iRemainingToConsume)
+							iRemainingToConsume = 0
+						elseif(iContainerItemCount > 0)
+							akContainerRef.RemoveComponents(thisComponent, iContainerItemCount)
+							iRemainingToConsume -= iContainerItemCount
+						endif
+					
+						i += 1
+					endWhile
+				endif
 			else
 				akContainerRef.RemoveItem(aConsumeMe, iConsumedCount)
 			endif

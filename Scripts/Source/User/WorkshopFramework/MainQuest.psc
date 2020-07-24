@@ -250,6 +250,9 @@ EndFunction
 
 
 Function HandleGameLoaded()
+	; Make sure our debug log is open
+	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
+	
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> HandleGameLoaded called on WSFW MainQuest")
 	
 	if(WorkshopParent.IsRunning())
@@ -257,9 +260,6 @@ Function HandleGameLoaded()
 	else
 		RegisterForRemoteEvent(WorkshopParent as Quest, "OnStageSet")
 	endif
-	
-	; Make sure our debug log is open
-	WorkshopFramework:Library:UtilityFunctions.StartUserLog()
 	
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 	UpdatePluginFlags()

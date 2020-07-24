@@ -391,7 +391,7 @@ Function RunCode()
 				endif
 			endif
 			
-			if(TagAVs)
+			if(TagAVs != None)
 				int i = 0
 				while(i < TagAVs.Length)
 					kResult.SetValue(TagAVs[i].AVForm, TagAVs[i].fValue)
@@ -400,7 +400,7 @@ Function RunCode()
 				endWhile
 			endif
 			
-			if(TagKeywords)
+			if(TagKeywords != None)
 				int i = 0
 				while(i < TagKeywords.Length)
 					kResult.AddKeyword(TagKeywords[i])
@@ -409,7 +409,7 @@ Function RunCode()
 				endWhile
 			endif
 			
-			if(LinkedRefs)
+			if(LinkedRefs != None)
 				int i = 0
 				while(i < LinkedRefs.Length)
 					kResult.SetLinkedRef(LinkedRefs[i].kLinkToMe, LinkedRefs[i].LinkWith)
