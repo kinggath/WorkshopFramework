@@ -290,6 +290,10 @@ Actor function GetAssignedNPC()
 		endif
 	endif
 	
+	if(assignedActor == Game.GetPlayer())
+		return None
+	endIf
+	
 	return assignedActor
 endFunction
 

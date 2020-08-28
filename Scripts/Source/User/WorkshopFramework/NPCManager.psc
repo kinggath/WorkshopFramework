@@ -583,6 +583,17 @@ EndFunction
 
 
 Actor Function CreateNPC(Form aActorForm, ObjectReference akSpawnAtRef, int aiLevelMod = 4, EncounterZone akZone = None)
+	if( ! akSpawnAtRef)
+		return None
+	endif
+	
+	if(akSpawnAtRef as WorkshopScript)
+		ObjectReference kCenterRef = akSpawnAtRef.GetLinkedRef(WorkshopLinkSpawn)
+		if(kCenterRef)
+			akSpawnAtRef = kCenterRef
+		endif
+	endif
+	
 	ActorBase asBase = aActorForm as ActorBase
 	if( ! asBase)
 		FormList asFormList = aActorForm as FormList
@@ -667,6 +678,12 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 		; Could not recalc workshop resources, manually adjust population
 		ModifyActorValue(akWorkshopRef, Population, 1)
 	endif	
+	
+	; Send WorkshopParent event for actor being added
+	Var[] kargs = new Var[2]
+	kargs[0] = akActorRef
+	kargs[1] = iNewWorkshopID
+	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 endFunction
 
 
@@ -805,13 +822,11 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 		WorkshopParent.ResetHappinessPUBLIC(akWorkshopRef)
 	endif	
 	
-	if( ! bIsCreated || akActorRef.GetActorBase().IsUnique())
-		; Send WorkshopParent event for a new actor being added
-		Var[] kargs = new Var[2]
-		kargs[0] = akActorRef
-		kargs[1] = iNewWorkshopID
-		WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
-	endif
+	; Send WorkshopParent event for actor being added
+	Var[] kargs = new Var[2]
+	kargs[0] = akActorRef
+	kargs[1] = iNewWorkshopID
+	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 	
 	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
 		ModTrace("NPCManager.AddNPCToWorkshop: Failed to release lock " + iLockKey + "!", 2)
@@ -988,6 +1003,7 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 	if(ResourceObjects.Length == 0)
 		akActorRef.SetValue(UnassignedPopulation, 1)
 		SetAssignedMultiResource(akActorRef, None)
+		SetMultiResourceProduction(akActorRef, 0)
 		SetWorker(akActorRef, false)
 		SetWork24Hours(akActorRef, false)
 		SetScavenger(akActorRef, false)

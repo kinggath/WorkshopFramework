@@ -198,7 +198,7 @@ EndFunction
 
 Function TriggerLocationChange()
 	int i = 0
-	
+	ModTrace("[MasterQuest] " + Self + " TriggerLocationChange called. Sending event to " + LocationChangedQuests.GetSize() + " quests.")
 	while(i < LocationChangedQuests.GetSize())
 		Quest thisQuest = LocationChangedQuests.GetAt(i) as Quest
 		
