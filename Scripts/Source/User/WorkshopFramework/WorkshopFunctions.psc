@@ -1316,7 +1316,9 @@ Location Function MakePermanentNPCFullSettler(Actor akActorRef, Bool abCommandab
 	if(akActorRef as WorkshopNPCScript)
 		Keyword WorkshopAssignHomePermanentActor = GetAssignHomePermanentActorKeyword()
 		
-		ChosenLocation = akActorRef.OpenWorkshopSettlementMenu(WorkshopAssignHomePermanentActor)
+		ChosenLocation = (akActorRef as WorkshopNPCScript).OpenWorkshopSettlementMenu(WorkshopAssignHomePermanentActor)
+		
+		WorkshopFramework:Library:UtilityFunctions.ModTrace("[MakePermanentNPCFullSettler] WorkshopAssignHomePermanentActor = " + WorkshopAssignHomePermanentActor + ", player chose location: " + ChosenLocation)
 	else
 		ChosenLocation = Game.GetPlayer().OpenWorkshopSettlementMenuEx(None)
 		

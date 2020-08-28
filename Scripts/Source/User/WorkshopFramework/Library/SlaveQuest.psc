@@ -15,6 +15,8 @@
 Scriptname WorkshopFramework:Library:SlaveQuest extends WorkshopFramework:Library:VersionedLockableQuest
 { This quest will have certain events fed to it from MasterQuest, to allow for threading of common event processing code - such as PlayerLoadGame, or PlayerChangedLocation }
 
+import WorkshopFramework:Library:UtilityFunctions
+
 ; ------------------------------------------
 ; Consts
 ; ------------------------------------------
@@ -53,6 +55,7 @@ EndGroup
 
 Event OnStageSet(Int auiStageID, Int auiItemID)
 	if(auiStageID == EVENTSTAGE_FromMasterQuest)
+		;ModTrace("[SlaveQuest] " + Self + " Received event from master quest " + auiItemID)
 		if(auiItemID == EVENTSTAGEITEM_PlayerLoadedGame) ; Player Loaded Game
 			HandleGameLoaded()
 		elseif(auiItemID == EVENTSTAGEITEM_PlayerChangedLocation) ; Player Changed Location
@@ -68,7 +71,7 @@ EndEvent
 
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
-	
+	ModTrace("[SlaveQuest] " + Self + " HandleQuestInit called, registering for managed events.")
 	; Unregister for this, as we want our GameLoaded code to run in response to the MasterQuest
 	UnRegisterForRemoteEvent(PlayerRef, "OnPlayerLoadGame")
 	
