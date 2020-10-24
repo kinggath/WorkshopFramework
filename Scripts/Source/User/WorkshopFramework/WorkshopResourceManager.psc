@@ -264,26 +264,6 @@ EndEvent
 Event OnTimer(Int aiTimerID)
 	if(aiTimerID == iTimerID_RecheckWithinSettlement)
 		CheckForWorkshopChange(true)
-	elseif(aiTimerID == iTimerID_FixSettlerCount)
-		Bool bSettlerCountStable = false
-		ObjectReference kWorkshopRef = LatestWorkshop.GetRef()
-		if(kWorkshopRef)
-			Float fPopulationValue = kWorkshopRef.GetValue(Population)
-			
-			while( ! bSettlerCountStable)
-				; Wait for recalculateResources to complete - this can take several seconds real time and there is no event for it
-				Utility.Wait(1.0)
-				Float fCurrentPop = kWorkshopRef.GetValue(Population)
-				
-				if(fCurrentPop != fPopulationValue)
-					fPopulationValue = fCurrentPop
-				else
-					bSettlerCountStable = true
-				endif
-			endWhile
-			
-			FixSettlerCount()
-		endif
 	elseif(aiTimerID == iTimerID_DoubleCheckRemoteBuiltResources)
 		HandleRemoteBuiltResources()
 	endif
@@ -704,7 +684,6 @@ EndFunction
 
 
 Function HandleWorkshopChange(WorkshopScript akWorkshopRef)
-	FixSettlerCount() ; Do one last settler count fix before we leave - this should eliminate the pipboy display bug
 	LatestWorkshop.ForceRefTo(akWorkshopRef)
 	ClearLatestSettlementResources()
 	GatherLatestSettlementResources()
@@ -765,6 +744,8 @@ EndFunction
 
 
 Function FixSettlerCount()
+	return ; 2.0.4 - As of 2.0.2, this is no longer needed - removed calls to it, only retaining function for save files with calls in progress or external mods expecting it to exist
+
 	; There is a frequent bug in the game where the settler count will end up doubled in the UI, this will attempt to fix that
 	
 	int i = 0
