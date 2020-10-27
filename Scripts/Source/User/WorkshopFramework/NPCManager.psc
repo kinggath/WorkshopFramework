@@ -693,6 +693,7 @@ EndFunction
 
 ; Alternative to WorkshopParent.AddActorToWorkshop that does not require the WorkshopNPCScript
 Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool abResetMode = false)
+	ModTrace("AddNPCToWorkshop called on " + akActorRef + " targeting settlement " + akWorkshopRef)
 	int iLockKey = GetLock()
 		
 	if(iLockKey <= GENERICLOCK_KEY_NONE)
@@ -783,6 +784,7 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 		
 		akActorRef.ClearFromOldLocations() ; make sure location data is correct
 	else
+		WorkshopParent.PermanentActorAliases.AddRef(akActorRef)
 		bAutoAssignBeds = true
 	endif
 
@@ -941,8 +943,14 @@ Function AssignNPCToObject(WorkshopObjectScript akWorkshopObject, Actor akNewAct
 		Bool bIsBed = akWorkshopObject.IsBed()
 		; Don't assign robots to beds
 		if( ! bIsBed || akNewActor.GetBaseValue(GetRobotPopulationAV()) <= 0)
+			WorkshopNPCScript asWorkshopNPC = akNewActor as WorkshopNPCScript
+			
 			; Let workshopObject handle most code - this allows to have item level overrides
-			akWorkshopObject.AssignNPC(akNewActor)
+			if(asWorkshopNPC) ; 2.0.4 - We need to call AssignActor or any workshop object overriding it won't be called
+				akWorkshopObject.AssignActor(asWorkshopNPC)
+			else
+				akWorkshopObject.AssignNPC(akNewActor)
+			endif
 			
 			if(abAutoUpdateWorkshopNPCStatus)
 				UpdateWorkshopNPCStatus(akNewActor, akWorkshopRef = thisWorkshop, abGetLock = false)

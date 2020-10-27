@@ -139,7 +139,7 @@ Function SafeDelete(ObjectReference akDeleteMe)
 	endif
 	
 	; Disable
-	if( ! bIsDisabled)
+	if( ! bIsDisabled || bTemporarilyRelocated)
 		akDeleteMe.Disable(false)
 	endif
 	

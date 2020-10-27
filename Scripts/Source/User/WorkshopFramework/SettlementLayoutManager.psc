@@ -60,6 +60,7 @@ Group ActorValues
 EndGroup
 
 Group Aliases
+	ReferenceAlias Property SafeSpawnPoint Auto Const Mandatory
 	LocationAlias Property NameHolder_Settlement Auto Const Mandatory
 	ReferenceAlias Property NameHolder_Layout Auto Const Mandatory
 	ReferenceAlias Property NameHolder_Designer Auto Const Mandatory
@@ -523,15 +524,17 @@ Bool Function PresentLayoutOptionsMenu(WorkshopScript akWorkshopRef, WorkshopFra
 	int iCount = AvailableLayouts.Length
 	Location thisLocation = akWorkshopRef.myLocation
 	NameHolder_Settlement.ForceLocationTo(thisLocation)
+	
+	ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
 	Bool bCycle = true
 	
 	while(bCycle)
 		WorkshopFramework:Weapons:SettlementLayout thisLayout = AvailableLayouts[i]
 		
 		; Setup aliases
-		ObjectReference kTempLayoutName = PlayerRef.PlaceAtMe(thisLayout as Form)
+		ObjectReference kTempLayoutName = kSpawnPoint.PlaceAtMe(thisLayout as Form)
 		NameHolder_Layout.ForceRefTo(kTempLayoutName)
-		ObjectReference kTempDesignerName = PlayerRef.PlaceAtMe(thisLayout.DesignerNameHolder)
+		ObjectReference kTempDesignerName = kSpawnPoint.PlaceAtMe(thisLayout.DesignerNameHolder)
 		NameHolder_Designer.ForceRefTo(kTempDesignerName)
 		
 			; Check for plugins
@@ -588,9 +591,10 @@ Bool Function PresentLayoutOptionsMenu(WorkshopScript akWorkshopRef, WorkshopFra
 			Int iPages = Math.Ceiling(iTotalMissing as Float/iMaxPerPage as Float)
 			int iViewMissingSelection = 0
 			ObjectReference[] kTempRefs = new ObjectReference[iTotalMissing]
+			
 			int k = 0
 			while(k < iMissingPluginIndexes.Length)
-				kTempRefs[k] = PlayerRef.PlaceAtMe(thisLayout.PluginNameHolders[iMissingPluginIndexes[k]])
+				kTempRefs[k] = kSpawnPoint.PlaceAtMe(thisLayout.PluginNameHolders[iMissingPluginIndexes[k]])
 				
 				k += 1
 			endWhile

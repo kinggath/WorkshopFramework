@@ -198,7 +198,6 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 			endWhile
 		endif
 		
-		;iFormID = GetLoadOrderAgnosticFormID(iFormID)
 		int i = 0
 		while(i < LightPlugins.Length)
 			Form FetchForm = Game.GetFormFromFile(iFormID, LightPlugins[i].Name)
