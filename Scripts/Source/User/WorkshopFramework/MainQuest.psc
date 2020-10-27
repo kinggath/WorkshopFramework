@@ -369,8 +369,11 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     float defaultTris  = akWorkshopRef.MaxTriangles
     float defaultDraws = akWorkshopRef.MaxDraws
 
-    float curMaxTris  = akWorkshopRef.getValue(WorkshopParent.WorkshopMaxTriangles)
-    float curMaxDraws = akWorkshopRef.getValue(WorkshopParent.WorkshopMaxDraws)
+	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
+	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
+	
+    float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
+    float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 
     float percentTris  = 100 * curMaxTris / defaultTris
     float percentDraws = 100 * curMaxDraws / defaultDraws
@@ -392,8 +395,8 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     
     if(iChoice == 3) 
         ; reset
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxDraws, Math.floor(defaultDraws))
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxTriangles, Math.floor(defaultTris))
+        akWorkshopRef.SetValue(WorkshopMaxDraws, Math.floor(defaultDraws))
+        akWorkshopRef.SetValue(WorkshopMaxTriangles, Math.floor(defaultTris))
         return
     endif
 
@@ -416,12 +419,12 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     
     if(currentDraws > defaultDraws || currentTris > defaultTris)
         ; use percentage of current maximum
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxDraws,     curMaxTris  + Math.floor(curMaxTris * factor))
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxTriangles, curMaxDraws + Math.floor(curMaxDraws * factor))
+        akWorkshopRef.SetValue(WorkshopMaxTriangles,     curMaxTris  + Math.floor(curMaxTris * factor))
+        akWorkshopRef.SetValue(WorkshopMaxDraws, curMaxDraws + Math.floor(curMaxDraws * factor))
     else
         ; use percentage of default maximum
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxDraws,     curMaxTris  + Math.floor(defaultTris * factor))
-        akWorkshopRef.SetValue(WorkshopParent.WorkshopMaxTriangles, curMaxDraws + Math.floor(defaultDraws * factor))
+        akWorkshopRef.SetValue(WorkshopMaxTriangles,     curMaxTris  + Math.floor(defaultTris * factor))
+        akWorkshopRef.SetValue(WorkshopMaxDraws, curMaxDraws + Math.floor(defaultDraws * factor))
     endif
 EndFunction
 
