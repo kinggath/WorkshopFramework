@@ -198,6 +198,13 @@ Struct InjectableItemMap
 EndStruct
 
 
+Struct InjectionMap
+	LeveledItem TargetLeveledItem = None
+	Formlist NewEntries = None
+	Int iLevel = 1
+	Int iCount = 1
+EndStruct
+
 Struct WorkshopTargetContainer
 	Keyword TargetContainerKeyword
 	Int iWorkshopID
