@@ -54,6 +54,11 @@ EndGroup
 ; ------------------------------------------
 
 Event OnStageSet(Int auiStageID, Int auiItemID)
+	; Kinggath - Note to Self: If you are finding that one of your quests is not getting this triggered - it is likely because you defined OnStageSet without adding a call to Parent.OnStageSet in it.
+	
+	; Would probably be wise to refactor and add a HandleStageSet function that can be overridden
+
+
 	if(auiStageID == EVENTSTAGE_FromMasterQuest)
 		;ModTrace("[SlaveQuest] " + Self + " Received event from master quest " + auiItemID)
 		if(auiItemID == EVENTSTAGEITEM_PlayerLoadedGame) ; Player Loaded Game

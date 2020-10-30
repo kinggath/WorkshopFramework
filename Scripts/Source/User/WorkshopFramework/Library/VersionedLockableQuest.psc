@@ -57,7 +57,7 @@ EndFunction
 ; Handler Functions - These should be written by the extended scripts that use them
 ; ------------------------------------------
 
-Function HandleGameLoaded()
+Function HandleGameLoaded()	
 	Parent.HandleGameLoaded()
 	if(iInstalledVersion < gCurrentVersion.GetValueInt())
 		if(iInstalledVersion > 0)
