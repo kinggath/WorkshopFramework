@@ -115,16 +115,33 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
     ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
 	
     if(akAddedTo == kPhantomVendorContainerRef)
-		iAwaitingSorting -= 1
-		
-		if( ! SortItem(akBaseItem))
+		ModTrace("[UIManager] item " + akBaseItem + " added to " + akAddedTo + ", sorting. " + iAwaitingSorting + " items remaining.")
+		if(SortItem(akBaseItem))
+			if(akItemReference == None)
+				; Our barter system seems to only work correctly with references - likely a limitation of the dynamic updating of the vendor filter formlist. So we'll stash a reference copy in the vendor's "pockets" until we're done processing these events, then we'll move all of the items to the vendor container after we've unregistered for OnItemAdded (otherwise we'd have an infinite loop if we just dropped them into the vendor container). Failure to use refs causes the non-ref items to be removed when ShowBarterMenu is called.
+				Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
+				kPhantomVendorContainerRef.RemoveItem(akBaseItem)
+				ObjectReference kCreatedRef = kPhantomVendorRef.PlaceAtMe(akBaseItem)
+				kPhantomVendorRef.AddItem(kCreatedRef)
+			else
+				ModTrace("[UIManager] item " + akBaseItem + " already had a ref of " + akItemReference)
+			endif
+		else
 			kPhantomVendorContainerRef.RemoveItem(akBaseItem) ; Get rid of this so player doesn't assume its a valid option
 			ModTrace("[UIManager] Too many items to sort. Lost record of item " + akBaseItem)
 		endif
 		
+		iAwaitingSorting -= 1
 		if(iAwaitingSorting <= 0)
+			Utility.Wait(1.0)
 			; No longer need to monitor this event as we're only watching for items initially set up via the aAvailableOptionsFormlist
 			UnregisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
+			
+			; Move any refs we created into the vendor container now that we've unregistered for OnItemAdded
+			PhantomVendorAlias.GetRef().RemoveAllItems(kPhantomVendorContainerRef)
+			
+			iAwaitingSorting = -999
+			ModTrace("[UIManager] Completed sorting of barter items. Vendor container " + kPhantomVendorContainerRef + " has " + kPhantomVendorContainerRef.GetItemCount() + " items.")
 		endif
     endif
 EndEvent
@@ -142,6 +159,7 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	bPhantomVendorInUse = true
 	
 	ResetPhantomVendor()
+	ModTrace("[UIManager] ShowCachedBarterSelectMenu called. aFilterKeywords = " + aFilterKeywords)
 	PreparePhantomVendor(afBarterDisplayNameForm, aFilterKeywords, aiAcceptStolen)
 	
 	SelectedResultsFormlist = aStoreResultsIn 
@@ -155,14 +173,29 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	
 	; Monitor for the items to be added from the selection pool	
 	RegisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
-	
+	ModTrace("[UIManager] Moving all items from " + kCurrentCacheRef + " to " + kPhantomVendorContainerRef)
 	kCurrentCacheRef.RemoveAllItems(kPhantomVendorContainerRef)
 	
-	; Brief pause to give OnItemAdded events time
-	Utility.Wait(0.1 * (iAwaitingSorting/iSplitFormlistIncrement))
+	; Wait for OnItemAdded events to complete
+	int iWaitCount = 0
+	int iMaxWaitCount = iAwaitingSorting
+	while(iAwaitingSorting > 0 && iWaitCount < iMaxWaitCount)
+		Utility.Wait(0.1)
+		iWaitCount += 1
+	endWhile
+	
+	iWaitCount = 0
+	while(iAwaitingSorting <= 0 && iAwaitingSorting > -999 && iWaitCount < 20) ; -999 is used by our OnItemAdded event to tell us when it's safe to continue
+		Utility.Wait(0.1) 
+	endWhile
 	
 	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
+	
+	ModTrace("[UIManager] Pause over, calling ShowBarterMenu on " + kPhantomVendorRef + ", iBarterSelectCallbackID = " + iBarterSelectCallbackID)
+	
 	kPhantomVendorRef.ShowBarterMenu()
+	
+	ModTrace("[UIManager] ShowBarterMenu called, returning iBarterSelectCallbackID = " + iBarterSelectCallbackID)
 	
 	return iBarterSelectCallbackID
 EndFunction
@@ -279,6 +312,7 @@ Function ProcessBarterSelection()
 	
 	; Return any remaining items to player as they were not part of our pool, player likely dropped them in to see what would happen
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
+	ModTrace("[UIManager] Moving remaining " + kPhantomVendorContainerRef.GetItemCount() + " items from phantom vendor container to player.")
 	kPhantomVendorContainerRef.RemoveAllItems(PlayerRef)
 	
 	if(kCurrentCacheRef == SelectCache_Settlements.GetRef())
@@ -411,6 +445,8 @@ Function ProcessItemPool(Form[] aItemPool)
 			endif
 		else
 			; Item was left in vendor container, don't count as selected, but return to cache
+			ModTrace("[UIManager] Removing item " + BaseItem + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(BaseItem) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+			
 			kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)			
         endif
         
@@ -420,6 +456,7 @@ EndFunction
 
 
 Function ResetPhantomVendor()
+	ModTrace("[UIManager] ResetPhantomVendor called.")
 	; Reset previous select data
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetReference() as Actor
 	kPhantomVendorRef.RemoveFromFaction(PhantomVendorFaction_Either)
@@ -428,6 +465,7 @@ Function ResetPhantomVendor()
 	
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetReference()
 	kPhantomVendorContainerRef.RemoveAllItems() ; Get rid of copies from previous
+	ModTrace("[UIManager] ResetPhantomVendor: RemoveAllItems complete.")
 	kPhantomVendorContainerRef.SetActorRefOwner(PlayerRef) ; Prevent player from getting in trouble for stealing
 	
 	SelectedResultsFormlist = None
@@ -450,6 +488,9 @@ EndFunction
 Function PreparePhantomVendor(Form afBarterDisplayNameForm, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetReference() as Actor
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
+	
+	; Remove items from the vendor's pockets - they shouldn't have anything, but just in case
+	kPhantomVendorRef.RemoveAllItems()
 	
 	; Setup phantom vendor for this selection	
 	if(aFilterKeywords == None || aFilterKeywords.Length == 0)
@@ -477,7 +518,6 @@ Function PreparePhantomVendor(Form afBarterDisplayNameForm, Keyword[] aFilterKey
 		else
 			kPhantomVendorRef.AddToFaction(PhantomVendorFaction_Either)
 		endif
-		
 		
 		AddInventoryEventFilter(PhantomVendorBuySellList)	
 	endif
@@ -559,5 +599,10 @@ Function TestSettlementBarterSystem()
 EndFunction
 
 Function CheckBarterContainer()
-	Debug.MessageBox(PhantomVendorContainerAlias.GetRef().GetItemCount())
+	ObjectReference kVendorContainerRef = PhantomVendorContainerAlias.GetRef()
+	if(kVendorContainerRef != None)
+		Debug.MessageBox(kVendorContainerRef.GetItemCount())
+	else
+		Debug.MessageBox("Failed to fetch phantom vendor container ref")
+	endif
 EndFunction

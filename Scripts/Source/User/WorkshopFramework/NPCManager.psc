@@ -864,6 +864,7 @@ Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = 
 		; Completely removed from workshop system
 		WorkshopParent.WorkshopActorApply.RemoveFromRef(akActorRef)
 		WorkshopParent.PermanentActorAliases.RemoveRef(akActorRef)
+		WorkshopActorApply.RemoveFromRef(akActorRef)
 		akActorRef.SetValue(GetWorkshopPlayerOwnedAV(), 0)
 	endif
 
