@@ -375,13 +375,13 @@ Event FollowersScript.CompanionChange(FollowersScript akSender, Var[] akArgs)
 EndEvent
 
 Event OnWorkshopNPCTransfer(Location akNewWorkshopLocation, Keyword akActionKW)
-	;debug.trace(self + " OnWorkshopNPCTransfer " + akNewWorkshopLocation + " keyword=" + akActionKW)
 	;WorkshopParent.wsTrace(self + " has been directed to transfer to the workshop at " + akNewWorkshopLocation + " with the " + akActionKW + " action")
 	; what kind of transfer?
 	if akActionKW == WorkshopParent.WorkshopAssignCaravan
 		WorkshopParent.AssignCaravanActorPUBLIC(self, akNewWorkshopLocation)
 	else
 		WorkshopScript newWorkshop = WorkshopParent.GetWorkshopFromLocation(akNewWorkshopLocation)
+		
 		if newWorkshop
 			if akActionKW == WorkshopParent.WorkshopAssignHome
 				WorkshopParent.AddActorToWorkshopPUBLIC(self, newWorkshop)
