@@ -15,7 +15,7 @@ Scriptname WorkshopFramework:WorkshopFunctions Hidden Const
 
 import WorkshopDataScript
 import WorkshopFramework:Library:DataStructures
-import WorkshopFramework:Library:UtilityFunctions
+
 
 ; -----------------------------------
 ; Workshop Parent Replacements
@@ -617,8 +617,6 @@ Float Function GetMultiResourceProduction(Actor akActorRef) global
 	WorkshopNPCScript asWorkshopNPC = akActorRef as WorkshopNPCScript
 	
 	if(asWorkshopNPC)
-		;ModTrace("WorkshopFunctions.GetMultiResourceProduction called for actor " + akActorRef + " reporting " + asWorkshopNPC.multiResourceProduction)
-		
 		return asWorkshopNPC.multiResourceProduction
 	else
 		ActorValue MultiResourceProductionAV = GetMultiResourceProductionAV()
@@ -630,8 +628,6 @@ EndFunction
 
 Function SetMultiResourceProduction(Actor akActorRef, Float afValue) global
 	WorkshopNPCScript asWorkshopNPC = akActorRef as WorkshopNPCScript
-	
-	;ModTrace("WorkshopFunctions.SetMultiResourceProduction setting multiResourceProduction for actor " + akActorRef + " to " + afValue)
 	
 	if(asWorkshopNPC)
 		asWorkshopNPC.multiResourceProduction = afValue
@@ -1322,7 +1318,7 @@ Location Function MakePermanentNPCFullSettler(Actor akActorRef, Bool abCommandab
 		
 		ChosenLocation = (akActorRef as WorkshopNPCScript).OpenWorkshopSettlementMenu(WorkshopAssignHomePermanentActor)
 		
-		;ModTrace("[MakePermanentNPCFullSettler] WorkshopAssignHomePermanentActor = " + WorkshopAssignHomePermanentActor + ", player chose location: " + ChosenLocation)
+		WorkshopFramework:Library:UtilityFunctions.ModTrace("[MakePermanentNPCFullSettler] WorkshopAssignHomePermanentActor = " + WorkshopAssignHomePermanentActor + ", player chose location: " + ChosenLocation)
 	else
 		ChosenLocation = Game.GetPlayer().OpenWorkshopSettlementMenuEx(None)
 		

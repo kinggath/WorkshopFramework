@@ -171,7 +171,12 @@ Function UpdateDisplay()
 		if(bReverse && bReverseFlipsStacking)
 			Self.MoveTo(kControlledRef)
 		else
-			kControlledRef.MoveTo(Self)
+			if(kControlledRef.X != Self.X || kControlledRef.Y != Self.Y || kControlledRef.Z != Self.Z)
+				kControlledRef.MoveTo(Self)
+				
+				; Calling the OnRelease event code as a trigger those objects can react to the movement
+				kControlledRef.OnRelease()
+			endif
 		endif
 	endif
 	
