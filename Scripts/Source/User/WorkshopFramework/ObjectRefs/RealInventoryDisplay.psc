@@ -106,7 +106,12 @@ EndEvent
 ; -------------------------------
 
 WorkshopScript Function GetWorkshop()
-	return GetLinkedRef(GetWorkshopItemKeyword()) as WorkshopScript
+	WorkshopScript thisWorkshop = GetLinkedRef(GetWorkshopItemKeyword()) as WorkshopScript
+	if( ! thisWorkshop)
+		thisWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(Self)
+	endif
+	
+	return thisWorkshop
 EndFunction
 
 String Function GetVendorID()

@@ -691,9 +691,13 @@ Function ApplyAliasData(Actor akActorRef)
 	WorkshopActorApply.ApplyToRef(akActorRef)
 EndFunction
 
+Function RemoveAliasData(Actor akActorRef)
+	WorkshopActorApply.RemoveFromRef(akActorRef)
+EndFunction
+
 ; Alternative to WorkshopParent.AddActorToWorkshop that does not require the WorkshopNPCScript
 Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool abResetMode = false)
-	ModTrace("AddNPCToWorkshop called on " + akActorRef + " targeting settlement " + akWorkshopRef)
+	;ModTrace("AddNPCToWorkshop called on " + akActorRef + " targeting settlement " + akWorkshopRef)
 	int iLockKey = GetLock()
 		
 	if(iLockKey <= GENERICLOCK_KEY_NONE)
@@ -740,7 +744,7 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 	
 	if(iOldWorkshopID < 0)
 		; Only apply if a new settler, this will allow for mods to have removed this set of packages if they wanted to create alternate AI sets
-		ApplyWorkshopAliasStamp(akActorRef)	
+		ApplyAliasData(akActorRef)	
 	endif
 	
 	akActorRef.SetLinkedRef(akWorkshopRef, WorkshopItemKeyword)
@@ -864,8 +868,14 @@ Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = 
 		; Completely removed from workshop system
 		WorkshopParent.WorkshopActorApply.RemoveFromRef(akActorRef)
 		WorkshopParent.PermanentActorAliases.RemoveRef(akActorRef)
-		WorkshopActorApply.RemoveFromRef(akActorRef)
+		RemoveAliasData(akActorRef)
 		akActorRef.SetValue(GetWorkshopPlayerOwnedAV(), 0)
+	else
+		; 2.0.7 - Fixing a bug where some NPCs, such as dogs, who's workshop package have a Wander flag, will get stuck wandering in their original location forever after being transferred
+		RemoveAliasData(akActorRef)
+		akActorRef.EvaluatePackage()
+		ApplyAliasData(akActorRef)
+		akActorRef.EvaluatePackage()
 	endif
 
 	SetWorkshopID(akActorRef, -1)
@@ -1015,7 +1025,8 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 		SetMultiResourceProduction(akActorRef, 0)
 		SetWorker(akActorRef, false)
 		SetWork24Hours(akActorRef, false)
-		SetScavenger(akActorRef, false)
+		SetScavenger(akActorRef, false)		
+		WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef) ; WSFW 2.0.7 - ensure they are no longer queued up to be auto-assigned to additional multiresources until they are once again assigned to something
 	else
 		SetNewSettler(akActorRef, false)
 		
@@ -1038,6 +1049,7 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 					
 					ActorValue thisMultiResourceAV = asWorkshopObject.GetMultiResourceValue()
 					if(thisMultiResourceAV)
+						;ModTrace("NPCManager.UpdateWorkshopNPCStatus found actor is assigned to " + thisMultiResourceAV + ", setting as AssignedMultiResource.")
 						SetAssignedMultiResource(akActorRef, thisMultiResourceAV)
 						SettlerMultiResource = thisMultiResourceAV
 						fResourceTotal += asWorkshopObject.GetBaseValue(thisMultiResourceAV)
@@ -1078,6 +1090,7 @@ Function UpdateWorkshopNPCStatus(Actor akActorRef, WorkshopScript akWorkshopRef 
 			if(fResourceTotal >= GetMaxProductionPerNPC(iResourceIndex))
 				WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef)
 			elseif(iResourceIndex >= 0)
+				;ModTrace("NPCManager.UpdateWorkshopNPCStatus adding actor " + akActorRef + " to worker array for resource index " + iResourceIndex)
 				WorkshopParent.WSFW_AddActorToWorkerArray(akActorRef, iResourceIndex)
 				
 				bShouldTryToAssignResources = true
@@ -1185,6 +1198,7 @@ function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastA
 			endif
 		endif
 	elseif(akLastAssigned.HasKeyword(WorkshopWorkObject))
+		;ModTrace("NPCManager.HandleNPCAssignmentRules called. akActorRef = " + akActorRef + ", akLastAssigned = " + akLastAssigned + ", akCurrentOwner = " + akCurrentOwner + ", abResetMode = " + abResetMode + ", abGetLock = " + abGetLock)
 		bool bShouldUnassignAllObjects = true
 		bool bShouldUnassignSingleObject = false
 		actorValue multiResourceValue = GetAssignedMultiResource(akActorRef)
@@ -1199,24 +1213,30 @@ function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastA
 				float fMaxProduction = GetMaxProductionPerNPC(iResourceIndex)
 				
 				float currentProduction = GetMultiResourceProduction(akActorRef)
+				float totalProduction = currentProduction
 				
-				if( ! abResetMode && bAlreadyAssigned && currentProduction <= fMaxProduction)
+				if( ! abResetMode && bAlreadyAssigned && totalProduction <= fMaxProduction)
 					bShouldUnassignAllObjects = false
-				else
-					float totalProduction = currentProduction
-					if(abResetMode || bAlreadyAssigned)
+				else					
+					if(abResetMode || ! bAlreadyAssigned)
 						totalProduction = totalProduction + akLastAssigned.GetBaseValue(multiResourceValue)
 					endif
 
 					if(totalProduction <= fMaxProduction)
 						bShouldUnassignAllObjects = false
 					elseif(bAlreadyAssigned)
-						bShouldUnassignSingleObject = true
+						bShouldUnassignAllObjects = false
+						bShouldUnassignSingleObject = true						
 					endif
 				endif
+				
+				;ModTrace("NPCManager.HandleNPCAssignmentRules " + akLastAssigned + " has multiResourceValue " + multiResourceValue + ", " + akActorRef + " is currently assigned to " + currentProduction + " worth. About to be assigned to " + totalProduction + " worth.")
 			else
+				;ModTrace("NPCManager.HandleNPCAssignmentRules " + akLastAssigned + " does not have multiResourceValue " + multiResourceValue + ", which is what " + akActorRef + " is currently assigned to - so we're going to unassign all of their work objects.")
 				bShouldUnassignAllObjects = true
 			endif
+		else
+			;ModTrace("NPCManager.HandleNPCAssignmentRules " + akActorRef + " is reported as having no multiResourceValue assignment.")
 		endif
 
 		; if bShouldUnassignSingleObject
@@ -1228,7 +1248,13 @@ function HandleNPCAssignmentRules(Actor akActorRef, WorkshopObjectScript akLastA
 				UnassignNPCFromObject(akActorRef, akLastAssigned, abResetMode, akWorkshopRef = workshopRef)
 			endif
 		elseif(bShouldUnassignAllObjects && IsObjectOwner(workshopRef, akActorRef))
+			;ModTrace("NPCManager.HandleNPCAssignmentRules unassigning " + akActorRef + " from all current assignments.")
+			
+			;ModTrace("NPCManager.HandleNPCAssignmentRules PRE-call to UnassignNPCSkipExclusions, outputting WorkshopParent worker arrays: Food = " + WorkshopParent.GetWSFW_FoodWorkers() + ", Safety = " + WorkshopParent.GetWSFW_SafetyWorkers())
+			
 			UnassignNPCSkipExclusions(akActorRef, workshopRef, akLastAssigned)
+			
+			;ModTrace("NPCManager.HandleNPCAssignmentRules POST-call to UnassignNPCSkipExclusions, outputting WorkshopParent worker arrays: Food = " + WorkshopParent.GetWSFW_FoodWorkers() + ", Safety = " + WorkshopParent.GetWSFW_SafetyWorkers())
 		endif
 
 		; unassign current owner, if any (and different from new owner)
@@ -1259,6 +1285,7 @@ Function UnassignNPCFromObject(Actor akActorRef, WorkshopObjectScript akWorkshop
 			endif
 		endif
 	
+		;ModTrace("NPCManager.UnassignNPCFromObject: akActorRef = " + akActorRef + ", akWorkshopObject = " + akWorkshopObject + ", abSendUnassignEvent = " + abSendUnassignEvent + ", abResetMode = " + abResetMode + ", akWorkshopRef = " + akWorkshopRef + ", abGetLock = " + abGetLock)
 		; Handle unassignment of object
 		UnassignWorkshopObject(akWorkshopObject, abUnassigningMultipleResources = abResetMode, abGetLock = false)
 		
@@ -1271,11 +1298,11 @@ Function UnassignNPCFromObject(Actor akActorRef, WorkshopObjectScript akWorkshop
 				WorkshopParent.SendWorkshopActorUnassignedEvent(akWorkshopObject, akWorkshopRef, akActorRef)
 			endif			
 		endif
-	endif
 		
-	if(abGetLock)
-		if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
-			ModTrace("NPCManager.UnassignNPCFromObject: Failed to release lock " + iLockKey + "!", 2)
+		if(abGetLock)
+			if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )
+				ModTrace("NPCManager.UnassignNPCFromObject: Failed to release lock " + iLockKey + "!", 2)
+			endif
 		endif
 	endif
 endFunction
@@ -1356,6 +1383,7 @@ Function UnassignNPC(Actor akActorRef, bool abSendUnassignEvent = true, bool abR
 	
 	;if workshop is loaded, also make sure that the actor gets removed from the worker arrays to prevent him from automatically becoming reassigned:
 	if(bWorkshopLoaded && iCaravanActorIndex < 0)
+		;ModTrace("NPCManager.UnassignNPC removing " + akActorRef + " from worker array to prevent reassignment.")
 		WorkshopParent.WSFW_RemoveActorFromWorkerArray(akActorRef)
 	endif
 	
@@ -1417,7 +1445,7 @@ Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRe
 	endif
 	
 	bool bWorkshopLoaded = akWorkshopRef.Is3dLoaded()
-	bool bShouldTryToAssignResources = false
+	bool bShouldTryToRecalculateResources = false
 	bool bSendCollectiveEvent = false	
 	bool bAssignmentRulesOverridden = false
 	
@@ -1450,7 +1478,7 @@ Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRe
 				else
 					UnassignWorkshopObject(thisWorkshopObject, abUnassigningMultipleResources = true, abGetLock = false)
 					
-					bShouldTryToAssignResources = bWorkshopLoaded
+					bShouldTryToRecalculateResources = bWorkshopLoaded
 											
 					if(bHasMultiResource)
 						bSendCollectiveEvent = true
@@ -1465,11 +1493,12 @@ Function UnassignNPCSkipExclusions(Actor akActorRef, WorkshopScript akWorkshopRe
 	endWhile
 	
 	if(abAutoUpdateWorkshopNPCStatus)
+		;ModTrace("NPCManager.UnassignNPCSkipExclusions calling UpdateWorkshopNPCStatus for " + akActorRef)
 		UpdateWorkshopNPCStatus(akActorRef, akWorkshopRef, abHandleMultiResourceAssignment = false, abGetLock = false)
 	endif
 			
-	;Note: bShouldTryToAssignResources is never true if bWorkshopLoaded = false:
-	if(bShouldTryToAssignResources)
+	;Note: bShouldTryToRecalculateResources is never true if bWorkshopLoaded = false:
+	if(bShouldTryToRecalculateResources)
 		akWorkshopRef.RecalculateWorkshopResources()
 	endif
 	

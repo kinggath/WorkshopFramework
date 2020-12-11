@@ -1934,8 +1934,8 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 			SendWorkshopActorAssignedToWorkEvent(assignedActor, assignedObject, workshopRef)
 		endif
 	elseif(assignedObject.HasKeyword(WorkshopWorkObject))
-		String sLog = "aaa"
-		Debug.OpenUserLog(sLog)
+		;String sLog = "aaa"
+		;Debug.OpenUserLog(sLog)
 		; Debug.TraceUser(sLog, "Assigning " + assignedActor + " to object " + assignedObject + ", bResetMode = " + bResetMode)
 		assignedActor.bNewSettler = false
 	
@@ -1950,6 +1950,8 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		endif
 	
 		float maxProduction = 0.0 ; Placing here so we can use this same calculated value later in the function
+		float fResetMultiProductionTo = 0.0 ; WSFW 2.0.7 - The production amount is never being updated on NPCs during a workshopReset call, so we're going to record the would be value here and update the NPC if necessary
+		
 		if(multiResourceValue)
 			; Debug.TraceUser(sLog, assignedActor + " was assigned to multiResourceValue " + multiResourceValue)
 			if(assignedObject.HasResourceValue(multiResourceValue))
@@ -1981,9 +1983,12 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 					if(totalProduction <= maxProduction)
 						; Debug.TraceUser(sLog, "Under or right at max production. Turning off bShouldUnassignAllObjects")
 						bShouldUnassignAllObjects = false
+						fResetMultiProductionTo = totalProduction
 					elseif(bAlreadyAssigned)
 						; Debug.TraceUser(sLog, "Already assigned but we're over max production, so we need to unassign one item.")
 						bShouldUnassignSingleObject = true
+						bShouldUnassignAllObjects = false
+						fResetMultiProductionTo = maxProduction
 					endif
 				endif
 			else
@@ -1999,7 +2004,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 			if(bExcludedFromAssignmentRules)
 				SendCustomEvent("AssignmentRulesOverriden", kExcludedArgs)
 			else
-				; Debug.TraceUser(sLog, "Unassigning " + assignedActor + " from " + assignedObject + ", bResetMode = " + bResetMode)
+				;ModTrace("bShouldUnassignSingleObject = true, Unassigning " + assignedActor + " from " + assignedObject + ", bResetMode = " + bResetMode)
 				UnassignActorFromObjectV2(assignedActor, assignedObject, bResetMode)
 				
 				bShouldTryToAssignResources = true
@@ -2059,6 +2064,10 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 			; Debug.TraceUser(sLog, assignedObject + " is a multi resource item and bResetMode = " + bResetMode + ", bAlreadyAssigned = " + bAlreadyAssigned)
 			multiResourceValue = assignedObject.GetMultiResourceValue()
 			assignedActor.SetMultiResource (multiResourceValue)
+			
+			if(bResetMode)
+				WorkshopFramework:WorkshopFunctions.SetMultiResourceProduction(assignedActor, fResetMultiProductionTo) ; 2.0.7 - Must update this value during a reset or the NPC will end up with excess items assigned
+			endif
 			
 			if(workshopID == currentWorkshopID)
 				float currentProduction = assignedActor.multiResourceProduction
@@ -2445,7 +2454,7 @@ endFunction
 ; actorToAssign: if NONE, use the actor in WorkshopRecruit alias
 ; newWorkshopID: if -1, bring up message box to pick the workshop (TEMP)
 function AddPermanentActorToWorkshopPUBLIC(Actor actorToAssign = NONE, int newWorkshopID = -1, bool bAutoAssign = true)
-	WorkshopFramework:Library:UtilityFunctions.ModTrace("AddPermanentActorToWorkshopPUBLIC called on " + actorToAssign + " with workshop ID: " + newWorkshopID)
+	;WorkshopFramework:Library:UtilityFunctions.ModTrace("AddPermanentActorToWorkshopPUBLIC called on " + actorToAssign + " with workshop ID: " + newWorkshopID)
 	if(actorToAssign == NONE)
 		actorToAssign = WorkshopRecruit.GetActorRef()
 	elseif(actorToAssign.IsDead())
@@ -2477,7 +2486,7 @@ function AddPermanentActorToWorkshopPUBLIC(Actor actorToAssign = NONE, int newWo
 			endif
 		endif
 		
-		WorkshopFramework:Library:UtilityFunctions.ModTrace("AddPermanentActorToWorkshopPUBLIC adding " + actorToAssign + " to PermanentActorAliases " + PermanentActorAliases)
+		;WorkshopFramework:Library:UtilityFunctions.ModTrace("AddPermanentActorToWorkshopPUBLIC adding " + actorToAssign + " to PermanentActorAliases " + PermanentActorAliases)
 		; add to alias collection for existing actors - gives them packages to stay at new "home"
 		PermanentActorAliases.AddRef(actorToAssign)
 		
@@ -3107,8 +3116,8 @@ endFunction
 
 function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript workshopRef, bool bResetMode = false)
 	; bResetMode: true means to ignore TryToAssignFarms/Beds calls (ResetWorkshop calls it once at the end)
-	String sLog = "aaaObject"
-	Debug.OpenUserLog(sLog)
+	;String sLog = "aaaObject"
+	;Debug.OpenUserLog(sLog)
 	; Debug.TraceUser(sLog, "AssignObjectToWorkshop called on " + workObject + ", bResetMode = " + bResetMode)
 	int workshopID = workshopRef.GetWorkshopID()
 	
@@ -3437,13 +3446,11 @@ endFunction
 
 ; try to assign all objects of the specified resource types
 function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resourceValue)
-	String sLog = "aaaTryToAssignResourceType"
-	Debug.OpenUserLog(sLog)
-	; Debug.TraceUser(sLog, "TryToAssignResourceType called on " + workshopRef + " for AV " + resourceValue)
+	;ModTrace("WorkshopParentScript.TryToAssignResourceType called on " + workshopRef + " for AV " + resourceValue)
+	
 	if(resourceValue)		
 		int resourceIndex = GetResourceIndex(resourceValue)
 
-		; Debug.TraceUser(sLog, "resourceIndex = " + resourceIndex)
 		; WSFW 2.0.0 - Switching to nonWorkshopNPCScript arrays
 		Actor[] workers 
 		if(resourceIndex == WorkshopRatingFood)
@@ -3457,7 +3464,7 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 		
 		ObjectReference[] ResourceObjects = UFO4P_GetObjectArray(resourceIndex)
 		
-		; Debug.TraceUser(sLog, "Found workers " + workers + ", and resource objects " + ResourceObjects)
+		;ModTrace("WorkshopParentScript.TryToAssignResourceType index " + resourceIndex + ", found workers " + workers + ", and resource objects " + ResourceObjects)
 		
 		int countWorkers = workers.Length
 		int countResourceObjects = ResourceObjects.Length
@@ -3477,6 +3484,7 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 		; WSFW 2.0.0 - The two nested loops below were previously using conditioned index incrementing, which made the code more difficult to read and prone to errors if we added additional conditioning that didn't match up with the original design pattern. We've switched them to reverse loops which can safely remove indexes without breaking the iteration.
 		
 		int workerIndex = workers.Length -1
+		;ModTrace("WorkshopParentScript.TryToAssignResourceType about to iterate " + workers.Length + " workers to assign " + resourceValue + " objects.")
 		
 		while(workerIndex > -1)
 			Actor theWorker = workers[workerIndex]
@@ -3487,7 +3495,7 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 				; WSFW 2.0.0 - Use our global functions which work for Actors and WorkshopNPCScript actors
 				float resourceTotal = WorkshopFramework:WorkshopFunctions.GetMultiResourceProduction(theWorker)
 				
-				; Debug.TraceUser(sLog, "Attempting to assign settler " + theWorker + " to items, currently has production of " + resourceTotal)
+				;ModTrace("WorkshopParentScript.TryToAssignResourceType " + resourceValue + ", Attempting to assign settler " + theWorker + " to items, currently has production of " + resourceTotal)
 				
 				bool actorAssigned = false
 				int objectIndex = ResourceObjects.Length - 1
@@ -3510,7 +3518,8 @@ function TryToAssignResourceType(WorkshopScript workshopRef, ActorValue resource
 						ResourceObjects.Remove(objectIndex)
 					else
 						float resourceRating = theObject.GetResourceRating(resourceValue)
-						; Debug.TraceUser(sLog, theObject + " provides " + resourceRating + ", user is at " + resourceTotal + ", maxProduction = " + maxProduction)
+						;ModTrace("WorkshopParentScript.TryToAssignResourceType " + resourceValue + ", Object: " + theObject + " provides " + resourceRating + ", user is at " + resourceTotal + ", maxProduction = " + maxProduction)
+						
 						if(resourceTotal + resourceRating <= maxProduction)
 							; WSFW 2.0.0 - Moving the call to ResourceObjects.Remove before the assign calls, that way TryToAssignResourceType can be called safely from with the assign functions. Currently the default function uses bResetMode = true to prevent that, but our chain of functions for nonWorkshopNPCScript functions doesn't have that flag (primarily because that flag is being used to do too many things and it makes the code unclear)
 							
@@ -4109,10 +4118,12 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	
 	Bool bOwnedByPlayer = workshopRef.OwnedByPlayer
 	if(AutoAssignFood || ! bOwnedByPlayer)
+		;ModTrace("WorkshopParentScript.ResetWorkshop on " + workshopRef + " calling TryToAssignResourceType " + WorkshopRatings[WorkshopRatingFood].resourceValue)
 		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingFood].resourceValue)
 	endif
 	
 	if(AutoAssignDefense || ! bOwnedByPlayer)
+		;ModTrace("WorkshopParentScript.ResetWorkshop on " + workshopRef + " calling TryToAssignResourceType " + WorkshopRatings[WorkshopRatingSafety].resourceValue)
 		TryToAssignResourceType(workshopRef, WorkshopRatings[WorkshopRatingSafety].resourceValue)
 	endif
 	
@@ -5013,12 +5024,16 @@ function WSFW_RemoveActorFromWorkerArray(Actor actorRef)
 		int workerIndex = WSFW_FoodWorkers.Find(actorRef)
 		
 		if(workerIndex >= 0)
+			;ModTrace("WorkshopParentScript.WSFW_RemoveActorFromWorkerArray found " + actorRef + " in WSFW_FoodWorkers array, removing from index " + workerIndex)
 			WSFW_FoodWorkers.Remove(workerIndex)
 		else
 			workerIndex = WSFW_SafetyWorkers.Find(actorRef)
 			
 			if(workerIndex >= 0)
+				;ModTrace("WorkshopParentScript.WSFW_RemoveActorFromWorkerArray found " + actorRef + " in WSFW_SafetyWorkers array, removing from index " + workerIndex)
 				WSFW_SafetyWorkers.Remove(workerIndex)
+			else
+				;ModTrace("WorkshopParentScript.WSFW_RemoveActorFromWorkerArray did not find " + actorRef + " in either worker array.")
 			endif
 		endif
 	endif
@@ -5281,3 +5296,44 @@ int function InitResourceID(WorkshopObjectScript resourceRef)
 	
 	return -1
 endFunction
+
+; ===================================
+; WSFW 2.0.7 - Getters
+; 
+; Give external access to checking some of our non-property vars (if we convert them to properties now it will break them in existing saves)
+; ===================================
+ObjectReference[] Function GetUFO4P_UnassignedFoodObjects()
+	return UFO4P_UnassignedFoodObjects
+EndFunction
+
+ObjectReference[] Function GetUFO4P_UnassignedSafetyObjects()
+	return UFO4P_UnassignedSafetyObjects
+EndFunction
+
+WorkshopObjectScript[] Function GetUFO4P_UnassignedBeds()
+	return UFO4P_UnassignedBeds
+EndFunction
+
+WorkshopNPCScript[] Function GetUFO4P_ActorsWithoutBeds()
+	return UFO4P_ActorsWithoutBeds
+EndFunction
+
+WorkshopNPCScript[] Function GetUFO4P_FoodWorkers()
+	return UFO4P_FoodWorkers
+EndFunction
+
+WorkshopNPCScript[] Function GetUFO4P_SafetyWorkers()
+	return UFO4P_SafetyWorkers
+EndFunction
+
+Actor[] Function GetWSFW_ActorsWithoutBeds()
+	return WSFW_ActorsWithoutBeds
+EndFunction
+
+Actor[] Function GetWSFW_FoodWorkers()
+	return WSFW_FoodWorkers
+EndFunction
+
+Actor[] Function GetWSFW_SafetyWorkers()
+	return WSFW_SafetyWorkers
+EndFunction

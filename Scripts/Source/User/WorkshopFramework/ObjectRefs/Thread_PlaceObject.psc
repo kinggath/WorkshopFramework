@@ -342,7 +342,7 @@ Function RunCode()
 			
 				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
 				
-				if(bForceWorkshopItemLink || asWorkshopObject || kResult.GetValue(WorkshopResourceObject) > 0)
+				if(bForceWorkshopItemLink || asWorkshopObject || kResult.GetValue(WorkshopResourceObject) > 0 || (kResult as WorkshopFramework:ObjectRefs:RealInventoryDisplay))
 					kResult.SetLinkedRef(kWorkshopRef, WorkshopItemKeyword)
 				endif
 				
