@@ -1087,15 +1087,15 @@ Function RegisterCustomVendor(String aCustomVendorID, Formlist aVendorContainerL
 	if(CustomVendorTypes == None)
 		CustomVendorTypes = new CustomVendor[0]
 	endif
-	
+
+    if(aCustomVendorFaction == None)
+        ; Default to WorkshopVendorFactionMisc so NPC will have dialogue
+        aCustomVendorFaction = Game.GetFormFromFile(0x00062555, "Fallout4.esm") as Faction
+    endif
+
 	int iIndex = CustomVendorTypes.FindStruct("sVendorID", aCustomVendorID)
 	if(iIndex < 0)
 		; New vendor; store it
-		if(aCustomVendorFaction == None)
-			; Default to WorkshopVendorFactionMisc so NPC will have dialogue
-			aCustomVendorFaction = Game.GetFormFromFile(0x00062555, "Fallout4.esm") as Faction
-		endif
-		
 		CustomVendor newEntry = new CustomVendor
 		newEntry.sVendorID = aCustomVendorID
 		newEntry.VendorFaction = aCustomVendorFaction
@@ -1110,6 +1110,18 @@ Function RegisterCustomVendor(String aCustomVendorID, Formlist aVendorContainerL
 		CustomVendorTypes[iIndex].VendorContainerList = aVendorContainerList
 	endif
 EndFunction
+
+
+function DumpCustomVendors()
+    debug.trace("    DumpCustomVendors")
+    debug.trace("    DumpCustomVendors: dumping "+CustomVendorTypes.length+" entries")
+    int i=0
+    while(i<CustomVendorTypes.length)
+        debug.trace("    DumpCustomVendors: #"+i+" sVendorID: "+CustomVendorTypes[i].sVendorID+" VendorFaction: "+CustomVendorTypes[i].VendorFaction+" VendorKeyword: "+CustomVendorTypes[i].VendorKeyword+" VendorContainerList: "+CustomVendorTypes[i].VendorContainerList)
+        i += 1
+    endwhile
+    debug.trace("    DumpCustomVendors END")
+endfunction
 
 
 ; Send forms you'd like to manage assignment rules for and register for the custom event: AssignmentRulesOverriden
