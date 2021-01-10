@@ -62,6 +62,11 @@ bool Property bResetDone = false auto hidden
 ;but it was not used anymore since UFO4P 2.0.4. WorkshopParentScript is now reusing it to tag specific objects for tracking them, e.g. when
 ;objects are unassigned while their workshop is not loaded, so we cannot send any events immediately but have to do it later.
 
+bool Property bEnablePlayerComments = true auto const
+{
+    TRUE = The player will comment on the lack of power or assignment when activating this object
+    FALSE = The player won't do that
+}
 
 ; INTERNAL VARIABLES:
 	bool bHasMultiResource = false
@@ -661,7 +666,7 @@ Event OnActivate(ObjectReference akActionRef)
 		else
 		endif
 		; player comment
-		if IsBed() == false
+		if (bEnablePlayerComments && !IsBed())
 			WorkshopParent.PlayerComment(self)
 		endif
 	endif
