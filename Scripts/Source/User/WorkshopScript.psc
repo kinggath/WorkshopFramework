@@ -2012,8 +2012,14 @@ Event WorkshopParentScript.WorkshopDailyUpdate(WorkshopParentScript akSender, Va
 	StartTimer(workshopID, WSFW_RetryRealDailyUpdateTimerID) ; We'll use the workshopID as our number of seconds to wait so that they each fire one after the other a second apart
 EndEvent
 
+Int Property bOverrideMaxWorkshopNPCs = -1 Auto Hidden
+
 ; return max NPCs for this workshop
 int function GetMaxWorkshopNPCs()
+    if(bOverrideMaxWorkshopNPCs >= 0)
+        return bOverrideMaxWorkshopNPCs
+    endif
+
 	; base + player's charisma
 	int iMaxNPCs = iBaseMaxNPCs
 	
