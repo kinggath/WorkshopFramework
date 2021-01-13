@@ -25,10 +25,18 @@ CustomEvent Settlement_SelectionMade
 ; Consts
 ; ---------------------------------------------
 
+Float fBarterWaitLoopIncrement = 0.1 Const
+Int iMessageSelector_MaxStackDepth = 50 Const ; Papyrus max stack depth is 100, so this gives us a nice buffer
+int iMessageSelectorSource_Array = 0 Const
+int iMessageSelectorSource_Formlist = 1 Const
+int iMessageSelectorReturn_Failure = -1 Const
+int iMessageSelectorReturn_Cancel = -2 Const
+int iMessageSelectorReturn_ContinueLoop = -3 Const
+
 Group DoNotEdit
-	int Property iAcceptStolen_None = 0 Auto Const
-	int Property iAcceptStolen_Only = 1 Auto Const
-	int Property iAcceptStolen_Either = 2 Auto Const
+	int Property iAcceptStolen_None = 0 autoReadOnly
+	int Property iAcceptStolen_Only = 1 autoReadOnly
+	int Property iAcceptStolen_Either = 2 autoReadOnly
 EndGroup
 
 ; ---------------------------------------------
@@ -58,6 +66,17 @@ Group Assets
 	Faction Property PhantomVendorFaction_NonStolenOnly_Unfiltered Auto Const Mandatory
 EndGroup
 
+Group MessageSelectorSystem
+	Message Property MessageSelector_Default Auto Const Mandatory
+	Message Property MessageSelector_NoOptions Auto Const Mandatory
+	Form Property NameHolderForm_SelectAnOption Auto Const Mandatory
+	GlobalVariable Property MenuControl_MessageSelector_MoreInfo Auto Const Mandatory
+	
+	ReferenceAlias Property MessageSelectorTitleAlias Auto Const Mandatory
+	ReferenceAlias[] Property MessageSelectorItemLineAliases Auto Const Mandatory
+	{ REMINDER: You must set up different Message forms to handle more aliases, our default (MessageSelector_Default) only displays one for the title of the selection type and another for the current option. }
+EndGroup
+
 Group SettlementSelect
 	Form[] Property Selectables_Settlements Auto Const Mandatory
 	ReferenceAlias[] Property ApplyNames_Settlements Auto Const Mandatory
@@ -74,6 +93,11 @@ bool bPhantomVendorInUse = false
 ObjectReference kCurrentCacheRef ; Stores latest cache ref so we can return the items to it
 WorkshopScript[] kLastSelectedSettlements
 Int iBarterSelectCallbackID = -1
+
+bool bMessageSelectorInUse = false
+Int iMessageSelector_SelectedOption = -1
+Form[] MessageSelectorFormArray
+Formlist MessageSelectorFormlist
 
 Form[] SelectionPool01
 Form[] SelectionPool02
@@ -151,6 +175,11 @@ EndEvent
 ; ---------------------------------------------
 ; Functions 
 ; ---------------------------------------------
+
+	; ---------------------------------------------
+	; Barter Menu System 
+	; ---------------------------------------------
+
 Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
 	if(bPhantomVendorInUse)
 		return -1
@@ -198,6 +227,32 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	ModTrace("[UIManager] ShowBarterMenu called, returning iBarterSelectCallbackID = " + iBarterSelectCallbackID)
 	
 	return iBarterSelectCallbackID
+EndFunction
+
+; ------------------------------------
+; ShowCachedBarterSelectMenuAndWait
+;
+; This is a simpler version of the ShowCachedBarterSelectMenu function that doesn't require monitoring for an event to know when to get the results. 
+;
+; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
+; ------------------------------------
+Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+	if(bPhantomVendorInUse) 
+		return -1
+	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
+	
+	Int iResult = ShowCachedBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	
+	if(iResult > -1)
+		; Callback ID received, let's begin our waiting loop
+		Float fWaitedTime = 0.0
+		while(bPhantomVendorInUse && fWaitedTime < afMaxWaitTime)
+			Utility.WaitMenuMode(fBarterWaitLoopIncrement)
+			fWaitedTime += fBarterWaitLoopIncrement
+		endWhile
+	endif
+	
+	return iResult
 EndFunction
 
 
@@ -261,6 +316,32 @@ int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist
 	return iBarterSelectCallbackID
 EndFunction
 
+; ------------------------------------
+; ShowFormlistBarterSelectMenuAndWait
+;
+; This is a simpler version of the ShowFormlistBarterSelectMenu function that doesn't require monitoring for an event to know when to get the results. 
+;
+; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
+; ------------------------------------
+Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+	if(bPhantomVendorInUse) 
+		return -1
+	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
+	
+	Int iResult = ShowFormlistBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	
+	if(iResult > -1)
+		; Callback ID received, let's begin our waiting loop
+		Float fWaitedTime = 0.0
+		while(bPhantomVendorInUse && fWaitedTime < afMaxWaitTime)
+			Utility.WaitMenuMode(fBarterWaitLoopIncrement)
+			fWaitedTime += fBarterWaitLoopIncrement
+		endWhile
+	endif
+	
+	return iResult
+EndFunction
+
 
 int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
 	if(bPhantomVendorInUse)
@@ -298,6 +379,31 @@ int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailabl
 	return iBarterSelectCallbackID
 EndFunction
 
+; ------------------------------------
+; ShowBarterSelectMenuAndWait
+;
+; This is a simpler version of the ShowBarterSelectMenu function that doesn't require monitoring for an event to know when to get the results. 
+;
+; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
+; ------------------------------------
+Int Function ShowBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+	if(bPhantomVendorInUse) 
+		return -1
+	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
+	
+	Int iResult = ShowBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	
+	if(iResult > -1)
+		; Callback ID received, let's begin our waiting loop
+		Float fWaitedTime = 0.0
+		while(bPhantomVendorInUse && fWaitedTime < afMaxWaitTime)
+			Utility.WaitMenuMode(fBarterWaitLoopIncrement)
+			fWaitedTime += fBarterWaitLoopIncrement
+		endWhile
+	endif
+	
+	return iResult
+EndFunction
 
 
 Function ProcessBarterSelection()
@@ -591,7 +697,9 @@ Function TestBarterSystem(int iTestNameChange = 0)
 	
 	Formlist holdList = Game.GetFormFromFile(0x0001CAE7, "WorkshopFramework.esm") as Formlist
 	
-	ShowFormlistBarterSelectMenu(nameForm, scavList, holdList)
+	if(ShowFormlistBarterSelectMenuAndWait(nameForm, scavList, holdList))
+		Debug.MessageBox("Wait completed. holdList has " + holdList.GetSize() + " entries.")
+	endif
 EndFunction
 
 Function TestSettlementBarterSystem()
@@ -605,4 +713,201 @@ Function CheckBarterContainer()
 	else
 		Debug.MessageBox("Failed to fetch phantom vendor container ref")
 	endif
+EndFunction
+
+
+	; ---------------------------------------------
+	; Message Select System
+	; 
+	; Uses a message to display an infinitely long formlist or array of items, displaying them one at a time to the player with Next/Previous/Select/More Info/Cancel buttons. If the player chooses select, the index of the item in that formlist or array is returned
+	;
+	; Because the game has a stack limit of 100 calls deep, this will asyncronously start a new call if the stack gets too deep.
+	;
+	; Return Values: -1 = error, -2 = user canceled selection
+	; ---------------------------------------------
+	
+Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None)
+	if( ! aSelectFromOptions)
+		return iMessageSelectorReturn_Failure
+	endif
+	
+	int iCount = aSelectFromOptions.Length
+	if(iCount == 0)
+		if(aNoOptionsWarningOverride != None)
+			aNoOptionsWarningOverride.Show()
+		else
+			MessageSelector_NoOptions.Show()
+		endif
+		
+		return iMessageSelectorReturn_Failure
+	EndIf
+	
+	if(bMessageSelectorInUse)
+		return iMessageSelectorReturn_Failure
+	endif
+	
+	bMessageSelectorInUse = true
+	iMessageSelector_SelectedOption = iMessageSelectorReturn_ContinueLoop
+	MessageSelectorFormArray = aSelectFromOptions
+	
+	; Setup text replacement for title
+	Form TitleForm = NameHolderForm_SelectAnOption
+	if(aMessageTitleNameHolder != None)
+		TitleForm = aMessageTitleNameHolder
+	endif
+	
+	ObjectReference kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	MessageSelectorTitleAlias.ForceRefTo(kTitleRef)
+	
+	; Start the selection loop
+	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = 0, aiSource = iMessageSelectorSource_Array)
+	
+	; Wait for player to select an option or cancel
+	while(iMessageSelector_SelectedOption == -iMessageSelectorReturn_ContinueLoop) ; Must be == -iMessageSelectorReturn_ContinueLoop. If less than this, it means the player chose cancel an we want to return that to the calling function
+		Utility.Wait(0.1)
+	endWhile
+	
+	bMessageSelectorInUse = false
+	MessageSelectorFormArray = new Form[0] ; Clear this array
+	MessageSelectorFormlist = None
+	
+	return iMessageSelector_SelectedOption
+EndFunction
+
+
+Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsList, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None)
+	if( ! aSelectFromOptionsList)
+		return iMessageSelectorReturn_Failure
+	endif
+	
+	int iCount = aSelectFromOptionsList.GetSize()
+	if(iCount == 0)
+		if(aNoOptionsWarningOverride != None)
+			aNoOptionsWarningOverride.Show()
+		else
+			MessageSelector_NoOptions.Show()
+		endif
+		
+		return iMessageSelectorReturn_Failure
+	EndIf
+	
+	if(bMessageSelectorInUse)
+		return iMessageSelectorReturn_Failure
+	endif
+	
+	bMessageSelectorInUse = true
+	iMessageSelector_SelectedOption = iMessageSelectorReturn_ContinueLoop
+	int iSource = iMessageSelectorSource_Formlist
+	if(iCount <= 128) ; Convert to array which will be faster
+		int i = 0
+		while(i < iCount)
+			MessageSelectorFormArray.Add(aSelectFromOptionsList.GetAt(i))
+			
+			i += 1
+		endWhile
+		
+		iSource = iMessageSelectorSource_Array
+	else
+		MessageSelectorFormlist = aSelectFromOptionsList
+	endif
+	
+	; Setup text replacement for title
+	Form TitleForm = NameHolderForm_SelectAnOption
+	if(aMessageTitleNameHolder != None)
+		TitleForm = aMessageTitleNameHolder
+	endif
+	
+	ObjectReference kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	MessageSelectorTitleAlias.ForceRefTo(kTitleRef)
+	
+	; Start the selection loop
+	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = 0, aiSource = iSource)
+	
+	; Wait for player to select an option or cancel
+	while(iMessageSelector_SelectedOption == iMessageSelectorReturn_ContinueLoop) ; Must be == iMessageSelectorReturn_ContinueLoop, anything else should break the loop and return to the caller
+		Utility.Wait(0.1)
+	endWhile
+	
+	bMessageSelectorInUse = false
+	MessageSelectorFormArray = new Form[0] ; Clear this array
+	MessageSelectorFormlist = None
+	
+	return iMessageSelector_SelectedOption
+EndFunction
+
+Function ShowMessageSelectorMenuLoop_InternalOnly(Int aiIndexToDisplay = 0, Int aiSource = 0)
+	Int iMessageSelectorStackDepth = 0
+	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
+	int iOptionCount = 0
+	if(aiSource == iMessageSelectorSource_Array)
+		iOptionCount = MessageSelectorFormArray.Length
+	elseif(aiSource == iMessageSelectorSource_Formlist)
+		iOptionCount = MessageSelectorFormlist.GetSize()			
+	endif
+	
+	while(iMessageSelectorStackDepth < iMessageSelector_MaxStackDepth)
+		Form CurrentForm
+		if(aiSource == iMessageSelectorSource_Array)
+			CurrentForm = MessageSelectorFormArray[aiIndexToDisplay]
+		elseif(aiSource == iMessageSelectorSource_Formlist)
+			CurrentForm = MessageSelectorFormlist.GetAt(aiIndexToDisplay)			
+		endif
+		
+		; Setup text replacement
+		ObjectReference kNameRef = kSafeSpawnPoint.PlaceAtMe(CurrentForm)
+		MessageSelectorItemLineAliases[0].ForceRefTo(kNameRef)
+		
+		; Should we show More Info option?
+		MenuControl_MessageSelector_MoreInfo.SetValueInt(0)
+		if(CurrentForm as WorkshopFramework:Forms:FormInformation && (CurrentForm as WorkshopFramework:Forms:FormInformation).InformationMessage != None)
+			MenuControl_MessageSelector_MoreInfo.SetValueInt(1)
+		endif
+		
+		; Display select menu
+		int iSelectedOption = MessageSelector_Default.Show()
+		
+		; Handle selection
+		if(iSelectedOption == 0) ; Next
+			aiIndexToDisplay += 1
+			
+			if(aiIndexToDisplay >= iOptionCount)
+				aiIndexToDisplay = 0
+			endif
+		elseif(iSelectedOption == 1) ; Previous
+			aiIndexToDisplay -= 1
+			
+			if(aiIndexToDisplay < 0)
+				aiIndexToDisplay = iOptionCount - 1
+			endif
+		elseif(iSelectedOption == 2) ; More Info
+			(CurrentForm as WorkshopFramework:Forms:FormInformation).InformationMessage.Show()
+		elseif(iSelectedOption == 3) ; Select
+			iMessageSelector_SelectedOption = aiIndexToDisplay
+			return
+		else ; Cancel
+			iMessageSelector_SelectedOption = iMessageSelectorReturn_Cancel ; This will break the calling loop so it returns to the original caller
+			return
+		endif		
+		
+		iMessageSelectorStackDepth += 1
+	endWhile
+	
+	; We need to do an async call to this to reset the stack depth
+	Var[] kArgs = new Var[2]
+	kArgs[0] = aiIndexToDisplay
+	kArgs[1] = aiSource
+	
+	CallFunctionNoWait("ShowMessageSelectorMenuLoop_InternalOnly", kArgs)
+EndFunction
+
+
+
+Function TestMessageSelectorSystem()
+	Formlist scavList = Game.GetFormFromFile(0x00007B04, "WorkshopFramework.esm") as Formlist
+	
+	Form nameForm = Game.GetFormFromFile(0x00249AEB, "Fallout4.esm")
+	
+	int iSelection = ShowMessageSelectorMenuFormlistAndWait(scavList, aMessageTitleNameHolder = nameForm)
+	
+	Debug.MessageBox("Player selected option " + iSelection)
 EndFunction

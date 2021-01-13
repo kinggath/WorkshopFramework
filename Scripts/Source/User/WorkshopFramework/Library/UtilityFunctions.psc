@@ -1121,6 +1121,149 @@ int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
 EndFunction
 
 
+; ------------------------------
+; StoryEventHash 
+; 
+; Description: Hashes all parameters that would be sent to StoryEventManager to match like-requests
+;
+; Parameters:
+; Keyword pkwdKeyword, Location plocLocation, ObjectReference pobjObject1, ObjectReference pobjObject2, Int pintValue1, Int pintValue2
+; 
+; Added: 2.0.8
+; ------------------------------
+String Function StoryEventHash(Keyword pkwdKeyword, Location plocLocation, ObjectReference pobjObject1, ObjectReference pobjObject2, Int pintValue1, Int pintValue2) Global
+	string strHash = ""
+	
+	strHash += "k"
+	If pkwdKeyword
+		strHash += pkwdKeyword.GetFormID()
+	Else
+		strHash += "0"
+	EndIf
+	
+	strHash += "l"
+	If plocLocation
+		strHash += plocLocation.GetFormID()
+	Else
+		strHash += "0"
+	EndIf
+	
+	strHash += "o"
+	If pobjObject1
+		strHash += pobjObject1.GetFormID()
+	Else
+		strHash += "0"
+	EndIf
+	
+	strHash += "o"
+	If pobjObject2
+		strHash += pobjObject2.GetFormID()
+	Else
+		strHash += "0"
+	EndIf
+	
+	strHash += "v" + pintValue1 + "v" + pintValue2
+	
+	Return strHash
+EndFunction 
+
+
+; ------------------------------
+; FilterFormArrayByKeyword 
+; 
+; Description: Takes an array of forms and returns an array of those with the keyword on them
+;
+; Parameters:
+; Form[] aForms, Keyword aFilterKeyword
+; 
+; Added: 2.0.8
+; ------------------------------
+Form[] Function FilterFormArrayByKeyword(Form[] aForms, Keyword aFilterKeyword) global
+	Form[] FilteredArray = new Form[0]
+	int i = 0
+	while(i < aForms.Length && FilteredArray.Length < 128)
+		if(aForms[i].HasKeyword(aFilterKeyword))
+			FilteredArray.Add(aForms[i])
+		endif
+		
+		i += 1
+	endWhile
+	
+	return FilteredArray
+EndFunction
+
+
+; ------------------------------
+; FilterFormlistByKeyword
+; 
+; Description: All forms WITHOUT the filter keyword will be removed from aFormlist.
+;
+; Parameters:
+; Formlist aFormlist, Keyword aFilterKeyword
+; 
+; Added: 2.0.8
+; ------------------------------
+Formlist Function FilterFormlistByKeyword(Formlist aFormlist, Keyword aFilterKeyword) global	
+	int i = aFormlist.GetSize() - 1
+	while(i >= 0)
+		Form thisForm = aFormlist.GetAt(i)
+		if( ! thisForm.HasKeyword(aFilterKeyword))
+			aFormlist.RemoveAddedForm(thisForm)
+		endif
+		
+		i -= 1
+	endWhile
+EndFunction
+
+; ------------------------------
+; FilterFormlistByKeywordToArray
+; 
+; Description: Takes a formlist and returns an array of the forms in it with the keyword on them
+;
+; Parameters:
+; Formlist aFormlist, Keyword aFilterKeyword
+; 
+; Added: 2.0.8
+; ------------------------------
+Form[] Function FilterFormlistByKeywordToArray(Formlist aFormlist, Keyword aFilterKeyword) global
+	Form[] FilteredArray = new Form[0]
+	int i = 0
+	while(i < aFormlist.GetSize() && FilteredArray.Length < 128)
+		Form thisForm = aFormlist.GetAt(i)
+		if(thisForm.HasKeyword(aFilterKeyword))
+			FilteredArray.Add(thisForm)
+		endif
+		
+		i += 1
+	endWhile
+	
+	return FilteredArray
+EndFunction
+
+; ------------------------------
+; FilterFormlistByKeywordToFormlist
+; 
+; Description: All forms in aFormlist with the filter keyword will be added to aTargetFormlist.
+;
+; Parameters:
+; Formlist aFormlist, Keyword aFilterKeyword, Formlist aTargetFormlist
+; 
+; Added: 2.0.8
+; ------------------------------
+Function FilterFormlistByKeywordToFormlist(Formlist aFormlist, Keyword aFilterKeyword, Formlist aTargetFormlist) global
+	int i = 0
+		
+	while(i < aFormlist.GetSize())
+		Form thisForm = aFormlist.GetAt(i)
+		if(thisForm.HasKeyword(aFilterKeyword))
+			aTargetFormlist.AddForm(thisForm)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+
 ; ************************************
 ; Math
 ; ************************************

@@ -1479,13 +1479,18 @@ WorkshopScript[] Function GetPlayerOwnedSettlements(Bool abIncludeOutposts = tru
 	WorkshopParentScript WorkshopParent = GetWorkshopParent()
 	Keyword OutpostKeyword = GetOutpostKeyword()
 	Keyword VassalKeyword = GetVassalKeyword()
-	Keyword VRWorkshopKeyword = GetVRWorkshopKeyword()	
+	Keyword VRWorkshopKeyword = GetVRWorkshopKeyword()
+	ActorValue WorkshopPlayerOwned = GetWorkshopPlayerOwnedAV()
+	WorkshopScript NukaWorldTributeWorkshop = None
+	if(Game.IsPluginInstalled("DLCNukaWorld.esm"))
+		NukaWorldTributeWorkshop = Game.GetFormFromFile(0x00047DFB, "DLCNukaWorld.esm") as WorkshopScript
+	endIf
 	
 	WorkshopScript[] AllWorkshops = WorkshopParent.Workshops
 	
 	int i = 0 
 	while(i < AllWorkshops.Length)
-		if(AllWorkshops[i].OwnedByPlayer && (abIncludeOutposts || ! AllWorkshops[i].HasKeyword(OutpostKeyword)) && (abIncludeVassals || ! AllWorkshops[i].HasKeyword(VassalKeyword)) && (abIncludeVirtual || ! AllWorkshops[i].HasKeyword(VRWorkshopKeyword)))
+		if(AllWorkshops[i].OwnedByPlayer && AllWorkshops[i].GetValue(WorkshopPlayerOwned) > 0 && AllWorkshops[i] != NukaWorldTributeWorkshop && (abIncludeOutposts || ! AllWorkshops[i].HasKeyword(OutpostKeyword)) && (abIncludeVassals || ! AllWorkshops[i].HasKeyword(VassalKeyword)) && (abIncludeVirtual || ! AllWorkshops[i].HasKeyword(VRWorkshopKeyword)))
 			OwnedSettlements.Add(AllWorkshops[i])
 		endif
 		

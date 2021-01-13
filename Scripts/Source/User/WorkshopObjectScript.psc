@@ -38,6 +38,12 @@ bool Property bAllowAutoRepair = true auto conditional
   FALSE = can ONLY be repaired manually by player
 }
 
+bool Property bEnablePlayerComments = true auto const
+{
+    TRUE = The player will comment on the lack of power or assignment when activating this object
+    FALSE = The player won't do that
+}
+
 bool Property bDefaultPlayerOwnership = true auto conditional
 { 	TRUE = set to player ownership when built - this allows objects which aren't work objects to be targeted by enemies
 	FALSE = no default player ownership
@@ -660,8 +666,9 @@ Event OnActivate(ObjectReference akActionRef)
 			endif
 		else
 		endif
+		
 		; player comment
-		if IsBed() == false
+		if(bEnablePlayerComments && IsBed() == false) ; 2.0.8
 			WorkshopParent.PlayerComment(self)
 		endif
 	endif

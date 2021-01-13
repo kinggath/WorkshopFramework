@@ -572,3 +572,14 @@ Function MCM_ToggleWorkshopTutorials()
 		DisableWorkshopTutorials()
 	endif
 EndFunction
+
+
+;
+; Test Functions
+;
+
+Function CountOwnedSettlements(Bool abIncludeOutposts = true, Bool abIncludeVassals = false, Bool abIncludeVirtual = false)
+	WorkshopScript[] Owned = WorkshopFramework:WorkshopFunctions.GetPlayerOwnedSettlements(abIncludeOutposts, abIncludeVassals, abIncludeVirtual)
+	
+	Debug.MessageBox("You own " + Owned.Length + " settlements.")
+EndFunction
