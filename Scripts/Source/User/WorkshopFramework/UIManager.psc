@@ -26,12 +26,10 @@ CustomEvent Settlement_SelectionMade
 ; ---------------------------------------------
 
 Float fBarterWaitLoopIncrement = 0.1 Const
-Int iMessageSelector_MaxStackDepth = 50 Const ; Papyrus max stack depth is 100, so this gives us a nice buffer
 int iMessageSelectorSource_Array = 0 Const
 int iMessageSelectorSource_Formlist = 1 Const
 int iMessageSelectorReturn_Failure = -1 Const
 int iMessageSelectorReturn_Cancel = -2 Const
-int iMessageSelectorReturn_ContinueLoop = -3 Const
 
 Group DoNotEdit
 	int Property iAcceptStolen_None = 0 autoReadOnly
@@ -747,7 +745,7 @@ Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMes
 	endif
 	
 	bMessageSelectorInUse = true
-	iMessageSelector_SelectedOption = iMessageSelectorReturn_ContinueLoop
+	iMessageSelector_SelectedOption = -1
 	MessageSelectorFormArray = aSelectFromOptions
 	
 	; Setup text replacement for title
@@ -761,11 +759,6 @@ Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMes
 	
 	; Start the selection loop
 	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = 0, aiSource = iMessageSelectorSource_Array)
-	
-	; Wait for player to select an option or cancel
-	while(iMessageSelector_SelectedOption == -iMessageSelectorReturn_ContinueLoop) ; Must be == -iMessageSelectorReturn_ContinueLoop. If less than this, it means the player chose cancel an we want to return that to the calling function
-		Utility.Wait(0.1)
-	endWhile
 	
 	bMessageSelectorInUse = false
 	MessageSelectorFormArray = new Form[0] ; Clear this array
@@ -796,7 +789,7 @@ Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsL
 	endif
 	
 	bMessageSelectorInUse = true
-	iMessageSelector_SelectedOption = iMessageSelectorReturn_ContinueLoop
+	iMessageSelector_SelectedOption = -1
 	int iSource = iMessageSelectorSource_Formlist
 	if(iCount <= 128) ; Convert to array which will be faster
 		int i = 0
@@ -823,11 +816,6 @@ Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsL
 	; Start the selection loop
 	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = 0, aiSource = iSource)
 	
-	; Wait for player to select an option or cancel
-	while(iMessageSelector_SelectedOption == iMessageSelectorReturn_ContinueLoop) ; Must be == iMessageSelectorReturn_ContinueLoop, anything else should break the loop and return to the caller
-		Utility.Wait(0.1)
-	endWhile
-	
 	bMessageSelectorInUse = false
 	MessageSelectorFormArray = new Form[0] ; Clear this array
 	MessageSelectorFormlist = None
@@ -836,7 +824,6 @@ Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsL
 EndFunction
 
 Function ShowMessageSelectorMenuLoop_InternalOnly(Int aiIndexToDisplay = 0, Int aiSource = 0)
-	Int iMessageSelectorStackDepth = 0
 	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
 	int iOptionCount = 0
 	if(aiSource == iMessageSelectorSource_Array)
@@ -845,7 +832,12 @@ Function ShowMessageSelectorMenuLoop_InternalOnly(Int aiIndexToDisplay = 0, Int 
 		iOptionCount = MessageSelectorFormlist.GetSize()			
 	endif
 	
-	while(iMessageSelectorStackDepth < iMessageSelector_MaxStackDepth)
+	if(iOptionCount <= 0)
+		return
+	endif
+	
+	; Wait for player to select an option or cancel
+	while(true)
 		Form CurrentForm
 		if(aiSource == iMessageSelectorSource_Array)
 			CurrentForm = MessageSelectorFormArray[aiIndexToDisplay]
@@ -885,19 +877,9 @@ Function ShowMessageSelectorMenuLoop_InternalOnly(Int aiIndexToDisplay = 0, Int 
 			iMessageSelector_SelectedOption = aiIndexToDisplay
 			return
 		else ; Cancel
-			iMessageSelector_SelectedOption = iMessageSelectorReturn_Cancel ; This will break the calling loop so it returns to the original caller
 			return
-		endif		
-		
-		iMessageSelectorStackDepth += 1
+		endif
 	endWhile
-	
-	; We need to do an async call to this to reset the stack depth
-	Var[] kArgs = new Var[2]
-	kArgs[0] = aiIndexToDisplay
-	kArgs[1] = aiSource
-	
-	CallFunctionNoWait("ShowMessageSelectorMenuLoop_InternalOnly", kArgs)
 EndFunction
 
 
