@@ -1797,6 +1797,15 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 	Utility.Wait(fThrottleContainerRouting)
 EndFunction
 
+; 2.0.8 - All for bulk sending production to reduce inter-script call counts
+Function ProduceItemsArray(TargetContainerItemCount[] aProduceMe, WorkshopScript akWorkshopRef)
+	int i = 0
+	while(i < aProduceMe.Length)
+		ProduceItems(aProduceMe[i].Item, akWorkshopRef, aProduceMe[i].iCount, aProduceMe[i].TargetContainerKeyword)
+		
+		i += 1 
+	endWhile
+EndFunction
 
 Int Function PrepareWorkshopTargetContainerRecord_Lock(Int aiWorkshopID, Keyword aTargetContainerKeyword)
 	Int iLockKey = GetLock()

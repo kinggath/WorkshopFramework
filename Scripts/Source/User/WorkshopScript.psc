@@ -1061,6 +1061,7 @@ Int Property iMaxBonusAttractChancePopulation
 	EndFunction
 EndProperty		
 
+Int Property iOverrideTotalMaxNPCs = -1 Auto Hidden
 Bool Property bUseGlobaliBaseMaxNPCs = true Auto Hidden
 Int WSFW_iBaseMaxNPCs = 10 ; base total NPCs that can be at a player's town - this is used in GetMaxWorkshopNPCs formula
 Int Property iBaseMaxNPCs
@@ -2014,6 +2015,10 @@ EndEvent
 
 ; return max NPCs for this workshop
 int function GetMaxWorkshopNPCs()
+	if(iOverrideTotalMaxNPCs >= 0)
+		return iOverrideTotalMaxNPCs
+	endif
+	
 	; base + player's charisma
 	int iMaxNPCs = iBaseMaxNPCs
 	

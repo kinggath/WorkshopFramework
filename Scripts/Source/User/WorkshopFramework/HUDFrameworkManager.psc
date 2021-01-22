@@ -196,6 +196,18 @@ Function PrepareHUDFramework()
 EndFunction
 
 
+; Troubleshooting function for fixing stuck registrations
+Function ResetWidgetRegistrations()
+	; TODO - We also need a means to reset the HUDFramework quest in case it gets stuck, which you've seen happen once now. Unfortunately, starting and stopping it doesn't seem to fix anything.
+	int i = 0
+	while(i < RegisteredWidgets.Length)
+		UnregisterWidget(RegisteredWidgets[i])
+		
+		i += 1
+	endWhile
+	
+	RegisteredWidgets = new String[0]
+EndFunction
 
 ; ----------------------------------
 ;

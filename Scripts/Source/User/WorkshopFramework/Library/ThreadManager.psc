@@ -349,7 +349,6 @@ WorkshopFramework:Library:ObjectRefs:Thread Function CreateThread(Form aThread)
 EndFunction
 
 
-
 Int Function GetNextThreadRunner()
 	int iRunnerIndex = NextRunner	
 	

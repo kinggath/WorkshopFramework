@@ -484,6 +484,11 @@ Struct TranslateTarget
 EndStruct
 
 
+Struct TargetContainerItemCount
+	Form Item
+	Int iCount = 1		
+	Keyword TargetContainerKeyword = None
+EndStruct
 
 Struct CustomVendor
 	String sVendorID
@@ -496,4 +501,15 @@ EndStruct
 Struct FormCount
 	Form CountedForm
 	Int iCount
+EndStruct
+
+
+Struct StoryEventRequestStruct
+	String StoryEventHash = ""
+	
+	Int ThreadID = -1
+	
+	WorkshopFramework:Library:StoryEventQuest Fulfiller = None
+	
+	Float Timeout = 0.0
 EndStruct
