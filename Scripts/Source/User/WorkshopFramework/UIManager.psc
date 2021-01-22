@@ -106,7 +106,11 @@ Form[] SelectionPool06
 Form[] SelectionPool07
 Form[] SelectionPool08 ; Up to 1024 items
 
+; Store barter modifiers sent from function call
+Bool bVendorSideEqualsChoice = false
+Bool bUsingReferences = false
 Formlist SelectedResultsFormlist
+Formlist StartBarterSelectedFormList
 
 int iTotalSelected = 0
 int iAwaitingSorting = 0
@@ -135,21 +139,38 @@ EndEvent
 
 Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akSourceContainer)
     ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
+	Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
 	
     if(akAddedTo == kPhantomVendorContainerRef)
 		ModTrace("[UIManager] item " + akBaseItem + " added to " + akAddedTo + ", sorting. " + iAwaitingSorting + " items remaining.")
-		if(SortItem(akBaseItem))
-			if(akItemReference == None)
-				; Our barter system seems to only work correctly with references - likely a limitation of the dynamic updating of the vendor filter formlist. So we'll stash a reference copy in the vendor's "pockets" until we're done processing these events, then we'll move all of the items to the vendor container after we've unregistered for OnItemAdded (otherwise we'd have an infinite loop if we just dropped them into the vendor container). Failure to use refs causes the non-ref items to be removed when ShowBarterMenu is called.
-				Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
-				kPhantomVendorContainerRef.RemoveItem(akBaseItem)
-				ObjectReference kCreatedRef = kPhantomVendorRef.PlaceAtMe(akBaseItem)
-				kPhantomVendorRef.AddItem(kCreatedRef)
+		
+		Form SortMe = akBaseItem
+		
+		if(akItemReference == None)
+			; Our barter system seems to only work correctly with references - likely a limitation of the dynamic updating of the vendor filter formlist. So we'll stash a reference copy in the vendor's "pockets" until we're done processing these events, then we'll move all of the items to the vendor container after we've unregistered for OnItemAdded (otherwise we'd have an infinite loop if we just dropped them into the vendor container). Failure to use refs causes the non-ref items to be removed when ShowBarterMenu is called.
+			
+			kPhantomVendorContainerRef.RemoveItem(akBaseItem)
+			akItemReference = kPhantomVendorRef.PlaceAtMe(akBaseItem)
+		endif
+		
+		if(bUsingReferences)
+			SortMe = akItemReference
+		endif
+		
+		if(SortItem(SortMe))
+			if(StartBarterSelectedFormList != None && StartBarterSelectedFormList.HasForm(akItemReference))
+				if(bVendorSideEqualsChoice)
+					kPhantomVendorRef.AddItem(akItemReference)
+				else
+					PlayerRef.AddItem(akItemReference, abSilent = true)
+				endif
+			elseif(bVendorSideEqualsChoice)
+				PlayerRef.AddItem(akItemReference, abSilent = true)
 			else
 				ModTrace("[UIManager] item " + akBaseItem + " already had a ref of " + akItemReference)
 			endif
 		else
-			kPhantomVendorContainerRef.RemoveItem(akBaseItem) ; Get rid of this so player doesn't assume its a valid option
+			kPhantomVendorContainerRef.RemoveItem(akItemReference) ; Get rid of this so player doesn't assume its a valid option
 			ModTrace("[UIManager] Too many items to sort. Lost record of item " + akBaseItem)
 		endif
 		
@@ -159,8 +180,10 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			; No longer need to monitor this event as we're only watching for items initially set up via the aAvailableOptionsFormlist
 			UnregisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
 			
-			; Move any refs we created into the vendor container now that we've unregistered for OnItemAdded
-			PhantomVendorAlias.GetRef().RemoveAllItems(kPhantomVendorContainerRef)
+			; Move any refs we created into the selection container now that we've unregistered for OnItemAdded
+			if( ! bVendorSideEqualsChoice)
+				PhantomVendorAlias.GetRef().RemoveAllItems(kPhantomVendorContainerRef)
+			endif
 			
 			iAwaitingSorting = -999
 			ModTrace("[UIManager] Completed sorting of barter items. Vendor container " + kPhantomVendorContainerRef + " has " + kPhantomVendorContainerRef.GetItemCount() + " items.")
@@ -174,11 +197,15 @@ EndEvent
 ; Functions 
 ; ---------------------------------------------
 
+Function HandlePlayerLoadedGame()
+	bPhantomVendorInUse = false ; Make sure this never gets stuck
+EndFunction
+
 	; ---------------------------------------------
 	; Barter Menu System 
 	; ---------------------------------------------
 
-Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+Int Function ShowCachedBarterSelectMenuV2(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
 	if(bPhantomVendorInUse)
 		return -1
 	endif
@@ -189,7 +216,10 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	ModTrace("[UIManager] ShowCachedBarterSelectMenu called. aFilterKeywords = " + aFilterKeywords)
 	PreparePhantomVendor(afBarterDisplayNameForm, aFilterKeywords, aiAcceptStolen)
 	
+	bVendorSideEqualsChoice = abVendorSideEqualsChoice
+	bUsingReferences = abUsingReferences
 	SelectedResultsFormlist = aStoreResultsIn 
+	StartBarterSelectedFormList = aStartBarterSelectedFormlist
 	
 	; Add items to inventory and start barter
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
@@ -198,23 +228,26 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	kCurrentCacheRef = aAvailableOptionsCacheContainerReference
 	iAwaitingSorting += kCurrentCacheRef.GetItemCount()
 	
-	; Monitor for the items to be added from the selection pool	
-	RegisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
-	ModTrace("[UIManager] Moving all items from " + kCurrentCacheRef + " to " + kPhantomVendorContainerRef)
-	kCurrentCacheRef.RemoveAllItems(kPhantomVendorContainerRef)
-	
-	; Wait for OnItemAdded events to complete
-	int iWaitCount = 0
-	int iMaxWaitCount = iAwaitingSorting
-	while(iAwaitingSorting > 0 && iWaitCount < iMaxWaitCount)
-		Utility.Wait(0.1)
-		iWaitCount += 1
-	endWhile
-	
-	iWaitCount = 0
-	while(iAwaitingSorting <= 0 && iAwaitingSorting > -999 && iWaitCount < 20) ; -999 is used by our OnItemAdded event to tell us when it's safe to continue
-		Utility.Wait(0.1) 
-	endWhile
+	if(iAwaitingSorting > 0)
+		; Monitor for the items to be added from the selection pool	
+		RegisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
+		ModTrace("[UIManager] Moving all items from " + kCurrentCacheRef + " to " + kPhantomVendorContainerRef)
+		kCurrentCacheRef.RemoveAllItems(kPhantomVendorContainerRef)
+		
+		; Wait for OnItemAdded events to complete
+		int iWaitCount = 0
+		int iMaxWaitCount = iAwaitingSorting
+		while(iAwaitingSorting > 0 && iWaitCount < iMaxWaitCount)
+			Utility.Wait(0.1)
+			iWaitCount += 1
+		endWhile
+		
+		iWaitCount = 0
+		while(iAwaitingSorting <= 0 && iAwaitingSorting > -999 && iWaitCount < 20) ; -999 is used by our OnItemAdded event to tell us when it's safe to continue
+			Utility.Wait(0.1) 
+			iWaitCount += 1
+		endWhile
+	endif
 	
 	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
 	
@@ -227,6 +260,10 @@ Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectRefe
 	return iBarterSelectCallbackID
 EndFunction
 
+Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowCachedBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+EndFunction
+
 ; ------------------------------------
 ; ShowCachedBarterSelectMenuAndWait
 ;
@@ -234,12 +271,12 @@ EndFunction
 ;
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
-Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
 	if(bPhantomVendorInUse) 
 		return -1
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowCachedBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	Int iResult = ShowCachedBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -254,7 +291,7 @@ Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Obj
 EndFunction
 
 
-int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+int Function ShowFormlistBarterSelectMenuV2(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
 	if(bPhantomVendorInUse)
 		return -1
 	endif
@@ -265,6 +302,9 @@ int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist
 	PreparePhantomVendor(afBarterDisplayNameForm, aFilterKeywords, aiAcceptStolen)
 	
 	SelectedResultsFormlist = aStoreResultsIn 
+	bVendorSideEqualsChoice = abVendorSideEqualsChoice
+	bUsingReferences = abUsingReferences
+	StartBarterSelectedFormList = aStartBarterSelectedFormlist
 	
 	; Add items to vendor container and start barter
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
@@ -314,6 +354,10 @@ int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist
 	return iBarterSelectCallbackID
 EndFunction
 
+
+int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowFormlistBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+EndFunction
 ; ------------------------------------
 ; ShowFormlistBarterSelectMenuAndWait
 ;
@@ -341,7 +385,7 @@ Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, F
 EndFunction
 
 
-int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+int Function ShowBarterSelectMenuV2(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
 	if(bPhantomVendorInUse)
 		return -1
 	endif
@@ -375,6 +419,10 @@ int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailabl
 	kPhantomVendorRef.ShowBarterMenu()
 	
 	return iBarterSelectCallbackID
+EndFunction
+
+int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
 EndFunction
 
 ; ------------------------------------
@@ -527,9 +575,20 @@ Function ProcessItemPool(Form[] aItemPool)
     While(aItemPool.Length > 0)
         Form BaseItem = aItemPool[0]
         
-		if(PlayerRef.GetItemCount(BaseItem) > 0)
+		Bool bSelected = false
+		if(bVendorSideEqualsChoice)
+			bSelected = (kPhantomVendorContainerRef.GetItemCount(BaseItem) > 0)
+		else
+			bSelected = (PlayerRef.GetItemCount(BaseItem) > 0)
+		endif
+		
+		if(bSelected)
 			; return to cache
-			PlayerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			if(bVendorSideEqualsChoice)
+				kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			else	
+				PlayerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			endif
 			
 			iTotalSelected += 1
 			
@@ -548,10 +607,14 @@ Function ProcessItemPool(Form[] aItemPool)
 				SelectedResultsFormlist.AddForm(BaseItem)	
 			endif
 		else
-			; Item was left in vendor container, don't count as selected, but return to cache
-			ModTrace("[UIManager] Removing item " + BaseItem + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(BaseItem) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
-			
-			kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)			
+			; Item was left in select container, don't count as selected, but return to cache
+			if(bVendorSideEqualsChoice)
+				PlayerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			else
+				;ModTrace("[UIManager] Removing item " + BaseItem + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(BaseItem) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+				
+				kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			endif
         endif
         
         aItemPool.Remove(0)
@@ -572,7 +635,9 @@ Function ResetPhantomVendor()
 	ModTrace("[UIManager] ResetPhantomVendor: RemoveAllItems complete.")
 	kPhantomVendorContainerRef.SetActorRefOwner(PlayerRef) ; Prevent player from getting in trouble for stealing
 	
+	bVendorSideEqualsChoice = false
 	SelectedResultsFormlist = None
+	StartBarterSelectedFormList = None
 	
 	; Clear out sorting pools
 	iAwaitingSorting = 0

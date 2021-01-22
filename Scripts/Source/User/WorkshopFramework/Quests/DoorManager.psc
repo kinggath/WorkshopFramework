@@ -52,7 +52,8 @@ Group Keywords
 	Keyword Property DoNotAutoCloseMe Auto Const Mandatory
 	{ Vanilla VatsCCNoCloseUps keyword so that any mod can add to their doors }
 	; TODO - Add a perk entry to tag a door as "Do Not Auto-Close", ensure this can be disabled the same way the workshop one can, and ensure it only works on settlement doors to avoid conflicting with lock mods
-	
+	Keyword Property AutoCloseUnlinkedDoor Auto Const Mandatory
+	{ Vanilla LinkTerminalDoor keyword so doors not connected via WorkshopItemKeyword can be picked up by our system. (Not directly used in this script, but held so other mods can fetch the property for applying the keyword at runtime.) }
 	Keyword Property EventKeyword_DoorFinder Auto Const Mandatory
 EndGroup
 
@@ -232,6 +233,7 @@ EndFunction
 
 Function RegisterDoor(ObjectReference akRef)
 	if( ! akRef || ! akRef.GetBaseObject() as Door)
+		ModTrace("[DoorManager] Attempted to register a non-door ref: " + akRef)
 		return
 	endif
 	
@@ -465,7 +467,9 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 			
 			while(i < iCount)
 				ObjectReference thisDoor = FoundDoors.GetAt(i)
-				RegisterDoor(thisDoor)
+				if(thisDoor != None)
+					RegisterDoor(thisDoor)
+				endif
 				
 				i += 1
 			endWhile
@@ -476,7 +480,7 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 			iCount = DisabledDoors.GetCount()
 			while(i < iCount)
 				ObjectReference thisDoor = FoundDoors.GetAt(i)
-				if(thisDoor.IsDeleted())
+				if(thisDoor != None && thisDoor.IsDeleted())
 					UnregisterDoor(thisDoor)
 				endif
 				
