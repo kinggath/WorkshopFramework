@@ -3508,6 +3508,10 @@ EndFunction
 
 ; 1.1.7 - Low level override to fix an issue with Safety in unowned workshops
 Function SetValue(ActorValue akAV, Float afValue)
+	if(akAV == None)
+		return
+	endif	
+	
 	Parent.SetValue(akAV, afValue)
 	
 	 ; Also set our version
@@ -3555,6 +3559,12 @@ Function RestoreValue(ActorValue akAV, float afAmount)
 			Parent.RestoreValue(WSFW_Safety, afAmount)
 		endif
 	endif
+EndFunction
+
+
+
+Function _SetMapMarker(ObjectReference akMapMarkerRef)
+	myMapMarker = akMapMarkerRef
 EndFunction
 
 

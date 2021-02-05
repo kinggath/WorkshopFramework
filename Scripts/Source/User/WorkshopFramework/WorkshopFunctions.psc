@@ -364,13 +364,19 @@ function SetVendorData(WorkshopScript workshopRef, Actor assignedActor, Workshop
 		CustomVendor[] CustomVendorTypes = WorkshopParent.CustomVendorTypes
 		int iIndex = CustomVendorTypes.FindStruct("sVendorID", assignedObject.sCustomVendorID)
 		if(iIndex >= 0)
+			Faction thisVendorFaction = CustomVendorTypes[iIndex].VendorFaction
+			if(thisVendorFaction == None)
+				; Fall back to Misc faction
+				thisVendorFaction = Game.GetFormFromFile(0x00062555, "Fallout4.esm") as Faction
+			endIf
+			
 			if(bSetData)
-				assignedActor.AddToFaction(CustomVendorTypes[iIndex].VendorFaction)
+				assignedActor.AddToFaction(thisVendorFaction)
 				if(CustomVendorTypes[iIndex].VendorKeyword)
 					assignedActor.AddKeyword(CustomVendorTypes[iIndex].VendorKeyword)
 				endif
 			else
-				assignedActor.RemoveFromFaction(CustomVendorTypes[iIndex].VendorFaction)
+				assignedActor.RemoveFromFaction(thisVendorFaction)
 				if(CustomVendorTypes[iIndex].VendorKeyword)
 					assignedActor.RemoveKeyword(CustomVendorTypes[iIndex].VendorKeyword)
 				endif

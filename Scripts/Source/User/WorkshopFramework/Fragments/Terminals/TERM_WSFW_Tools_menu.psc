@@ -36,6 +36,14 @@ MainQuest.ClaimAllSettlements()
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_05
+Function Fragment_Terminal_05(ObjectReference akTerminalRef)
+;BEGIN CODE
+HUDFrameworkManager.ResetAllWidgets()
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 WorkshopFramework:MainQuest Property MainQuest Auto Const Mandatory

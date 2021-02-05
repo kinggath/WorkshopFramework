@@ -757,3 +757,28 @@ Function ShowHUDWidgetsInWorkshopMode()
 	
 	HudInstance.CallFunction("SendMessageString", Args)
 EndFunction
+
+
+Function ResetWidget(String asWidgetName)
+	; Tell HUDFramework to Unload/Load widget
+	if( ! IsHUDFrameworkInstalled)
+		return
+	endif
+	
+	Var[] kArgs = new Var[1]
+	kArgs[0] = asWidgetName
+	
+	HudInstance.CallFunction("UnloadWidget", kArgs)
+	
+	Utility.Wait(1.0)
+	
+	HudInstance.CallFunction("LoadWidget", kArgs)
+EndFunction
+
+Function ResetAllWidgets()
+	int i = 0
+	while(i < RegisteredWidgets.Length)
+		ResetWidget(RegisteredWidgets[i])
+		i += 1
+	endWhile
+EndFunction

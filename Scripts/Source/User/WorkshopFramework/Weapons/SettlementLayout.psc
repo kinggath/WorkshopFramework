@@ -835,7 +835,7 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 			ActorValue WorkshopPowerConnectionAV = GetWorkshopPowerConnectionAV()
 			ActorValue WorkshopSnapTransmitsPowerAV = GetWorkshopSnapTransmitsPowerAV()
 			Keyword WorkshopPowerConnectionKeyword = GetWorkshopPowerConnectionKeyword()
-			Formlist SkipPowerOnList = GetSkipPowerOnList()
+		
 			
 			PowerConnectionLookup[] Group01 = new PowerConnectionLookup[0]
 			PowerConnectionLookup[] Group02 = new PowerConnectionLookup[0]
@@ -998,9 +998,6 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 				if( ! kLinkedRefs[i].IsDisabled())
 					if(kLinkedRefs[i].GetValue(WorkshopSnapTransmitsPowerAV) > 0)
 						F4SEManager.TransmitConnectedPower(kLinkedRefs[i])
-					elseif(SkipPowerOnList.HasForm(kLinkedRefs[i].GetBaseObject()))
-						kLinkedRefs[i].SetOpen(false) ; This will turn off any switches on the devices
-						kLinkedRefs[i].OnPowerOff()
 					endif
 				endif
 				
@@ -1008,6 +1005,24 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 			endWhile
 		endif
 	endif
+EndFunction
+
+
+Function ShutOffSkipPowerItems(WorkshopScript akWorkshopRef)
+	if( ! akWorkshopRef.Is3dLoaded())
+		return
+	endif
+	
+	Formlist SkipPowerOnList = GetSkipPowerOnList()
+	ObjectReference[] ShutMeDown = akWorkshopRef.FindAllReferencesOfType(SkipPowerOnList, 20000.0) 
+	
+	int i = 0
+	while(i < ShutMeDown.Length)
+		ShutMeDown[i].SetOpen(false) ; This will turn off any switches on the devices
+		ShutMeDown[i].OnPowerOff()
+						
+		i += 1
+	endWhile
 EndFunction
 
 

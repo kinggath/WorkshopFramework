@@ -403,8 +403,8 @@ Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
 		if(DoorFinder != None)
 			int i = 0
 			RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
-			int iCount = FoundDoors.GetCount()
-			while(i < iCount)
+			
+			while(i < FoundDoors.GetCount())
 				ObjectReference thisDoor = FoundDoors.GetAt(i)
 				if( ! thisDoor.IsDisabled())
 					if( ! abOpen)

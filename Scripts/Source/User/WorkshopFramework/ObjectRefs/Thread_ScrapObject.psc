@@ -33,6 +33,7 @@ Keyword Property TurretKeyword Auto Const Mandatory
 
 Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
 ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
+ActorValue property UnassignedPopulationAV Auto Const Mandatory ; 2.0.9 - Used to remote handle RemoveObjectPUBLIC's work without needing to use the locking mechanism on workshopparent
 
 ; -
 ; Properties
@@ -89,7 +90,10 @@ Function RunCode()
 			
 			if(workObject)
 				workObject.OnWorkshopObjectDestroyed(kWorkshopRef) ; 1.2.0 - Ensure secondary cleanup occurs from the workshop object's scripts
-				WorkshopParent.RemoveObjectPUBLIC(workObject, kWorkshopRef)
+				;WorkshopParent.RemoveObjectPUBLIC(workObject, kWorkshopRef)
+				
+				; 2.0.9 - Switched from using the PUBLIC locking call to just imitating its behavior on this thread
+				RemoveObjectPUBLICImitation(workObject, kWorkshopRef)
 			endif
 			
 			; Clear WorkshopItemKeyword link
@@ -108,6 +112,87 @@ Function RunCode()
 		SafeDelete(kScrapMe)
 		
 		bWasRemoved = true		
+	endif
+EndFunction
+
+
+Function RemoveObjectPUBLICImitation(WorkshopObjectScript akObjectRef, WorkshopScript akWorkshopRef)
+	UnassignObject_PrivateImitation(akObjectRef, akWorkshopRef)
+
+	; clear workshopID
+	akObjectRef.workshopID = -1
+
+	; tell object it's being deleted
+	akObjectRef.HandleDeletion()
+	
+	; send custom event for this from WorkshopParent
+	Var[] kargs = new Var[2]
+	kargs[0] = akObjectRef
+	kargs[1] = akWorkshopRef
+	WorkshopParent.SendCustomEvent("WorkshopObjectDestroyed", kargs)		
+EndFunction
+
+Function UnassignObject_PrivateImitation(WorkshopObjectScript akObjectRef, WorkshopScript akWorkshopRef)
+	; Stripped down and heavily modified version of WorkshopParent.UnassignObject_Private which eliminates everything related to triggering auto-assign again afterward. Auto-assign arrays will be regenerated on one of the regular workshop resets, so bypassing it here allows us to to avoid the locking.
+	Actor assignedActor = akObjectRef.GetActorRefOwner()
+	
+	int iWorkshopID = akObjectRef.workshopID
+	Bool bIsInCurrentWorkshop = (WorkshopParent.WorkshopCurrentWorkshopID.GetValueInt() == iWorkshopID)
+	int iResourceIndexToAssign = -1
+	
+	if(assignedActor)
+		WorkshopNPCScript asWorkshopNPC = assignedActor as WorkshopNPCScript
+		
+		akObjectRef.AssignActor(none)
+
+		keyword actorLinkKeyword = akObjectRef.AssignedActorLinkKeyword
+		if(actorLinkKeyword)
+			assignedActor.SetLinkedRef(NONE, actorLinkKeyword)
+		endif
+
+		if(iWorkshopID >= 0)
+			if(akObjectRef.VendorType > -1 || akObjectRef.sCustomVendorID != "")
+				if(asWorkshopNPC)
+					WorkshopParent.SetVendorData(akWorkshopRef, asWorkshopNPC, akObjectRef, false)
+				else
+					WorkshopFramework:WorkshopFunctions.SetVendorData(akWorkshopRef, assignedActor, akObjectRef, bSetData = false)
+				endif
+			endif
+
+			bool bIsBed = akObjectRef.IsBed()
+
+			;If object is a bed, this code can be skipped: removal of a bed has no impact on an actor's worker status
+			if(bIsBed == false)
+				if(WorkshopFramework:WorkshopFunctions.IsObjectOwner(akWorkshopRef, assignedActor) == false)
+					assignedActor.SetValue(UnassignedPopulationAV, 1)
+					
+					if(asWorkshopNPC)
+						asWorkshopNPC.SetMultiResource(none)
+						asWorkshopNPC.SetWorker(false)
+						asWorkshopNPC.bWork24Hours = false
+					else
+						WorkshopFramework:WorkshopFunctions.SetAssignedMultiResource(assignedActor, None)
+						WorkshopFramework:WorkshopFunctions.SetWorker(assignedActor, false)
+						WorkshopFramework:WorkshopFunctions.SetWork24Hours(assignedActor, false)
+					endIf
+				else
+					actorValue multiResourceValue = WorkshopFramework:WorkshopFunctions.GetAssignedMultiResource(assignedActor)
+					
+					if(multiResourceValue && akObjectRef.HasResourceValue(multiResourceValue))
+						float previousProduction = WorkshopFramework:WorkshopFunctions.GetMultiResourceProduction(assignedActor)
+						
+						WorkshopFramework:WorkshopFunctions.SetMultiResourceProduction(assignedActor, previousProduction - akObjectRef.GetBaseValue(multiResourceValue))
+					endif
+				endif
+			endif
+		endif	
+	else
+		;If a work object is removed that was not assigned to an actor, we have to make sure that it is no longer in the unassigned object arrays.
+		if(akObjectRef.IsBed())
+			WorkshopParent.UFO4P_RemoveFromUnassignedBedsArray(akObjectRef)
+		elseif(akObjectRef.HasMultiResource())
+			WorkshopParent.UFO4P_RemoveFromUnassignedObjectsArray(akObjectRef, akObjectRef.GetResourceID())
+		endif
 	endif
 EndFunction
 

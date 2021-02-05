@@ -167,7 +167,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			elseif(bVendorSideEqualsChoice)
 				PlayerRef.AddItem(akItemReference, abSilent = true)
 			else
-				ModTrace("[UIManager] item " + akBaseItem + " already had a ref of " + akItemReference)
+				kPhantomVendorRef.AddItem(akItemReference)
 			endif
 		else
 			kPhantomVendorContainerRef.RemoveItem(akItemReference) ; Get rid of this so player doesn't assume its a valid option
@@ -181,12 +181,10 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			UnregisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
 			
 			; Move any refs we created into the selection container now that we've unregistered for OnItemAdded
-			if( ! bVendorSideEqualsChoice)
-				PhantomVendorAlias.GetRef().RemoveAllItems(kPhantomVendorContainerRef)
-			endif
+			PhantomVendorAlias.GetRef().RemoveAllItems(kPhantomVendorContainerRef)
 			
 			iAwaitingSorting = -999
-			ModTrace("[UIManager] Completed sorting of barter items. Vendor container " + kPhantomVendorContainerRef + " has " + kPhantomVendorContainerRef.GetItemCount() + " items.")
+			ModTrace("[UIManager] Completed sorting of barter items. Vendor container " + kPhantomVendorContainerRef + " has " + kPhantomVendorContainerRef.GetItemCount() + " items. The vendor has " + PhantomVendorAlias.GetRef().GetItemCount() + " items.")
 		endif
     endif
 EndEvent
@@ -365,12 +363,12 @@ EndFunction
 ;
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
-Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
 	if(bPhantomVendorInUse) 
 		return -1
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowFormlistBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	Int iResult = ShowFormlistBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -432,12 +430,12 @@ EndFunction
 ;
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
-Int Function ShowBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Float afMaxWaitTime = 60.0)
+Int Function ShowBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
 	if(bPhantomVendorInUse) 
 		return -1
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+	Int iResult = ShowBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -464,7 +462,7 @@ Function ProcessBarterSelection()
 	
 	; Return any remaining items to player as they were not part of our pool, player likely dropped them in to see what would happen
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
-	ModTrace("[UIManager] Moving remaining " + kPhantomVendorContainerRef.GetItemCount() + " items from phantom vendor container to player.")
+	; ModTrace("[UIManager] Moving remaining " + kPhantomVendorContainerRef.GetItemCount() + " items from phantom vendor container to player.")
 	kPhantomVendorContainerRef.RemoveAllItems(PlayerRef)
 	
 	if(kCurrentCacheRef == SelectCache_Settlements.GetRef())
@@ -573,26 +571,30 @@ Function ProcessItemPool(Form[] aItemPool)
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
 		
     While(aItemPool.Length > 0)
-        Form BaseItem = aItemPool[0]
+        Form thisForm = aItemPool[0]
         
 		Bool bSelected = false
 		if(bVendorSideEqualsChoice)
-			bSelected = (kPhantomVendorContainerRef.GetItemCount(BaseItem) > 0)
-		else
-			bSelected = (PlayerRef.GetItemCount(BaseItem) > 0)
+			bSelected = (kPhantomVendorContainerRef.GetItemCount(thisForm) > 0)
+			
+			;ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kPhantomVendorContainerRef + " which currently has " + kPhantomVendorContainerRef.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
+		else			
+			bSelected = (PlayerRef.GetItemCount(thisForm) > 0)
+			
+			;ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + PlayerRef + ", found? :" + bSelected)
 		endif
 		
 		if(bSelected)
 			; return to cache
 			if(bVendorSideEqualsChoice)
-				kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				kPhantomVendorContainerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			else	
-				PlayerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			endif
 			
 			iTotalSelected += 1
 			
-			int iSettlementIndex = Selectables_Settlements.Find(BaseItem)
+			int iSettlementIndex = Selectables_Settlements.Find(thisForm)
 			if(iSettlementIndex >= 0)
 				if( ! kLastSelectedSettlements)
 					kLastSelectedSettlements = new WorkshopScript[0]
@@ -604,16 +606,16 @@ Function ProcessItemPool(Form[] aItemPool)
 					kLastSelectedSettlements.Add(WorkshopParent.GetWorkshopFromLocation(settlementLocation))
 				endif
 			else
-				SelectedResultsFormlist.AddForm(BaseItem)	
+				SelectedResultsFormlist.AddForm(thisForm)	
 			endif
 		else
 			; Item was left in select container, don't count as selected, but return to cache
 			if(bVendorSideEqualsChoice)
-				PlayerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			else
-				;ModTrace("[UIManager] Removing item " + BaseItem + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(BaseItem) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+				;ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 				
-				kPhantomVendorContainerRef.RemoveItem(BaseItem, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				kPhantomVendorContainerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			endif
         endif
         

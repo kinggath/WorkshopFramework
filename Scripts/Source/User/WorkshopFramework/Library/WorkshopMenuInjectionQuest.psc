@@ -87,7 +87,7 @@ EndFunction
 ; ---------------------------------------------
 
 Function UpdateRegistrations()
-	if(bUpdateRegistrationsInProgress || (gMyModVersion != None && iMyInstalledVersion >= gMyModVersion.GetValueInt()) || ! WorkshopMenuManager.IsRunning())
+	if((gMyModVersion != None && iMyInstalledVersion >= gMyModVersion.GetValueInt()) || ! WorkshopMenuManager.IsRunning())
 		;/
 		if(bUpdateRegistrationsInProgress)
 			Debug.MessageBox("Skipping registrations - in progress already.")
@@ -103,6 +103,18 @@ Function UpdateRegistrations()
 		return
 	endif
 	
+	_HandleRegistrations()
+	
+	if(gMyModVersion != None)
+		iMyInstalledVersion = gMyModVersion.GetValueInt()
+	endif
+EndFunction
+
+Function _HandleRegistrations()
+	if(bUpdateRegistrationsInProgress)
+		return
+	endif
+	
 	bUpdateRegistrationsInProgress = true
 	
 	int i = 0
@@ -111,10 +123,6 @@ Function UpdateRegistrations()
 		
 		i += 1
 	endWhile
-	
-	if(gMyModVersion != None)
-		iMyInstalledVersion = gMyModVersion.GetValueInt()
-	endif
 	
 	bUpdateRegistrationsInProgress = false
 EndFunction
