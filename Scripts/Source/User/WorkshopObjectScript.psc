@@ -393,6 +393,7 @@ function DeleteFurnitureMarkers()
 	if myFurnitureMarkerRefs.Length > 0
 		int i = 0
 		while i < myFurnitureMarkerRefs.Length
+			myFurnitureMarkerRefs[i].SetActorRefOwner(None) ; WSFW 2.0.10 - Attempt to eliminate issue where NPCs remain attached to extra furniture markers
 			myFurnitureMarkerRefs[i].Delete()
 			i += 1
 		endWhile
@@ -451,7 +452,12 @@ Function AssignNPC(Actor newActor = None)
 EndFunction
 
 function AssignActor(WorkshopNPCScript newActor = None)
-	AssignNPC(newActor as Actor) ; WSFW 2.0.0 - Rerouting to our new version
+	; WSFW 2.0.0 - Rerouting to our new version	
+	if(newActor != None) ; WSFW 2.0.10 - Added this check to avoid an error in trying to cast None to Actor
+		AssignNPC(newActor as Actor)
+	else
+		AssignNPC(None)
+	endif
 endFunction
 
 function AssignNPCCustom(Actor newActor)

@@ -514,6 +514,8 @@ Function ClaimAllSettlements()
 				thisMapMarker.AddToMap(true)
 			endif
 		endif
+		
+		ClaimSettlement(Workshops[i])
 
 		i += 1
 	endWhile
@@ -541,9 +543,6 @@ Function ClaimAllSettlements()
 			endif
 		endif
 	endif
-
-	; Handle claiming of workshops
-	WorkshopParent.ToggleOnAllWorkshops()
 EndFunction
 
 

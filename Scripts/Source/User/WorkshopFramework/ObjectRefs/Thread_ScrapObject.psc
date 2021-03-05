@@ -225,6 +225,12 @@ Function SafeDelete(ObjectReference akDeleteMe)
 	
 	; Disable
 	if( ! bIsDisabled || bTemporarilyRelocated)
+		WorkshopObjectScript asWorkshopObject = akDeleteMe as WorkshopObjectScript
+		if(asWorkshopObject)
+			; Make absolutely certain that things like furniture refs are cleaned up
+			asWorkshopObject.HandleDeletion()
+		endIf
+		
 		akDeleteMe.Disable(false)
 	endif
 	

@@ -266,6 +266,29 @@ Function HandleGameLoaded()
 	endif
 EndFunction
 
+Function HandleInstallModChanges()
+	int iVersion2010 = 38
+	
+	if(iInstalledVersion < iVersion2010)
+		; Reapply script alias - previously we had our priority too low, and it made it so the PermanentActorAliases AI package was taking precendence. In testing, discovered that a reapplication of the packages is necessary to reclaim precendence after fixing the priority.
+		
+		RefCollectionAlias PermanentActorAliases = WorkshopParent.PermanentActorAliases
+		
+		int i = 0
+		while(i < PermanentActorAliases.GetCount())
+			Actor thisActor = PermanentActorAliases.GetAt(i) as Actor
+			
+			if(thisActor != None)
+				RemoveAliasData(thisActor)
+				Utility.Wait(0.1)
+				ApplyAliasData(thisActor)
+			endif
+			
+			i += 1
+		endWhile
+	endif
+EndFunction
+
 ; ---------------------------------------------
 ; Overrides
 ; ---------------------------------------------
