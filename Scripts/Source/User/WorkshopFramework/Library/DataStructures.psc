@@ -16,6 +16,9 @@ Struct WorldObject
 	Float fScale = 1.0
 	
 	Bool bForceStatic = false
+	
+	Float fExtraDataFlag = 0.0
+	{ Special field different systems can use however they need }
 EndStruct
 
 struct RIDPNodeDisplayData

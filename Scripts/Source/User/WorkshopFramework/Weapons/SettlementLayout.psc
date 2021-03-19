@@ -16,6 +16,8 @@ Scriptname WorkshopFramework:Weapons:SettlementLayout extends Form Const
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
 
+Float fExtraDataFlag_SkipWorkshopItemLink = 1.0 Const
+
 ; Below were copied from SettlementLayoutManager and then converted to properties so extended classes can use them
 String Property sRestoreObjectCallbackID = "WSFW_RestoreObject" Auto Const 
 String Property sPlaceObjectCallbackID = "WSFW_PlaceObject" Auto Const 
@@ -560,6 +562,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 	Keyword WorkshopKeyword = GetWorkshopKeyword()
 	Keyword PreventScrappingKeyword = GetPreventScrappingKeyword()
 	Keyword InvisibleWorkshopObjectKeyword = GetInvisibleWorkshopObjectKeyword()
+	Keyword LinkCustom10 = GetLinkCustom10()
 	
 	WorkshopFramework:SettlementLayoutManager SettlementLayoutManager = GetSettlementLayoutManager()
 	UniversalForm[] UF_AlwaysAllowedActorTypes = SettlementLayoutManager.AlwaysAllowedActorTypes
@@ -655,6 +658,11 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				kThread.fAngleZ = aObjectsToPlace[i].fAngleZ
 				kThread.fScale = aObjectsToPlace[i].fScale
 				kThread.kWorkshopRef = akWorkshopRef
+				
+				if(aObjectsToPlace[i].fExtraDataFlag == fExtraDataFlag_SkipWorkshopItemLink)
+					kThread.bBypassWorkshopItemLink = true
+					kThread.AddLinkedRef(akWorkshopRef, LinkCustom10)
+				endif
 				
 				kThread.bRecalculateWorkshopResources = false ; We will just run this once when its done
 				
@@ -794,6 +802,33 @@ Int Function RemoveLayoutObjects(WorkshopScript akWorkshopRef, Bool abCallbacksN
 
 			if(kThread)
 				kThread.kScrapMe = kLinkedRefs[i]
+				kThread.kWorkshopRef = akWorkshopRef
+					
+				String sCallbackID = ""
+				if(abCallbacksNeeded)
+					sCallbackID = sScrapObjectCallbackID
+				endif
+				
+				if(RemoveLayoutObjectThreadLastCall(kThread))	
+					iThreadsStarted += 1
+					ThreadManager.QueueThread(kThread, sCallbackID)
+				endif
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	; Now grab items that were set to bypass the workshopItemKeyword link
+	Keyword LinkCustom10 = GetLinkCustom10()	
+	ObjectReference[] kAlternateLinkedRefs = akWorkshopRef.GetLinkedRefChildren(LinkCustom10)
+	i = 0
+	while(i < kAlternateLinkedRefs.Length)
+		if(kAlternateLinkedRefs[i].HasKeyword(TagKeyword))
+			WorkshopFramework:ObjectRefs:Thread_ScrapObject kThread = ThreadManager.CreateThread(ScrapObjectThread) as WorkshopFramework:ObjectRefs:Thread_ScrapObject
+
+			if(kThread)
+				kThread.kScrapMe = kAlternateLinkedRefs[i]
 				kThread.kWorkshopRef = akWorkshopRef
 					
 				String sCallbackID = ""
@@ -1114,6 +1149,10 @@ EndFunction
 
 Keyword Function GetInvisibleWorkshopObjectKeyword()
 	return Game.GetFormFromFile(0x00006B5A, "WorkshopFramework.esm") as Keyword
+EndFunction
+
+Keyword Function GetLinkCustom10()
+	return Game.GetFormFromFile(0x00030972, "Fallout4.esm") as Keyword
 EndFunction
 
 Form Function GetFindAndScrapObjectThread()

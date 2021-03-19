@@ -88,6 +88,8 @@ Function HandleQuestInit()
 EndFunction
 
 Function HandleGameLoaded()
+	Parent.HandleGameLoaded()
+	
 	RegisterForEvents()
 EndFunction
 

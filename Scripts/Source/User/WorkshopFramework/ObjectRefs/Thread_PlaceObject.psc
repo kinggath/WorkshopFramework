@@ -89,6 +89,7 @@ Bool Property bApplyDrawCount = false Auto Hidden ; 1.1.5 - Defaults to false - 
 Bool Property bApplyTriCount = false Auto Hidden ; 1.1.5 - Defaults to false - if WorkshopCurrentTriangles is applied to the placed object, it will be added to the workshop for the sake of the build limit
 Bool Property bRecalculateWorkshopResources = true Auto Hidden ; 1.2.0 - For huge batches where we know the player will stay put, we don't want this triggering for every item
 Bool Property bForceWorkshopItemLink = true Auto Hidden
+Bool Property bBypassWorkshopItemLink = false Auto Hidden
 ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
@@ -342,7 +343,7 @@ Function RunCode()
 			
 				WorkshopObjectScript asWorkshopObject = kResult as WorkshopObjectScript
 				
-				if(bForceWorkshopItemLink || asWorkshopObject || kResult.GetValue(WorkshopResourceObject) > 0 || (kResult as WorkshopFramework:ObjectRefs:RealInventoryDisplay))
+				if( ! bBypassWorkshopItemLink && (bForceWorkshopItemLink || asWorkshopObject || kResult.GetValue(WorkshopResourceObject) > 0 || (kResult as WorkshopFramework:ObjectRefs:RealInventoryDisplay)))
 					kResult.SetLinkedRef(kWorkshopRef, WorkshopItemKeyword)
 				endif
 				
