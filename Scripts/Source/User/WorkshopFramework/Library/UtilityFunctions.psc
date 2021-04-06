@@ -285,6 +285,82 @@ EndFunction
 
 
 ; -----------------------------------
+; GetKeywordDataSetForm 
+;
+; Description: Returns the form from a WorkshopFramework:Library:DataStructures:KeywordDataSet struct
+; -----------------------------------
+
+Keyword Function GetKeywordDataSetForm(KeywordDataSet aKWDSet) global
+	if( ! aKWDSet)
+		return None
+	endif
+	
+	Keyword thisForm
+	
+	if(aKWDSet.KeywordForm)
+		thisForm = aKWDSet.KeywordForm
+	elseif(aKWDSet.iFormID > 0 && aKWDSet.sPluginName != "" && Game.IsPluginInstalled(aKWDSet.sPluginName))
+		thisForm = Game.GetFormFromFile(aKWDSet.iFormID, aKWDSet.sPluginName) as Keyword
+	else
+		return None
+	endif
+	
+	return thisForm
+EndFunction
+
+
+; -----------------------------------
+; CheckKeywordDataSet
+; 
+; Description: Checks if a KeywordDataSet passes
+;
+; Parameters:
+; Location akLocation = The location to check the keyword data on
+; KeywordDataSet aKWDSet = KeywordDataSet to evaluate against
+;
+; Added: XXXX
+; -----------------------------------
+
+Bool Function CheckKeywordDataSet(Location akLocation, KeywordDataSet aKWDSet) global
+	if( ! akLocation)
+		return false 
+	endif
+
+	Keyword thisForm = GetKeywordDataSetForm(aKWDSet)
+	
+	if(thisForm)
+		Float fFormValue = akLocation.GetKeywordData(thisForm)
+		Float fCheckValue = aKWDSet.fValue
+		
+		if(aKWDSet.iCompareMethod == -2)
+			if(fFormValue < fCheckValue)
+				return true
+			endif
+		elseif(aKWDSet.iCompareMethod == -1)
+			if(fFormValue <= fCheckValue)
+				return true
+			endif
+		elseif(aKWDSet.iCompareMethod == 0)
+			if(fFormValue == fCheckValue)
+				return true
+			endif
+		elseif(aKWDSet.iCompareMethod == 1)
+			if(fFormValue >= fCheckValue)
+				return true
+			endif
+		elseif(aKWDSet.iCompareMethod == 2)
+			if(fFormValue > fCheckValue)
+				return true
+			endif
+		endif				
+	endif
+	
+	; Keyword not found
+	return false
+EndFunction
+
+
+; -----------------------------------
 ; CheckActorValueSet
 ; 
 ; Description: Checks if a ActorValueSet passes

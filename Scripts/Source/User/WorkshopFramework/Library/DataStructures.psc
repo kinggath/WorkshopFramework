@@ -43,6 +43,22 @@ Struct ActorValueSet
 	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue }
 EndStruct
 
+Struct KeywordDataSet
+	Keyword KeywordForm = None
+	{ Location form. [Optional] Either this, or iFormID + sPluginName have to be set. }
+	Int iFormID = -1
+	{ Decimal conversion of the last 6 digits of a forms Hex ID. [Optional] Either this + sPluginName, or AVForm have to be set. }
+	String sPluginName = ""
+	{ Exact file name the form is from (ex. Fallout.esm). [Optional] Either this + iFormID, or AVForm have to be set. }
+
+	Float fValue = 0.0
+	{ The value to check for based on iCompareMethod }
+	
+	; 1.0.4 addition - will allow for using these as conditionals
+	Int iCompareMethod = 0
+	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue }
+EndStruct
+
 
 ; 1.0.4 - Expanding common structure options
 Struct GlobalVariableSet
