@@ -223,7 +223,7 @@ Form Function GetUniversalForm(UniversalForm aUniversalForm) global
 	if(aUniversalForm.BaseForm)
 		thisForm = aUniversalForm.BaseForm
 	elseif(aUniversalForm.iFormID > 0 && aUniversalForm.sPluginName != "" && Game.IsPluginInstalled(aUniversalForm.sPluginName))
-		thisForm = Game.GetFormFromFile(aUniversalForm.iFormID, aUniversalForm.sPluginName) as Form
+		thisForm = Game.GetFormFromFile(aUniversalForm.iFormID, aUniversalForm.sPluginName)
 	else
 		return None
 	endif
@@ -250,7 +250,7 @@ Form Function GetIndexMappedUniversalForm(IndexMappedUniversalForm aUniversalFor
 	if(aUniversalForm.BaseForm)
 		thisForm = aUniversalForm.BaseForm
 	elseif(aUniversalForm.iFormID > 0 && aUniversalForm.sPluginName != "" && Game.IsPluginInstalled(aUniversalForm.sPluginName))
-		thisForm = Game.GetFormFromFile(aUniversalForm.iFormID, aUniversalForm.sPluginName) as Form
+		thisForm = Game.GetFormFromFile(aUniversalForm.iFormID, aUniversalForm.sPluginName)
 	else
 		return None
 	endif
@@ -1113,7 +1113,7 @@ EndFunction
 ; ------------------------------
 ; IsPlayerInPipboyMenu 
 ; 
-; Description: Returns true or false depending on whether the player is in 1st or 3rd person
+; Description: Returns true or false depending on whether the player is using the Pipboy
 ; 
 ; Added: 2.0.1
 ; ------------------------------
@@ -1130,6 +1130,7 @@ EndFunction
 ; RandomizeArray 
 ; 
 ; Description: Randomizes an array's order
+; NOTE: This function is destructive!  myArray will be empty when this function is complete!
 ;
 ; Parameters:
 ; Var[] myArray
@@ -1146,11 +1147,7 @@ Var[] Function RandomizeArray(Var[] myArray) global
 		
 		TempArray.Add(myArray[index])
 		
-		if(myArray.Length > 1)
-			myArray.Remove(index)
-		else
-			myArray = new Var[0]
-		endif
+		myArray.Remove(index)
 		
 		i += 1
 	endWhile
@@ -1172,10 +1169,9 @@ EndFunction
 
 int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
 	Int[] Indexes = new Int[0]
-	Int[] ReturnIndexes = new Int[0]
 	
 	if(iStart > iEnd)
-		return Indexes
+		return None
 	endif
 	
 	while(iStart < iEnd && Indexes.Length < 128)
@@ -1184,16 +1180,7 @@ int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
 		iStart += 1
 	endWhile
 	
-	Var[] Temp = RandomizeArray(Indexes as Var[])
-	
-	int i = 0
-	while(i < Temp.Length)
-		ReturnIndexes.Add(Temp[i] as Int)
-		
-		i += 1
-	endWhile
-	
-	return Indexes
+	return RandomizeArray(Indexes as Var[]) As Int[]
 EndFunction
 
 
@@ -1348,6 +1335,11 @@ EndFunction
 ; Mod 
 ; 
 ; Description: Basic math function to find remainder
+; NOTE:  This function is redundant, use the native Papyrus modulo operator (%) instead as it is many, many times faster.
+; 	ie, These are functionally equivalent:
+;	x = Mod( y, 16 )
+;	x = y % 16
+; See: https://www.creationkit.com/fallout4/index.php?title=Operator_Reference
 ;
 ; Parameters:
 ; Int a, Int b
@@ -1355,8 +1347,103 @@ EndFunction
 ; Added: 1.2.0
 ; ------------------------------
 Int Function Mod(Int a, Int b) global
-	Float x = a / b
-	Int y = Math.Floor( x )
-	
-	return a - (b * y)
+	return a % b
 EndFunction
+
+
+; ************************************
+; String
+; ************************************
+
+; ------------------------------
+; HexDigit
+; 
+; Description: Return the hexidecimal digit of an integer in the range of 0-15, will return "*" if out of range
+;
+; Parameters:
+; Int aiDigit
+; 
+; Author: 1000101
+; Added: 2.0.11
+; ------------------------------
+String Function HexDigit( Int aiDigit ) Global
+
+	If( aiDigit >= 0 )&&( aiDigit <= 9 )
+		Return aiDigit As String
+
+	ElseIf( aiDigit == 10 )
+		Return "A"
+
+	ElseIf( aiDigit == 11 )
+		Return "B"
+
+	ElseIf( aiDigit == 12 )
+		Return "C"
+
+	ElseIf( aiDigit == 13 )
+		Return "D"
+
+	ElseIf( aiDigit == 14 )
+		Return "E"
+
+	ElseIf( aiDigit == 15 )
+		Return "F"
+
+	EndIf
+
+	Return "*"
+EndFunction
+
+; ------------------------------
+; IntToHex
+; 
+; Description: Return the hexidecimal value of an integer
+;
+; Parameters:
+; Int aiInt
+; Int aiPadDigits = Number of digits to pad to (prefixing the result with zeros to fill), an Int is 32-bits so the longest resulting hexidecimal value will be eight (8) digits
+; 
+; Author: 1000101
+; Added: 2.0.11
+; ------------------------------
+String Function IntToHex( Int aiInt, Int aiPadDigits = 0 ) Global
+
+	String lsResult = ""
+	Int liDigitCount = 0
+	Int liDigit
+
+	Bool lbApplyHighBitToFirst = False
+	If( aiInt < 0 )
+		; Remove the sign-bit (bit 31) for negative input forcing aiInt to be positive for the conversion loop
+		aiInt += 0x80000000
+		lbApplyHighBitToFirst = True
+	EndIf
+
+	While( aiInt > 0 )
+
+		liDigit = aiInt % 16 ; liDigit = aiInt & 0xF
+		If( aiInt < 16 )&&( lbApplyHighBitToFirst )
+			; Re-add the sign-bit (bit 31) for the first digit if the input value was negative
+			liDigit += 0x8
+		EndIf
+
+		aiInt = aiInt / 16 ; aiInt = aiInt >> 4
+
+		lsResult = HexDigit( liDigit ) + lsResult
+
+		liDigitCount += 1
+	EndWhile
+
+	If( aiPadDigits > 0 )&&( liDigitCount < aiPadDigits )
+		Int liZerosToAdd = aiPadDigits - liDigitCount
+
+		While( liZerosToAdd > 0 )
+			lsResult = "0" + lsResult
+			liZerosToAdd -= 1
+		EndWhile
+
+	EndIf
+
+	Return lsResult
+EndFunction
+
