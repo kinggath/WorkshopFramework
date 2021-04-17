@@ -195,6 +195,7 @@ Group WSFW_Globals
 	GlobalVariable Property WSFW_Setting_maxDefenseStrength Auto Hidden	
 	
 	GlobalVariable Property WSFW_Setting_AdjustMaxNPCsByCharisma Auto Hidden
+	GlobalVariable Property WSFW_Setting_CapMaxNPCsByBedCount Auto Hidden
 	GlobalVariable Property WSFW_Setting_RobotHappinessLevel Auto Hidden
 	GlobalVariable Property CurrentWorkshopID Auto Hidden
 	
@@ -361,6 +362,7 @@ int iFormID_Setting_actorDeathHappinessModifier = 0x000091DC Const
 int iFormID_Setting_maxAttackStrength = 0x000091DE Const
 int iFormID_Setting_maxDefenseStrength = 0x000091E0 Const
 int iFormID_Setting_AdjustMaxNPCsByCharisma = 0x0000A98D Const ; 1.0.4 - Fixed typo in form ID
+int iFormID_Setting_CapMaxNPCsByBedCount = 0x0002A0F1 Const
 int iFormID_Setting_ShelterMechanic = 0x00006B5D ; 1.0.5
 int iFormID_Setting_RobotHappinessLevel = 0x000035D8 Const
 int iFormID_Setting_AllowSettlementsToLeavePlayerControl = 0x00004CF3 ; 1.0.4 - New setting
@@ -2026,6 +2028,13 @@ int function GetMaxWorkshopNPCs()
 		iMaxNPCs += (Game.GetPlayer().GetValue(Game.GetCharismaAV()) as int)
 	endif
 	
+	if(WSFW_Setting_CapMaxNPCsByBedCount.GetValue() == 1)
+		Int iBedCount = GetBaseValue(Beds) as Int
+		if(iMaxNPCs > iBedCount)
+			iMaxNPCs = iBedCount
+		endif
+	endif
+	
 	return iMaxNPCs
 endFunction
 
@@ -3106,6 +3115,10 @@ Function FillWSFWVars()
 	if( ! WSFW_Setting_AdjustMaxNPCsByCharisma)
 		WSFW_Setting_AdjustMaxNPCsByCharisma = Game.GetFormFromFile(iFormID_Setting_AdjustMaxNPCsByCharisma, sWSFW_Plugin) as GlobalVariable
 	endif
+	
+	if( ! WSFW_Setting_CapMaxNPCsByBedCount)
+		WSFW_Setting_CapMaxNPCsByBedCount = Game.GetFormFromFile(iFormID_Setting_CapMaxNPCsByBedCount, sWSFW_Plugin) as GlobalVariable
+	endif	
 
 	if( ! WSFW_Setting_RobotHappinessLevel)
 		WSFW_Setting_RobotHappinessLevel = Game.GetFormFromFile(iFormID_Setting_RobotHappinessLevel, sWSFW_Plugin) as GlobalVariable

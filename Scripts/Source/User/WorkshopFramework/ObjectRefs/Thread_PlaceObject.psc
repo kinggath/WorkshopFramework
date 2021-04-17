@@ -430,7 +430,7 @@ Function RunCode()
 			
 			if(bApplyTriCount)
 				Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
-				Float fItemTris = kResult.GetValue(WorkshopCurrentDraws)
+				Float fItemTris = kResult.GetValue(WorkshopCurrentTriangles)
 				
 				if(fItemTris > 0)
 					kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))

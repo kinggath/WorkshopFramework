@@ -126,6 +126,7 @@ Group Assets
 	LeveledItem Property DefaultScavProductionItem_Parts Auto Const Mandatory
 	LeveledItem Property DefaultScavProductionItem_Rare Auto Const Mandatory
 	LeveledItem Property DefaultFertilizerProductionItem Auto Const Mandatory
+	LeveledItem Property WorkshopProduceVendorIncome Auto Const Mandatory
 	Form Property Caps001 Auto Const Mandatory
 	Form Property DummyContainerForm Auto Const Mandatory
 	Form Property PurifiedWater Auto Const Mandatory
@@ -1647,7 +1648,7 @@ Function ProduceVendorIncome(WorkshopScript akWorkshopRef)
 		
 		ModTrace("[WSFW]                  VendorIncome Value: " + iVendorIncomeFinal)
 		if(iVendorIncomeFinal >= 1)
-			ProduceItems(Caps001, akWorkshopRef, iVendorIncomeFinal, CapsContainerKeyword)
+			ProduceItems(WorkshopProduceVendorIncome, akWorkshopRef, iVendorIncomeFinal, CapsContainerKeyword)
 		endif	
 	else
 		ModTrace("[WSFW]                  Population Too Low to Produce Vendor Income")

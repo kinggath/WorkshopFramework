@@ -1193,7 +1193,7 @@ int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
 		i += 1
 	endWhile
 	
-	return Indexes
+	return ReturnIndexes
 EndFunction
 
 
