@@ -1178,7 +1178,7 @@ int[] Function GenerateRandomizedIntegerRangeArray(Int iStart, Int iEnd) global
 		return Indexes
 	endif
 	
-	while(iStart < iEnd && Indexes.Length < 128)
+	while(iStart <= iEnd && Indexes.Length < 128)
 		Indexes.Add(iStart)
 		
 		iStart += 1

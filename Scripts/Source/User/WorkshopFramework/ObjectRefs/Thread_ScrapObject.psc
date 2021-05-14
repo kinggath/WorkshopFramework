@@ -32,6 +32,8 @@ Keyword Property WorkshopStackedItemParentKEYWORD Auto Const Mandatory ; 1.0.2 -
 Keyword Property TurretKeyword Auto Const Mandatory
 
 Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
+Keyword Property WorkshopCanBePowered Auto Const Mandatory ; 2.0.13 - Additional delete safety check
+
 ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
 ActorValue property UnassignedPopulationAV Auto Const Mandatory ; 2.0.9 - Used to remote handle RemoveObjectPUBLIC's work without needing to use the locking mechanism on workshopparent
 
@@ -204,7 +206,7 @@ Function SafeDelete(ObjectReference akDeleteMe)
 	Bool bIsDeleted = akDeleteMe.IsDeleted() 
 	Bool bIsDisabled = akDeleteMe.IsDisabled()
 	Bool bTemporarilyRelocated = false ; 1.0.8 - Tracking whether object is moved to hide the Enable from the player
-	if(akDeleteMe.HasKeyword(WorkshopPowerConnectionDUPLICATE000))
+	if(akDeleteMe.HasKeyword(WorkshopCanBePowered) || akDeleteMe.HasKeyword(WorkshopPowerConnectionDUPLICATE000))
 		bSafeToDelete = false
 	elseif( ! bIsDeleted)
 		if(akDeleteMe.IsDisabled())

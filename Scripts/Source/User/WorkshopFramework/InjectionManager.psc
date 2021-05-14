@@ -90,6 +90,7 @@ int Property VendorTopLevel = 2 Auto Const
 ; Vars
 ; ---------------------------------------------
 
+Bool Property bInitialSetupComplete = false Auto Hidden
 Bool bSetupListsBlock = false ; Unlike a lock, with the block we will just reject any incoming calls if a block is held
 
 
@@ -130,6 +131,10 @@ EndFunction
 ; Methods 
 ; ---------------------------------------------
 
+Bool Function AreLeveledListsBeingSetup()
+	return bSetupListsBlock
+EndFunction
+
 Function SetupLeveledLists()
 	if(bSetupListsBlock)
 		return
@@ -154,6 +159,7 @@ Function SetupLeveledLists()
 	endWhile
 	
 	bSetupListsBlock = false
+	bInitialSetupComplete = true
 EndFunction
 
 

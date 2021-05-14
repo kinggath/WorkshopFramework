@@ -37,6 +37,7 @@ Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory 
 	Int Property iWorkshopParentInitializedStage = 20 Auto Const
 	WorkshopFramework:WorkshopResourceManager Property ResourceManager Auto Const Mandatory
+	WorkshopFramework:InjectionManager Property InjectionManager Auto Const Mandatory
 	GlobalVariable Property WorkshopCurrentWorkshopID Auto Const Mandatory
 	GlobalVariable Property WSFW_Setting_RobotsCountTowardsMaxPopulation Auto Const Mandatory
 	GlobalVariable Property WSFW_Setting_RecruitSettlersOnFirstBeaconActivation Auto Const Mandatory
@@ -107,11 +108,11 @@ EndGroup
 
 Group Assets
 	ActorBase Property BrahminActorBase Auto Const Mandatory
-	{ Actorbase that should be using InjectionManger.BrahminLCharHolder as its template source }
+	{ Actorbase that should be using InjectionManager.BrahminLCharHolder as its template source }
 	ActorBase Property SettlerActorBase Auto Const Mandatory
-	{ Actorbase that should be using InjectionManger.SettlerLCharHolder as its template source }
+	{ Actorbase that should be using InjectionManager.SettlerLCharHolder as its template source }
 	ActorBase Property SettlerGuardActorBase Auto Const Mandatory
-	{ Actorbase that should be using InjectionManger.SettlerLCharHolder as its template source }
+	{ Actorbase that should be using InjectionManager.SettlerLCharHolder as its template source }
 	Faction Property WorkshopEnemyFaction Auto Const Mandatory
 	Form Property SynthDeathItem Auto Const Mandatory
 EndGroup
@@ -518,13 +519,13 @@ ActorBase Function GetSettlerForm(WorkshopScript akWorkshopRef = None)
 			if(Utility.RandomInt(1, 100) <= iRecruitmentGuardChance)
 				thisActorBase = SettlerGuardActorBase
 				
-				if(bOverrideInjectedSettlers)
+				if(bOverrideInjectedSettlers || ! InjectionManager.bInitialSetupComplete)
 					thisActorBase = DefaultSettlerGuardRecord
 				endif
 			else
 				thisActorBase = SettlerActorBase
 				
-				if(bOverrideInjectedSettlers)
+				if(bOverrideInjectedSettlers || ! InjectionManager.bInitialSetupComplete)
 					thisActorBase = DefaultSettlerRecord
 				endif
 			endif
