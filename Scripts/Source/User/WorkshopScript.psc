@@ -1420,7 +1420,7 @@ Bool[] Property LayoutScrappingComplete Auto Hidden
 Bool[] Property LayoutPlacementComplete Auto Hidden
 Bool Property bHasEnteredWorkshopModeHere = false Auto Hidden ; F4SE cannot wire up settlements until this is true
 
-int VendorTopLevel = 2 ; WSFW - Copied from WorkshopParent
+int VendorTopLevel = 2 const ; WSFW - Copied from WorkshopParent
 
 Bool Property bPropertiesConfigured = false Auto Hidden ; Flag from WSFW ResourceManager after it has configured all AVs, etc.
 
