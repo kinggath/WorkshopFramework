@@ -247,8 +247,56 @@ Function HandleInstallModChanges()
 	if(iInstalledVersion < 26)
 		PlayerRef.AddPerk(ActivationPerk)
 	endif
+
+	if(iInstalledVersion < 42)
+		deduplicateAllVendorLists()
+	endif
 EndFunction
 
+function deduplicateAllVendorLists()
+	ModTrace("[WSFW] List deduplication BEGIN")
+	; iterate all workshop
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		deduplicateVendorListsForWorkshop(Workshops[i])
+		i += 1
+	endWhile
+	ModTrace("[WSFW] List deduplication END")
+endFunction
+
+function deduplicateVendorListsForWorkshop(WorkshopScript ws)
+	; vanilla
+	ws.VendorContainersMisc 	= deduplicateObjectReferenceArray(ws.VendorContainersMisc)
+	ws.VendorContainersArmor 	= deduplicateObjectReferenceArray(ws.VendorContainersArmor)
+	ws.VendorContainersWeapons 	= deduplicateObjectReferenceArray(ws.VendorContainersWeapons)
+	ws.VendorContainersBar 		= deduplicateObjectReferenceArray(ws.VendorContainersBar)
+	ws.VendorContainersClinic 	= deduplicateObjectReferenceArray(ws.VendorContainersClinic)
+	ws.VendorContainersClothing = deduplicateObjectReferenceArray(ws.VendorContainersClothing)
+
+	; IN THEORY, this a) shouldn't be possible for custom ones and b) I don't think this can be done safely
+
+endFunction
+
+ObjectReference[] function deduplicateObjectReferenceArray(ObjectReference[] list)
+	if(list == none || list.length == 0)
+		return list
+	endif
+
+	ObjectReference[] result = new ObjectReference[0]
+
+	int i=0
+	while(i<list.length)
+		ObjectReference thisRef = list[i]
+		if(result.length == 0 || result.Find(thisRef) < 0)
+			result.add(thisRef)
+		endif
+		i += 1
+	endwhile
+
+	ModTrace("[WSFW] List deduplication: before: "+list.length+", after: "+result.length)
+	return result
+endFunction
 
 Function HandleGameLoaded()
 	; Make sure our debug log is open
