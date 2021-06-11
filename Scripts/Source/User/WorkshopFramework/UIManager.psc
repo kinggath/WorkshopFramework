@@ -26,6 +26,7 @@ CustomEvent Settlement_SelectionMade
 ; ---------------------------------------------
 
 Float fBarterWaitLoopIncrement = 0.1 Const
+Float fWaitForMenuAvailableLoopIncrement = 0.1 Const
 int iMessageSelectorSource_Array = 0 Const
 int iMessageSelectorSource_Formlist = 1 Const
 int iMessageSelectorReturn_Failure = -1 Const
@@ -203,9 +204,30 @@ EndFunction
 	; Barter Menu System 
 	; ---------------------------------------------
 
+Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowCachedBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+EndFunction
+
+
 Int Function ShowCachedBarterSelectMenuV2(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
+	return ShowCachedBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+EndFunction
+
+Int Function ShowCachedBarterSelectMenuV3(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse)
-		return -1
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif
 	
 	bPhantomVendorInUse = true
@@ -258,10 +280,6 @@ Int Function ShowCachedBarterSelectMenuV2(Form afBarterDisplayNameForm, ObjectRe
 	return iBarterSelectCallbackID
 EndFunction
 
-Int Function ShowCachedBarterSelectMenu(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
-	return ShowCachedBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
-EndFunction
-
 ; ------------------------------------
 ; ShowCachedBarterSelectMenuAndWait
 ;
@@ -269,12 +287,29 @@ EndFunction
 ;
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
+
 Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
+	return ShowCachedBarterSelectMenuAndWaitV2(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitTime)
+EndFunction
+
+Int Function ShowCachedBarterSelectMenuAndWaitV2(Form afBarterDisplayNameForm, ObjectReference aAvailableOptionsCacheContainerReference, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse) 
-		return -1
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowCachedBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+	Int iResult = ShowCachedBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsCacheContainerReference, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitForBarterSelect)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -288,10 +323,29 @@ Int Function ShowCachedBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Obj
 	return iResult
 EndFunction
 
+int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowFormlistBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+EndFunction
 
 int Function ShowFormlistBarterSelectMenuV2(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
-	if(bPhantomVendorInUse)
-		return -1
+	return ShowFormlistBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+EndFunction
+
+int Function ShowFormlistBarterSelectMenuV3(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitForBarterSelect = 0.0)
+	if(bPhantomVendorInUse) 
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif
 	
 	bPhantomVendorInUse = true
@@ -352,10 +406,6 @@ int Function ShowFormlistBarterSelectMenuV2(Form afBarterDisplayNameForm, Formli
 	return iBarterSelectCallbackID
 EndFunction
 
-
-int Function ShowFormlistBarterSelectMenu(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
-	return ShowFormlistBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
-EndFunction
 ; ------------------------------------
 ; ShowFormlistBarterSelectMenuAndWait
 ;
@@ -363,12 +413,29 @@ EndFunction
 ;
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
+
 Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
+	return ShowFormlistBarterSelectMenuAndWaitV2(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitTime)
+EndFunction
+
+Int Function ShowFormlistBarterSelectMenuAndWaitV2(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse) 
-		return -1
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowFormlistBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+	Int iResult = ShowFormlistBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitForBarterSelect)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -383,9 +450,30 @@ Int Function ShowFormlistBarterSelectMenuAndWait(Form afBarterDisplayNameForm, F
 EndFunction
 
 
-int Function ShowBarterSelectMenuV2(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)
+
+int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
+	return ShowBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
+EndFunction
+
+int Function ShowBarterSelectMenuV2(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false)	
+	return ShowBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+EndFunction
+
+int Function ShowBarterSelectMenuV3(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse)
-		return -1
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif
 	
 	bPhantomVendorInUse = true
@@ -422,10 +510,6 @@ int Function ShowBarterSelectMenuV2(Form afBarterDisplayNameForm, Form[] aAvaila
 	return iBarterSelectCallbackID
 EndFunction
 
-int Function ShowBarterSelectMenu(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2)
-	return ShowBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen)
-EndFunction
-
 ; ------------------------------------
 ; ShowBarterSelectMenuAndWait
 ;
@@ -434,11 +518,27 @@ EndFunction
 ; Non-wait version above is still preferred if you're using it with something that shouldn't be blocked for long periods of time, as it doesn't hold your calling script the entire time that the player is selecting plus the time for processing the selection afterwards.
 ; ------------------------------------
 Int Function ShowBarterSelectMenuAndWait(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0)
-	if(bPhantomVendorInUse) 
-		return -1
+	return ShowBarterSelectMenuAndWaitV2(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitTime)
+EndFunction
+
+Int Function ShowBarterSelectMenuAndWaitV2(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abUsingReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
+	if(bPhantomVendorInUse)
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowBarterSelectMenuV2(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences)
+	Int iResult = ShowBarterSelectMenuV3(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abUsingReferences, afMaxWaitForBarterSelect)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -607,13 +707,6 @@ Function ProcessItemPool(Form[] aItemPool)
 		if(bSelected)
 			;ModTrace("ProcessItemPool form was selected: " + thisForm)
 		
-			; return to cache
-			if(bVendorSideEqualsChoice)
-				kPhantomVendorContainerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
-			else	
-				PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
-			endif
-			
 			iTotalSelected += 1
 			
 			int iSettlementIndex = Selectables_Settlements.Find(thisForm)
@@ -628,7 +721,30 @@ Function ProcessItemPool(Form[] aItemPool)
 					kLastSelectedSettlements.Add(WorkshopParent.GetWorkshopFromLocation(settlementLocation))
 				endif
 			else
-				SelectedResultsFormlist.AddForm(thisForm)	
+				if(bUsingReferences)
+					; Since using references, we need to put these items somewhere or they will be destroyed when removed from inventory
+					ObjectReference kDroppedRef = (thisForm as ObjectReference)
+					kDroppedRef.Drop(true)
+				
+					kDroppedRef.MoveTo(SafeSpawnPoint.GetRef())
+				
+					SelectedResultsFormlist.AddForm(kDroppedRef)
+					
+					if(kCurrentCacheRef != None)
+						kCurrentCacheRef.AddItem(kDroppedRef)
+					endif
+				else
+					SelectedResultsFormlist.AddForm(thisForm)	
+				endif
+			endif
+			
+			if( ! bUsingReferences)
+				; return to cache				
+				if(bVendorSideEqualsChoice)
+					kPhantomVendorContainerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				else	
+					PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				endif
 			endif
 		else
 			;ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
@@ -814,8 +930,13 @@ EndFunction
 	;
 	; Return Values: -1 = error, -2 = user canceled selection
 	; ---------------------------------------------
-	
+
 Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None)
+	return ShowMessageSelectorMenuAndWaitV2(aSelectFromOptions, aMessageTitleNameHolder, aNoOptionsWarningOverride)
+EndFunction
+
+	
+Int Function ShowMessageSelectorMenuAndWaitV2(Form[] aSelectFromOptions, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None, Float afMaxWaitForSelector = 0.0)
 	if( ! aSelectFromOptions)
 		return iMessageSelectorReturn_Failure
 	endif
@@ -832,7 +953,19 @@ Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMes
 	EndIf
 	
 	if(bMessageSelectorInUse)
-		return iMessageSelectorReturn_Failure
+		if(afMaxWaitForSelector != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForSelector < 0)
+				afMaxWaitForSelector = 99999999
+			endif
+			
+			while(bMessageSelectorInUse && fWaitedTime < afMaxWaitForSelector)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return iMessageSelectorReturn_Failure
+		endif
 	endif
 	
 	bMessageSelectorInUse = true
@@ -845,7 +978,14 @@ Int Function ShowMessageSelectorMenuAndWait(Form[] aSelectFromOptions, Form aMes
 		TitleForm = aMessageTitleNameHolder
 	endif
 	
-	ObjectReference kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	ObjectReference kTitleRef
+	
+	if(TitleForm as ObjectReference)
+		kTitleRef = TitleForm as ObjectReference
+	else
+		kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	endif
+	
 	MessageSelectorTitleAlias.ForceRefTo(kTitleRef)
 	
 	; Start the selection loop
@@ -860,6 +1000,11 @@ EndFunction
 
 
 Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsList, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None)
+	return ShowMessageSelectorMenuFormlistAndWaitV2(aSelectFromOptionsList, aMessageTitleNameHolder, aNoOptionsWarningOverride)
+EndFunction
+
+
+Int Function ShowMessageSelectorMenuFormlistAndWaitV2(Formlist aSelectFromOptionsList, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None, Float afMaxWaitForSelector = 0.0)
 	if( ! aSelectFromOptionsList)
 		return iMessageSelectorReturn_Failure
 	endif
@@ -875,11 +1020,26 @@ Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsL
 		return iMessageSelectorReturn_Failure
 	EndIf
 	
+	
 	if(bMessageSelectorInUse)
-		return iMessageSelectorReturn_Failure
+		if(afMaxWaitForSelector != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForSelector < 0)
+				afMaxWaitForSelector = 99999999
+			endif
+			
+			while(bMessageSelectorInUse && fWaitedTime < afMaxWaitForSelector)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return iMessageSelectorReturn_Failure
+		endif
 	endif
 	
 	bMessageSelectorInUse = true
+	
+	MessageSelectorFormArray = new Form[0]
 	iMessageSelector_SelectedOption = -1
 	int iSource = iMessageSelectorSource_Formlist
 	if(iCount <= 128) ; Convert to array which will be faster
@@ -901,7 +1061,14 @@ Int Function ShowMessageSelectorMenuFormlistAndWait(Formlist aSelectFromOptionsL
 		TitleForm = aMessageTitleNameHolder
 	endif
 	
-	ObjectReference kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	ObjectReference kTitleRef
+	
+	if(TitleForm as ObjectReference)
+		kTitleRef = TitleForm as ObjectReference
+	else
+		kTitleRef = SafeSpawnPoint.GetRef().PlaceAtMe(TitleForm)
+	endif
+	
 	MessageSelectorTitleAlias.ForceRefTo(kTitleRef)
 	
 	; Start the selection loop
