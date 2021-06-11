@@ -1424,8 +1424,10 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 		kArgs = new Var[2]
 		kArgs[0] = akWorkshopRef
 		kArgs[1] = asExportFileName
-		; Calling export functions in parallel to reduce change the log will close before ExportLinkedItems has a chance to increment the iAwaitingExportCallbacks
+		; Calling export functions in parallel to reduce chance the log will close before ExportLinkedItems has a chance to increment the iAwaitingExportCallbacks
 		CallFunctionNoWait("ExportUnlinkedItems", kArgs)
+	else
+		Debug.MessageBox("IncludeVanillaScrapInfo disabled.")
 	endif
 	
 	int iThreadsStarted = ExportLinkedItems(akWorkshopRef, asExportFileName)
@@ -1541,7 +1543,7 @@ Int Function ExportUnlinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 			ModTrace("[Export] Unlinked Item thread details: iAwaitingExportCallbacks (before prediction correction) = " + iAwaitingExportCallbacks + ", iPredictedThreads = " + iPredictedThreads + ", iActualThreads = " + iActualThreads)
 			iAwaitingExportCallbacks -= iPredictedThreads - iActualThreads
 	
-			ScrapFinderQuest.Stop()
+			;ScrapFinderQuest.Stop()
 		endif
 	endif
 	

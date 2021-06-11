@@ -1453,3 +1453,20 @@ String Function IntToHex( Int aiInt, Int aiPadDigits = 0 ) Global
 
 	Return lsResult
 EndFunction
+
+
+; ------------------------------
+; GetWorkshopWorldspace
+; 
+; Description: Return the worldspace record the settlement workshop is in
+;
+; Parameters:
+; WorkshopScript akWorkshopRef
+; ------------------------------
+WorldSpace Function GetWorkshopWorldspace(WorkshopScript akWorkshopRef) global
+    if(akWorkshopRef.isInInterior() && akWorkshopRef.myMapMarker)
+        return akWorkshopRef.myMapMarker.GetWorldspace()
+    endif
+
+    return akWorkshopRef.GetWorldspace()
+EndFunction
