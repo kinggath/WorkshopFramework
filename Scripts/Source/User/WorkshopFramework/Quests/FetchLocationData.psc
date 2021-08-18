@@ -11,15 +11,10 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:Quests:FetchLocationData extends Quest
+Scriptname WorkshopFramework:Quests:FetchLocationData extends WorkshopFramework:Library:StoryEventQuest
 
 Group Aliases
 	LocationAlias Property RequestedLocation Auto Const Mandatory
 	ReferenceAlias Property MapMarker Auto Const Mandatory
+	ReferenceAlias Property CenterMarker Auto Const Mandatory
 EndGroup
-
-int Property iReserveID = -1 Auto Hidden
-
-Event OnStoryScript(Keyword akKeyword, Location akLocation, ObjectReference akRef1, ObjectReference akRef2, int aiValue1, int aiValue2)
-	iReserveID = aiValue1
-EndEvent

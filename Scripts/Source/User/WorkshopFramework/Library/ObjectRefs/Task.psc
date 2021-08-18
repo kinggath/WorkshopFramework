@@ -80,7 +80,7 @@ Function StartTask()
 	if(bFirstIterationImmediate)
 		RunCode()
 		
-		if(iIterations >= iTotalIterations)
+		if(iTotalIterations > 0 && iIterations >= iTotalIterations)
 			Complete()
 			
 			return
@@ -99,7 +99,7 @@ Function RunCode()
 		
 		iIterations += 1
 		
-		if(iIterations >= iTotalIterations)
+		if(iTotalIterations > 0 && iIterations >= iTotalIterations)
 			Complete()
 			bCompleted = true
 		endif

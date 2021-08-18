@@ -30,7 +30,9 @@ Group Controllers
 	{ 1.0.8 }
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory
-	WorkshopFramework:Quests:FetchLocationData[] Property FetchLocationDataQuests Auto Const Mandatory
+	
+	WorkshopFramework:Quests:StoryEventManager Property StoryEventManager Auto Const Mandatory
+	{ 2.0.16 }
 EndGroup
 
 

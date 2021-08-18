@@ -890,6 +890,11 @@ Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = 
 	
 	if( ! abNPCTransfer)
 		; Completely removed from workshop system
+		if(akWorkshopRef.SettlementOwnershipFaction && akWorkshopRef.UseOwnershipFaction)
+			akActorRef.SetCrimeFaction(None)
+			akActorRef.SetFactionOwner(None)
+		endif
+		
 		WorkshopParent.WorkshopActorApply.RemoveFromRef(akActorRef)
 		WorkshopParent.PermanentActorAliases.RemoveRef(akActorRef)
 		RemoveAliasData(akActorRef)
