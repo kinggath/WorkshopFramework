@@ -1254,7 +1254,10 @@ endEvent
 
 
 function InitializeLocation(WorkshopScript workshopRef, RefCollectionAlias SettlementNPCs, ReferenceAlias theLeader, ReferenceAlias theMapMarker)
-	workshopRef.myMapMarker = theMapMarker.GetRef()
+	if(theMapMarker.GetRef() != None)
+		; 2.0.16 
+		workshopRef.myMapMarker = theMapMarker.GetRef()
+	endif
 
 	; force recalc (unloaded workshop)
 	workshopRef.RecalculateWorkshopResources(true)
@@ -2913,6 +2916,12 @@ function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWor
 			WorkshopActorApply.RemoveFromRef (theActor)
 			PermanentActorAliases.RemoveRef (theActor)
 			theActor.SetValue(WorkshopPlayerOwnership, 0)
+			
+			; Clear settlement faction stuff
+			if(workshopRef.SettlementOwnershipFaction && workshopRef.UseOwnershipFaction)
+				theActor.SetCrimeFaction(None)
+				theActor.SetFactionOwner(None)
+			endif
 		endif
 
 		; PATCH - remove workshop ID as well

@@ -447,30 +447,50 @@ EndFunction
 
 
 ; ------------------------------
-; GetDefaultPlaceObjectsBatchAV
+; GetMapMarker
 ;
 ; Description: Grabs the map marker from a location
 ; ------------------------------
 ObjectReference Function GetMapMarker(Location akLocation) global
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
-	int iReserveID = Utility.RandomInt(1, 999999)
-	if(API.EventKeyword_FetchLocationData.SendStoryEventAndWait(akLocation, aiValue1 = iReserveID))
-		Utility.Wait(0.1) ; Give the event quest a moment to set the reserve ID
+	WorkshopFramework:Library:StoryEventQuest SEQ = API.StoryEventManager.WSFW_API_SendStoryEvent(API.EventKeyword_FetchLocationData, plocLocation = akLocation, pfltTimeout = 5.0)
+	
+	if(SEQ != None)
+		WorkshopFramework:Quests:FetchLocationData SEQControllerLocFinder = SEQ as WorkshopFramework:Quests:FetchLocationData
 		
-		WorkshopFramework:Quests:FetchLocationData[] FetchLocationDataQuests = API.FetchLocationDataQuests
-		int i = 0
-		while(i < FetchLocationDataQuests.Length)
-			if(FetchLocationDataQuests[i].IsRunning() && FetchLocationDataQuests[i].iReserveID == iReserveID)
-				ObjectReference kMapMarkerRef = FetchLocationDataQuests[i].MapMarker.GetRef()
-				
-				FetchLocationDataQuests[i].Stop()
-				
-				return kMapMarkerRef
-			endif
-			
-			i += 1
-		endWhile
+		ObjectReference kMapMarkerRef = SEQControllerLocFinder.MapMarker.GetRef()
+
+		SEQ.Dispose()
+		
+		return kMapMarkerRef
+	endif
+	
+	return None
+EndFunction
+
+; ------------------------------
+; GetLocationCenter
+;
+; Description: Grabs the map marker from a location
+; ------------------------------
+ObjectReference Function GetLocationCenter(Location akLocation, Bool abGetMapMarkerIfCenterNotFound = false) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	WorkshopFramework:Library:StoryEventQuest SEQ = API.StoryEventManager.WSFW_API_SendStoryEvent(API.EventKeyword_FetchLocationData, plocLocation = akLocation, pfltTimeout = 5.0)
+	
+	if(SEQ != None)
+		WorkshopFramework:Quests:FetchLocationData SEQControllerLocFinder = SEQ as WorkshopFramework:Quests:FetchLocationData
+		
+		ObjectReference kCenterMarkerRef = SEQControllerLocFinder.CenterMarker.GetRef()
+		
+		if(kCenterMarkerRef == None && abGetMapMarkerIfCenterNotFound)
+			kCenterMarkerRef = SEQControllerLocFinder.MapMarker.GetRef()
+		endif
+		
+		SEQ.Dispose()
+		
+		return kCenterMarkerRef
 	endif
 	
 	return None

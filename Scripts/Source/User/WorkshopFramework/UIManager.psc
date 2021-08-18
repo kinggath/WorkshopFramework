@@ -256,13 +256,15 @@ Int Function ShowCachedBarterSelectMenuV3(Form afBarterDisplayNameForm, ObjectRe
 		
 		; Wait for OnItemAdded events to complete
 		int iWaitCount = 0
-		int iMaxWaitCount = iAwaitingSorting
+		int iMaxWaitCount = iAwaitingSorting	
+			; Start by waiting for a minimal amount of time based on number of items
 		while(iAwaitingSorting > 0 && iWaitCount < iMaxWaitCount)
 			Utility.Wait(0.1)
 			iWaitCount += 1
 		endWhile
 		
 		iWaitCount = 0
+		; Next attempt to wait a couple extra seconds until iAwaitingSorting is marked as -999
 		while(iAwaitingSorting <= 0 && iAwaitingSorting > -999 && iWaitCount < 20) ; -999 is used by our OnItemAdded event to tell us when it's safe to continue
 			Utility.Wait(0.1) 
 			iWaitCount += 1
@@ -361,44 +363,23 @@ int Function ShowFormlistBarterSelectMenuV3(Form afBarterDisplayNameForm, Formli
 	; Add items to vendor container and start barter
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
-	
-	; Monitor for the items to be added from the selection pool	
-	RegisterForRemoteEvent(kPhantomVendorContainerRef, "OnItemAdded")
+	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
 	
 	Int iListSize = aAvailableOptionsFormlist.GetSize()
 	iAwaitingSorting = iListSize
 	int i = 0
-	int iLastAdded = 0
-	while(i < iListSize)
-		if(Mod((i + 1), iSplitFormlistIncrement) == 0)
-			Var[] kArgs = new Var[4]
-			kArgs[0] = aAvailableOptionsFormlist
-			kArgs[1] = kPhantomVendorContainerRef
-			kArgs[2] = i
-			kArgs[3] = iSplitFormlistIncrement
-			
-			Utility.CallGlobalFunctionNoWait("WorkshopFramework:Library:UtilityFunctions", "AddFormlistItemsToContainer", kArgs)
-			
-			Utility.Wait(0.1) ; Pause to slow down OnItemAdded events and ensure all items are added before ShowBarterMenu is called below
-			
-			iLastAdded = i + iSplitFormlistIncrement - 1
+	while(i < iListSize)	
+		Form thisForm = aAvailableOptionsFormlist.GetAt(i)
+		if(thisForm)
+			; Spawning refs, as just adding items does not seem to work well with our dynamic filtering
+			ObjectReference kSpawnedRef = kSafeSpawnPoint.PlaceAtMe(thisForm)
+			if(kSpawnedRef)
+				kPhantomVendorContainerRef.AddItem(kSpawnedRef)
+			endif
 		endif
 		
 		i += 1
-	endWhile
-	
-	if(iLastAdded + 1 < iListSize)
-		; Still entries remaining
-		Var[] kArgs = new Var[3]
-		kArgs[0] = aAvailableOptionsFormlist
-		kArgs[1] = kPhantomVendorContainerRef
-		kArgs[2] = iLastAdded
-		kArgs[3] = iSplitFormlistIncrement
-		
-		Utility.CallGlobalFunctionNoWait("WorkshopFramework:Library:UtilityFunctions", "AddFormlistItemsToContainer", kArgs)
-		
-		Utility.Wait(0.1) ; Pause to slow down OnItemAdded events and ensure all items are added before ShowBarterMenu is called below
-	endif
+	endWhile	
 	
 	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
 	kPhantomVendorRef.ShowBarterMenu()

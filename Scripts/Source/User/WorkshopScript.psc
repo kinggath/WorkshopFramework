@@ -17,8 +17,8 @@ Location Property myLocation Auto Hidden
 {workshop's location (filled onInit)
  this is a property so the WorkshopParent script can access it}
 
-ObjectReference Property myMapMarker auto hidden
-{workshop's map marker (filled by WorkshopParent.InitializeLocation) }
+ObjectReference Property myMapMarker auto
+{ workshop's map marker (filled by WorkshopParent.InitializeLocation) - or you can fill it manually here }
 
 Group Optional
 	Faction Property SettlementOwnershipFaction auto
