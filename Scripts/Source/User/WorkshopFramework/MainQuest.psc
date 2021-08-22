@@ -251,6 +251,10 @@ Function HandleInstallModChanges()
 	if(iInstalledVersion < 42)
 		deduplicateAllVendorLists()
 	endif
+
+	if(iInstalledVersion < 45)
+		truncateAllVendorLists()
+	endif
 EndFunction
 
 function deduplicateAllVendorLists()
@@ -265,6 +269,27 @@ function deduplicateAllVendorLists()
 	ModTrace("[WSFW] List deduplication END")
 endFunction
 
+function truncateAllVendorLists()
+	ModTrace("[WSFW] List truncation BEGIN")
+	; iterate all workshop
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		truncateVendorListsForWorkshop(Workshops[i])
+		i += 1
+	endWhile
+	ModTrace("[WSFW] List truncation END")
+endFunction
+
+function truncateVendorListsForWorkshop(WorkshopScript ws)
+	ws.VendorContainersMisc 	= truncateObjectReferenceArrayTo3(ws.VendorContainersMisc)
+	ws.VendorContainersArmor 	= truncateObjectReferenceArrayTo3(ws.VendorContainersArmor)
+	ws.VendorContainersWeapons 	= truncateObjectReferenceArrayTo3(ws.VendorContainersWeapons)
+	ws.VendorContainersBar 		= truncateObjectReferenceArrayTo3(ws.VendorContainersBar)
+	ws.VendorContainersClinic 	= truncateObjectReferenceArrayTo3(ws.VendorContainersClinic)
+	ws.VendorContainersClothing = truncateObjectReferenceArrayTo3(ws.VendorContainersClothing)
+endFunction
+
 function deduplicateVendorListsForWorkshop(WorkshopScript ws)
 	; vanilla
 	ws.VendorContainersMisc 	= deduplicateObjectReferenceArray(ws.VendorContainersMisc)
@@ -277,6 +302,19 @@ function deduplicateVendorListsForWorkshop(WorkshopScript ws)
 	; IN THEORY, this a) shouldn't be possible for custom ones and b) I don't think this can be done safely
 
 endFunction
+
+ObjectReference[] function truncateObjectReferenceArrayTo3(ObjectReference[] prevList)
+	if(prevList == none || prevList.length <= 3)
+		return prevList
+	endif
+
+	ObjectReference[] result = new ObjectReference[3]
+	result[0] = prevList[0]
+	result[1] = prevList[1]
+	result[2] = prevList[2]
+
+	return result
+endfunction
 
 ObjectReference[] function deduplicateObjectReferenceArray(ObjectReference[] list)
 	if(list == none || list.length == 0)
