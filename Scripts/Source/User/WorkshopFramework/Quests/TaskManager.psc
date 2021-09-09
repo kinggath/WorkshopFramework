@@ -129,6 +129,24 @@ Int Function AdjustTaskTimerByID(Int aiTaskID, Float afAdjustTimerBy, Bool abAff
 	return ERC_TASK_NOT_FOUND
 EndFunction
 
+Int Function RestartTaskTimerByID(Int aiTaskID, Float afChangeTimerLength = -1.0, Bool abAffectCurrentIterationOnly = false)
+	int i = ScheduledTasks.GetCount() - 1
+	while(i >= 0)
+		WorkshopFramework:Library:ObjectRefs:Task thisTask = ScheduledTasks.GetAt(i) as WorkshopFramework:Library:ObjectRefs:Task
+		
+		if( ! thisTask) ; Not a task type, remove from here
+			ScheduledTasks.RemoveRef(thisTask)
+		elseif(thisTask.iUniqueTaskID == aiTaskID)
+			thisTask.RestartTimer(afChangeTimerLength, abAffectCurrentIterationOnly)
+			return 1
+		endif
+		
+		i -= 1
+	endWhile
+	
+	return ERC_TASK_NOT_FOUND
+EndFunction
+
 WorkshopFramework:Library:ObjectRefs:Task Function GetTaskByID(Int aiTaskID)
 	int i = 0
 	while(i < ScheduledTasks.GetCount())
