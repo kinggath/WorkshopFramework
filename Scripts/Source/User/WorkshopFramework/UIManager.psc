@@ -143,7 +143,7 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetActorRef()
 	
     if(akAddedTo == kPhantomVendorContainerRef)
-		ModTrace("[UIManager] item " + akBaseItem + " added to " + akAddedTo + ", sorting. " + iAwaitingSorting + " items remaining.")
+		; ModTrace("[UIManager] item " + akBaseItem + " added to " + akAddedTo + ", sorting. " + iAwaitingSorting + " items remaining.")
 		
 		Form SortMe = akBaseItem
 		
@@ -370,7 +370,7 @@ int Function ShowFormlistBarterSelectMenuV3(Form afBarterDisplayNameForm, Formli
 	int i = 0
 	while(i < iListSize)	
 		Form thisForm = aAvailableOptionsFormlist.GetAt(i)
-		if(thisForm)
+		if(thisForm && SortItem(thisForm))
 			; Spawning refs, as just adding items does not seem to work well with our dynamic filtering
 			ObjectReference kSpawnedRef = kSafeSpawnPoint.PlaceAtMe(thisForm)
 			if(kSpawnedRef)
@@ -532,7 +532,7 @@ Int Function ShowBarterSelectMenuAndWaitV2(Form afBarterDisplayNameForm, Form[] 
 	
 	return iResult
 EndFunction
-
+ 
 
 Function ProcessBarterSelection()
 	;Debug.MessageBox("ProcessBarterSelection called, dumping selection pool")
@@ -644,11 +644,15 @@ EndFunction
 
 
 Bool Function SortToPool(Form[] aItemPool, Form aItemType)
-    if(aItemPool.Find(aItemType) >= 0)
+	if(aItemPool.Find(aItemType) >= 0)
+		;ModTrace("SortToPool " + aItemType + " already in pool!")
         return true
     elseif(aItemPool.Length < 128)
+		;ModTrace("SortToPool " + aItemType + " adding to pool...")
         aItemPool.Add(aItemType)
         return true
+	else 
+		;ModTrace("SortToPool " + aItemType + " pool already has 128 entries.")
     endif
     
     return false
@@ -657,7 +661,7 @@ EndFunction
 
 Function ProcessItemPool(Form[] aItemPool)
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
-	;ModTrace("ProcessItemPool called. ItemPool size = " + aItemPool.Length + ", bVendorSideEqualsChoice = " + bVendorSideEqualsChoice)
+	; ModTrace("ProcessItemPool called. ItemPool size = " + aItemPool.Length + ", bVendorSideEqualsChoice = " + bVendorSideEqualsChoice)
     While(aItemPool.Length > 0)
         Form thisForm = aItemPool[0]
         
@@ -669,7 +673,7 @@ Function ProcessItemPool(Form[] aItemPool)
 				bSelected = (kPhantomVendorContainerRef.GetItemCount(thisForm) > 0)
 			endif
 			
-			;ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kPhantomVendorContainerRef + " which currently has " + kPhantomVendorContainerRef.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
+			; ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kPhantomVendorContainerRef + " which currently has " + kPhantomVendorContainerRef.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
 		else
 			int iPlayerItemCount = 0
 			if(bUsingReferences)
@@ -682,11 +686,11 @@ Function ProcessItemPool(Form[] aItemPool)
 				bSelected = (iPlayerItemCount > 0)
 			endif
 			
-			;ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + PlayerRef + ", found :" + iPlayerItemCount)
+			; ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + PlayerRef + ", found :" + iPlayerItemCount)
 		endif
 		
 		if(bSelected)
-			;ModTrace("ProcessItemPool form was selected: " + thisForm)
+			; ModTrace("ProcessItemPool form was selected: " + thisForm)
 		
 			iTotalSelected += 1
 			
@@ -728,13 +732,13 @@ Function ProcessItemPool(Form[] aItemPool)
 				endif
 			endif
 		else
-			;ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+			; ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 			
 			; Item was left in select container, don't count as selected, but return to cache
 			if(bVendorSideEqualsChoice)
 				PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			else
-				;ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+				; ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kPhantomVendorContainerRef + ", which currently has " + kPhantomVendorContainerRef.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 				
 				kPhantomVendorContainerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 			endif

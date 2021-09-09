@@ -1257,6 +1257,51 @@ EndFunction
 
 
 ; ------------------------------
+; FilterFormArrayByKeywordArray
+; 
+; Description: Takes an array of forms and returns an array of those with the keyword on them
+;
+; Parameters:
+; Form[] aForms, Keyword[] aFilterKeywords, Bool abAnyMatch
+; 
+; Added: 2.0.17
+; ------------------------------
+Form[] Function FilterFormArrayByKeywordArray(Form[] aForms, Keyword[] aFilterKeywords, Bool abAnyMatch = false) global
+	Form[] FilteredArray = new Form[0]
+	int i = 0
+	
+	while(i < aForms.Length && FilteredArray.Length < 128)
+		Bool bAdded = false
+		Bool bAllMatch = true		
+		Form thisForm = aForms[i]
+		
+		int j = 0
+		while(j < aFilterKeywords.Length && ! bAdded && (bAllMatch || abAnyMatch))
+			if(thisForm.HasKeyword(aFilterKeywords[j]))
+				if(abAnyMatch)
+					FilteredArray.Add(thisForm)
+					bAdded = true
+				endif
+			else
+				bAllMatch = false
+			endif
+			
+			j += 1
+		endWhile
+		
+		if(bAllMatch && ! bAdded)
+			FilteredArray.Add(thisForm)
+			bAdded = true
+		endif
+		
+		i += 1
+	endWhile
+		
+	return FilteredArray
+EndFunction
+
+
+; ------------------------------
 ; FilterFormlistByKeyword
 ; 
 ; Description: All forms WITHOUT the filter keyword will be removed from aFormlist.
@@ -1304,6 +1349,50 @@ Form[] Function FilterFormlistByKeywordToArray(Formlist aFormlist, Keyword aFilt
 EndFunction
 
 ; ------------------------------
+; FilterFormlistByKeywordArrayToArray
+; 
+; Description: Takes a formlist and returns an array of the forms in it with the keywords on them. If abAnyMatch is true, a single matching keyword will include that form.
+;
+; Parameters:
+; Formlist aFormlist, Keyword[] aFilterKeywords, abAnyMatch
+; 
+; Added: 2.0.17
+; ------------------------------
+Form[] Function FilterFormlistByKeywordArrayToArray(Formlist aFormlist, Keyword[] aFilterKeywords, Bool abAnyMatch = false) global
+	Form[] FilteredArray = new Form[0]
+	int i = 0
+	
+	while(i < aFormlist.GetSize() && FilteredArray.Length < 128)
+		Bool bAdded = false
+		Bool bAllMatch = true		
+		Form thisForm = aFormlist.GetAt(i)
+		
+		int j = 0
+		while(j < aFilterKeywords.Length && ! bAdded && (bAllMatch || abAnyMatch))
+			if(thisForm.HasKeyword(aFilterKeywords[j]))
+				if(abAnyMatch)
+					FilteredArray.Add(thisForm)
+					bAdded = true
+				endif
+			else
+				bAllMatch = false
+			endif
+			
+			j += 1
+		endWhile
+		
+		if(bAllMatch && ! bAdded)
+			FilteredArray.Add(thisForm)
+			bAdded = true
+		endif
+		
+		i += 1
+	endWhile
+		
+	return FilteredArray
+EndFunction
+
+; ------------------------------
 ; FilterFormlistByKeywordToFormlist
 ; 
 ; Description: All forms in aFormlist with the filter keyword will be added to aTargetFormlist.
@@ -1320,6 +1409,46 @@ Function FilterFormlistByKeywordToFormlist(Formlist aFormlist, Keyword aFilterKe
 		Form thisForm = aFormlist.GetAt(i)
 		if(thisForm.HasKeyword(aFilterKeyword))
 			aTargetFormlist.AddForm(thisForm)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+; ------------------------------
+; FilterFormlistByKeywordArrayToFormlist
+; 
+; Description: All forms in aFormlist with the filter keywords will be added to aTargetFormlist. If abAnyMatch == true, then a single match will count.
+;
+; Parameters:
+; Formlist aFormlist, Keyword[] aFilterKeywords, Formlist aTargetFormlist, Bool abAnyMatch
+; 
+; Added: 2.0.17
+; ------------------------------
+Function FilterFormlistByKeywordArrayToFormlist(Formlist aFormlist, Keyword[] aFilterKeywords, Formlist aTargetFormlist, Bool abAnyMatch = false) global
+	int i = 0	
+	
+	while(i < aFormlist.GetSize())
+		Form thisForm = aFormlist.GetAt(i)
+		Bool bAdded = false
+		Bool bAllMatch = true
+		int j = 0
+		while(j < aFilterKeywords.Length && ! bAdded && (bAllMatch || abAnyMatch))
+			if(thisForm.HasKeyword(aFilterKeywords[j]))
+				if(abAnyMatch)
+					aTargetFormlist.AddForm(thisForm)
+					bAdded = true
+				endif
+			else
+				bAllMatch = false
+			endif
+			
+			j += 1
+		endWhile
+		
+		if(bAllMatch && ! bAdded)
+			aTargetFormlist.AddForm(thisForm)
+			bAdded = true
 		endif
 		
 		i += 1

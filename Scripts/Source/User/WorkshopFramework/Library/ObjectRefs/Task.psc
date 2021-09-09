@@ -148,6 +148,24 @@ Function AlterTimer(Float afAdjustBy, Bool abAffectCurrentIterationOnly = false)
 	endif
 EndFunction
 
+Function RestartTimer(Float afChangeLength = -1.0, Bool abAffectCurrentIterationOnly = true)
+	Float fThisTimerLength = fTimerLength
+	
+	if(afChangeLength > 0)
+		fThisTimerLength = afChangeLength
+		
+		if( ! abAffectCurrentIterationOnly)
+			fTimerLength = afChangeLength
+		endif
+	endif
+	
+	if(bRealtimeTimer)
+		StartTimer(fThisTimerLength, TaskExecutionTimerID)
+	else
+		StartTimerGameTime(fThisTimerLength, TaskExecutionTimerID)
+	endif
+EndFunction
+
 Function SendTaskExecutedEvent(Bool abExecutionSucceeded, Bool abTaskCompleted)
 	Var[] kArgs = new Var[6]
 	kArgs[0] = iUniqueTaskID

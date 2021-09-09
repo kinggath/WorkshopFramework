@@ -92,6 +92,15 @@ Function RegisterMenu(WorkshopMenuInjection aMenuInjection)
 EndFunction
 
 
+Function UnregisterMenu(WorkshopMenuInjection aMenuInjection)
+	if(aMenuInjection.TargetMenu != None && ((aMenuInjection.InjectKeywordOrFormlist as Keyword != None) || (aMenuInjection.InjectKeywordOrFormlist as Formlist != None)))
+		if(aMenuInjection.TargetMenu.HasForm(aMenuInjection.InjectKeywordOrFormlist))
+			aMenuInjection.TargetMenu.RemoveAddedForm(aMenuInjection.InjectKeywordOrFormlist)
+		endif
+	endif
+EndFunction
+
+
 Function ProcessQueuedRegistrations()
 	int i = 0
 	while(i < QueuedInjections01.Length)
