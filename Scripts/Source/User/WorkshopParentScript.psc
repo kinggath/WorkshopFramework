@@ -4462,22 +4462,72 @@ endFunction
 ; utility function to wait for edit lock
 ; increase wait time while more threads are in here
 int editLockCount = 1
+float lockWaitCap = 10.0 const ; wait at most this long before rechecking
+float lockWaitMax = 60.0 const ; wait at most this long in total, before giving up
+int maxNumStrikes = 5 const ; how often can the thread count check fail before we give up
 function GetEditLock()
+
+    if(editLockCount < 0)
+        editLockCount = 0
+    endif
 	editLockCount += 1
 	
 	if(editLockCount > 4 && UFO4P_ThreadMonitorStarted == false)
 		StartTimer (1.0, UFO4P_ThreadMonitorTimerID)
 	endif
+    
+    float lockCountCapped = 0.1 * editLockCount
+    if(lockCountCapped > lockWaitCap)
+        lockCountCapped = lockWaitCap
+    endif
+
+    float timeWaited = 0.0
+    int prevThreadCount = editLockCount
+    int numStrikes = 0
+    
+    bool giveUp = false
 	
-	while(EditLock)
-		utility.wait(0.1 * editLockCount)
+	while(EditLock && !giveUp)
+		utility.wait(lockCountCapped)
+        timeWaited += lockCountCapped
+        
+        if(timeWaited > lockWaitMax)
+            ; stuck too long
+            giveUp = true
+            debug.trace("WorkshopParentScript::GetEditLock: waited for "+timeWaited+"s for unlock. Giving up and proceeding without waiting.")
+        elseif(prevThreadCount == editLockCount)
+            ; number isn't changing, sign of the system being stuck
+            numStrikes += 1
+            if(numStrikes >= maxNumStrikes)
+                debug.trace("WorkshopParentScript::GetEditLock: nr of threads stayed the same for "+numStrikes+" consecutive checks, this seems to be a hang-up. Giving up and proceeding without waiting.")
+                giveUp = true
+            endif
+        else
+            ; Number has changed, so at least the system isn't frozen.
+            ; The number might have gone UP, but there isn't much we can do in that case.
+            ; That would make this thread run into lockWaitMax at least.
+            prevThreadCount = editLockCount
+            numStrikes = 0
+        endif
 	endWhile
-	
+
 	EditLock = true
-	
-	editLockCount -= 1
+
+    if(editLockCount > 0)
+        editLockCount -= 1
+    endif
 endFunction
 
+function dumpEditLockState()
+    debug.trace("WorkshopParentScript::dumpEditLockState: EditLock = "+EditLock+", editLockCount = "+editLockCount)
+endfunction
+
+function forceEditUnlock()
+    if(EditLock)
+        debug.trace("WorkshopParentScript is force-unlocking. Current thread count: "+editLockCount)
+        EditLock = false
+    endif
+endfunction
 
 bool function IsEditLocked()
 	return EditLock
@@ -4864,6 +4914,7 @@ ObjectReference Property UFO4P_ThreadMonitorRef = none auto hidden ; This will b
 
 bool UFO4P_ThreadMonitorStarted = false
 int UFO4P_ThreadMonitorTimerID = 37 const
+
 
 int function UFO4P_GetThreadCount()
 	return editLockCount
