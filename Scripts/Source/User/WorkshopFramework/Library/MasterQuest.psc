@@ -207,6 +207,7 @@ Function TriggerLocationChange()
 			sCastAs = "WorkshopFramework:Library:SlaveQuest"
 		endif
 		
+		ModTrace("[" + Self + "] TriggerLocationChange called on " + thisQuest)
 		Var[] kArgs = new Var[2]
 		kArgs[0] = EVENTSTAGE_FromMasterQuest
 		kArgs[1] = EVENTSTAGEITEM_PlayerChangedLocation

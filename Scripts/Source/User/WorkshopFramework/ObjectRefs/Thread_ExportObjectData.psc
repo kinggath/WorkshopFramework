@@ -141,7 +141,7 @@ Function RunCode()
 	String sObjectName = F4SEManager.GetFormName(BaseForm)
 	if(sObjectName == "")
 		; Try and grab from ref instead
-		sObjectName = F4SEManager.GetReferenceName(kObjectRef)
+		sObjectName = F4SEManager.WSFWID_GetReferenceName(kObjectRef)
 	endif
 	
 	Bool bIsResourceObject = false

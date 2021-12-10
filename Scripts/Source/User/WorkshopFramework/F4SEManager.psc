@@ -16,6 +16,7 @@ Scriptname WorkshopFramework:F4SEManager extends WorkshopFramework:Library:Slave
 
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
+import WSFWIdentifier
 
 ; ---------------------------------------------
 ; Consts
@@ -119,12 +120,6 @@ String Function GetDisplayName(ObjectReference akObjectRef)
 	return sName
 EndFunction
 
-; Provided by WSFWIdentifier.dll, created by cdante
-String Function GetReferenceName(ObjectReference akObjectRef)
-	String sName = WSFWIdentifier.GetReferenceName(akObjectRef)
-	
-	return sName
-EndFunction
 
 
 ObjectReference Function AttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
@@ -139,10 +134,6 @@ Bool Function TransmitConnectedPower(ObjectReference akObjectRef)
 	return akObjectRef.TransmitConnectedPower()
 EndFunction
 
-
-Function CountPluginsPopup()
-	Debug.MessageBox("Plugins: " + Game.GetInstalledPlugins().Length + "\nLight Plugins: " + Game.GetInstalledLightPlugins().Length)
-EndFunction
 
 Int Function GetLoadOrderAgnosticFormID(Int aiFormID)
 	return Math.LogicalAnd(aiFormID, 0x00FFFFFF)
@@ -221,6 +212,105 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 	endif
 	
 	return ""
+EndFunction
+
+;
+; Below funcitons provided by WSFWIdentifier.dll, created by cdante
+;
+
+String Function WSFWID_GetReferenceName(ObjectReference akObjectRef)
+	String sName = GetReferenceName(akObjectRef)
+	
+	return sName
+EndFunction
+
+Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, Bool abFixAndScan = true, Bool abResetIfFixFails = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		
+		if(akWorkshopRef == None)
+			ModTrace("WSFWID_CheckAndFixPowerGrid could not find a valid settlement to check.")
+			return true
+		endif
+	endif
+	
+	Int iFix = abFixAndScan as Int
+	
+	PowerGridStatistics Results = CheckAndFixPowerGrid(akWorkshopRef, iFix)
+	
+	ModTrace("CheckAndFixPowerGrid " + akWorkshopRef + " results: " + Results)
+	
+	if(abFixAndScan) ; Should be fixed
+		Results = CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
+		
+		if(abResetIfFixFails && Results.broken)
+			WSFWID_ResetPowerGrid(akWorkshopRef)
+		endif
+	endif
+	
+	return Results.broken
+EndFunction
+
+Function MCM_RepairPowerGrid()
+	bool bSuccess = WSFWID_CheckAndFixPowerGrid(akWorkshopRef = None, abFixAndScan = true, abResetIfFixFails = false)
+EndFunction
+
+Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None)
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		
+		if(akWorkshopRef == None)
+			ModTrace("WSFWID_ResetPowerGrid could not find a valid settlement to check.")
+			return true
+		endif
+	endif
+	
+	Bool bSuccess = ResetPowerGrid(akWorkshopRef)
+	
+	ModTrace("ResetPowerGrid " + akWorkshopRef + " returned: " + bSuccess)
+	
+	return bSuccess
+EndFunction
+
+Function MCM_ResetPowerGrid()
+	bool bSuccess = WSFWID_ResetPowerGrid(akWorkshopRef = None)
+EndFunction
+
+Bool Function WSFWID_ScanPowerGrid(WorkshopScript akWorkshopRef = None)
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		
+		if(akWorkshopRef == None)
+			ModTrace("WSFWID_ScanPowerGrid could not find a valid settlement to check.")
+			return true
+		endif
+	endif
+	
+	; First make sure a grid exists or this will crash the game
+	PowerGridStatistics Results = CheckAndFixPowerGrid(akWorkshopRef, 0)
+	
+	if(Results.totalGrids <= 0)
+		return true
+	endif
+	
+	Bool bSuccess = ScanPowerGrid(akWorkshopRef)
+	
+	ModTrace("ScanPowerGrid " + akWorkshopRef + " returned: " + bSuccess + ". Full grid output dumped to Documents\\My Games\\Fallout4\\F4SE\\wsfw_identifier.log.")
+	
+	return bSuccess
+EndFunction
+
+Function MCM_ScanPowerGrid()
+	Bool bSuccess = WSFWID_ScanPowerGrid(akWorkshopRef = None)
+EndFunction
+
+;
+; Test Plugins
+;
+
+
+Function CountPluginsPopup()
+	Debug.MessageBox("Plugins: " + Game.GetInstalledPlugins().Length + "\nLight Plugins: " + Game.GetInstalledLightPlugins().Length)
 EndFunction
 
 

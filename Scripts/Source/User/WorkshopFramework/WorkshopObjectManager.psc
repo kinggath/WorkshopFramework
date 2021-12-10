@@ -34,19 +34,30 @@ int iMinCountForThreading = 30 ; Must find at least this many items before we bo
 
 Group Controllers
 	WorkshopFramework:MainThreadManager Property ThreadManager Auto Const Mandatory
+	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
-	; TODO - Global to allow players to set Invis to never appear in workshop mode
+	
+	GlobalVariable Property Setting_AutomaticallyUnhideInvisibleWorkshopObjects Auto Const Mandatory
+EndGroup
+
+Group ActorValues
+	ActorValue Property WorkshopSnapTransmitsPowerAV Auto Const Mandatory
 EndGroup
 
 Group Assets
 	Form Property Thread_ToggleInvisibleWorkshopObjects Auto Const Mandatory
 	Form Property Thread_UpdateClutteredItems Auto Const Mandatory
+	
+	Message Property PowerTransmissionResults Auto Const Mandatory
 EndGroup
 
 Group Keywords
 	Keyword Property InvisibleWorkshopObjectKeyword Auto Const Mandatory
 	Keyword Property ClutteredItemKeyword Auto Const Mandatory
+	
+	Keyword Property WorkshopPowerConnectionKeyword Auto Const Mandatory
+	Keyword Property WorkshopCanBePowered Auto Const Mandatory
 EndGroup
 
 
@@ -62,7 +73,9 @@ ObjectReference kLastPurchaseFromVendorContainer
 
 Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
     if(asMenuName== "WorkshopMenu")
-		ToggleInvisibleWorkshopObjects(abOpening)
+		if( ! abOpening || Setting_AutomaticallyUnhideInvisibleWorkshopObjects.GetValueInt() == 1)
+			ToggleInvisibleWorkshopObjects(abOpening)
+		endif		
 	elseif(asMenuName == "BarterMenu")
 		if( ! abOpening)
 			if(kLastPurchaseFromVendorContainer != None)
@@ -101,7 +114,7 @@ Function RegisterForEvents()
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 EndFunction
 
-Function ToggleInvisibleWorkshopObjects(Bool abOpening)
+Function ToggleInvisibleWorkshopObjects(Bool abOpening)	
 	WorkshopScript thisWorkshop = GetNearestWorkshop(PlayerRef)
 	ObjectReference[] kInvisibleObjects = thisWorkshop.FindAllReferencesWithKeyword(InvisibleWorkshopObjectKeyword, 20000.0)
 	
@@ -338,4 +351,41 @@ Function SendWorkshopVendorItemsPurchasedEvent(WorkshopScript akWorkshopRef, Str
 	kArgs[1] = asVendorID
 	
 	SendCustomEvent("WorkshopVendorItemsPurchased", kArgs)
+EndFunction
+
+
+Function MCM_ForcePowerTransmission()
+	ForcePowerTransmission(None)
+EndFunction
+
+Function ForcePowerTransmission(WorkshopScript akWorkshopRef = None)
+	if( ! F4SEManager.IsF4SERunning)
+		return
+	endif
+	
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+		
+		if(akWorkshopRef == None)
+			ModTrace("ForcePowerTransmission could not find workshop ref.")
+			
+			return
+		endif
+	endif
+		
+	ObjectReference[] kLinkedRefs = akWorkshopRef.GetLinkedRefChildren(GetWorkshopItemKeyword())
+	int i = 0
+	int iTransmittedTo = 0
+	while(i < kLinkedRefs.Length)
+		if( ! kLinkedRefs[i].IsDisabled())
+			if(kLinkedRefs[i].HasKeyword(WorkshopCanBePowered) || kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword) || kLinkedRefs[i].GetValue(WorkshopSnapTransmitsPowerAV) > 0)
+				F4SEManager.TransmitConnectedPower(kLinkedRefs[i])
+				iTransmittedTo += 1
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	PowerTransmissionResults.Show(iTransmittedTo as Float)
 EndFunction

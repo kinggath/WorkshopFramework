@@ -2711,9 +2711,10 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	
 	if( ! bResetMode && ! bAlreadyAssigned)
 		; WSFW 2.0.3 - Previously, this event was only being fired for unique actors which made it far less useful
-		Var[] kargs = new Var[2]
+		Var[] kargs = new Var[3]
 		kargs[0] = assignedActor
 		kargs[1] = newWorkshopID
+		kargs[2] = oldWorkshopID ; WSFW 2.0.17
 		SendCustomEvent("WorkshopAddActor", kargs)
 	endif
 endFunction
@@ -4462,6 +4463,7 @@ endFunction
 ; utility function to wait for edit lock
 ; increase wait time while more threads are in here
 int editLockCount = 1
+int iMaxLockWaitCount = 100 Const
 function GetEditLock()
 	editLockCount += 1
 	
@@ -4469,8 +4471,16 @@ function GetEditLock()
 		StartTimer (1.0, UFO4P_ThreadMonitorTimerID)
 	endif
 	
+	int iWaitCount = 0
 	while(EditLock)
-		utility.wait(0.1 * editLockCount)
+		iWaitCount += 1
+		
+		; 2.0.17 - Adding simple permalock prevention for users without UFO4P installed
+		if(iWaitCount > iMaxLockWaitCount && UFO4P_ThreadMonitorRef == None)
+			UFO4P_ReleaseLock()
+		else
+			utility.wait(0.1 * editLockCount)
+		endif		
 	endWhile
 	
 	EditLock = true
