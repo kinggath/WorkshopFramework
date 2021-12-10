@@ -129,6 +129,54 @@ WSFW_Setting_Import_F4SEPower.SetValueInt(1)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_17
+Function Fragment_Terminal_17(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutomaticallyUnhideInvisibleWorkshopObjects.SetValueInt(0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_18
+Function Fragment_Terminal_18(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutomaticallyUnhideInvisibleWorkshopObjects.SetValueInt(1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_19
+Function Fragment_Terminal_19(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutoRepairPowerGrids.SetValueInt(0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_20
+Function Fragment_Terminal_20(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutoRepairPowerGrids.SetValueInt(1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_21
+Function Fragment_Terminal_21(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutoResetCorruptPowerGrid.SetValueInt(0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_22
+Function Fragment_Terminal_22(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_AutoResetCorruptPowerGrid.SetValueInt(1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property WSFW_AlternateActivation_Workshop Auto Const Mandatory
@@ -148,3 +196,9 @@ GlobalVariable Property WSFW_Setting_Import_SpawnNPCs Auto Const Mandatory
 GlobalVariable Property WSFW_Setting_Import_SpawnPowerArmor Auto Const Mandatory
 
 GlobalVariable Property WSFW_Setting_Import_F4SEPower Auto Const Mandatory
+
+GlobalVariable Property WSFW_Setting_AutomaticallyUnhideInvisibleWorkshopObjects Auto Const Mandatory
+
+GlobalVariable Property WSFW_Setting_AutoRepairPowerGrids Auto Const Mandatory
+
+GlobalVariable Property WSFW_Setting_AutoResetCorruptPowerGrid Auto Const Mandatory

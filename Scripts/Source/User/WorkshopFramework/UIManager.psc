@@ -785,6 +785,9 @@ Function PreparePhantomVendor(Form afBarterDisplayNameForm, Keyword[] aFilterKey
 	Actor kPhantomVendorRef = PhantomVendorAlias.GetReference() as Actor
 	ObjectReference kPhantomVendorContainerRef = PhantomVendorContainerAlias.GetRef()
 	
+	; Clear out the filter list
+	PhantomVendorBuySellList.Revert()
+	
 	; Remove items from the vendor's pockets - they shouldn't have anything, but just in case
 	kPhantomVendorRef.RemoveAllItems()
 	

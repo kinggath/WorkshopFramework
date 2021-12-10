@@ -1435,6 +1435,60 @@ WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
 	return nearestWorkshop
 EndFunction
 
+; -----------------------------------
+; GetSettlementWorkshopFromLocation
+;
+; Description: Global function to lookup a settlement workbench from a location
+;
+; Parameters: aLocation 
+; -----------------------------------
+
+WorkshopScript Function GetSettlementWorkshopFromLocation(Location aLocation) global
+	if(aLocation == None)
+		return None
+	endIf
+	
+	WorkshopParentScript WorkshopParent = GetWorkshopParent()
+	return WorkshopParent.GetWorkshopFromLocation(aLocation)
+endFunction
+
+
+; -----------------------------------
+; OpenKeywordFilteredWorkshopSettlementMenuEx
+;
+; Description: Global function to relay calls to OpenWorkshopSettlementMenuEx and place Keywords in formlists for the sake of filtering.
+;
+; Parameters are the same as vanilla OpenWorkshopSettlementMenuEx, except that FormList akIncludeKeywordList and FormList akExcludeKeywordList have been replaced by Keyword arrays, and since that function is generally run on a ref the paramter akRunOn determines what the function is run on - if nothing is sent, the player is used.
+; -----------------------------------
+
+Location Function OpenKeywordFilteredWorkshopSettlementMenuEx(Keyword akActionKW, Message astrConfirm = none, Location aLocToHighlight = none, Keyword[] akIncludeFilterKeywords = none, Keyword[] akExcludeFilterKeywords = none,  bool abExcludeZeroPopulation = false, bool abOnlyOwnedWorkshops= true, bool abTurnOffHeader= false, bool abOnlyPotentialVassalSettlements= false, bool abDisableReservedByQuests = false, ObjectReference akRunOn = None) global
+	Formlist IncludeKeywordList = Game.GetFormFromFile(0x0002E55E, "WorkshopFramework.esm") as Formlist
+	Formlist ExcludeKeywordList = Game.GetFormFromFile(0x0002E55D, "WorkshopFramework.esm") as Formlist
+	
+	IncludeKeywordList.Revert()
+	int i = 0
+	while(i < akIncludeFilterKeywords.Length)
+		IncludeKeywordList.AddForm(akIncludeFilterKeywords[i])
+		
+		i += 1
+	endWhile
+	
+	ExcludeKeywordList.Revert()
+	i = 0
+	while(i < akExcludeFilterKeywords.Length)
+		ExcludeKeywordList.AddForm(akExcludeFilterKeywords[i])
+		
+		i += 1
+	endWhile
+	
+	if(akRunOn == None)
+		akRunOn = Game.GetPlayer()
+	endIf
+	
+	; Can we dynamically populate a list for use with OpenWorkshopSettlementMenuEx? I vaguely recall that we can't from tests with Conqueror
+	return akRunOn.OpenWorkshopSettlementMenuEx(akActionKW, astrConfirm, aLocToHighlight, IncludeKeywordList, ExcludeKeywordList, abExcludeZeroPopulation, abOnlyOwnedWorkshops, abTurnOffHeader, abOnlyPotentialVassalSettlements, abDisableReservedByQuests)	
+EndFunction
+
 
 ; -----------------------------------
 ; GetSettlements

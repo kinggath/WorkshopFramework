@@ -690,6 +690,8 @@ Function SetupAssault()
 				RegisterForRemoteEvent(thisLocation, "OnLocationLoaded")
 			endif
 		else
+			CleanupAssault()
+			
 			Stop()
 		endif		
 	endif

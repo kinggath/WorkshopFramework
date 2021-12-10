@@ -35,10 +35,20 @@ Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
 	WorkshopTutorialScript Property TutorialQuest Auto Const Mandatory
 	{ 1.0.7 - Adding ability to control this quest }
-	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const Mandatory
-	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
+	
 	PluginInstalledGlobal[] Property PluginFlags Auto Const Mandatory
 	WorkshopFramework:SettlementLayoutManager Property SettlementLayoutManager Auto Const Mandatory
+	
+	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
+EndGroup
+
+
+Group Globals
+	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const Mandatory
+	{ 1.0.7 - Toggle to track whether the tutorial messages were last turned on or off }
+	
+	GlobalVariable Property Setting_AutoRepairPowerGrids Auto Const Mandatory
+	GlobalVariable Property Setting_AutoResetCorruptPowerGrid Auto Const Mandatory
 EndGroup
 
 Group Aliases
@@ -94,10 +104,16 @@ Event OnTimer(Int aiTimerID)
 		Location kNewLoc = LatestLocation.GetLocation()
 		Bool bEnteringWorkshopLocation = false
 		Bool bLeavingWorkshopLocation = false
-
+		WorkshopScript currentWorkshop = None
+		
 		if(kNewLoc != None)
 			if(kNewLoc.HasKeyword(LocationTypeWorkshop))
 				bEnteringWorkshopLocation = true
+				currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
+				
+				if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
+					F4SEManager.WSFWID_CheckAndFixPowerGrid(currentWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+				endif
 			endif
 		endif
 
@@ -110,7 +126,6 @@ Event OnTimer(Int aiTimerID)
 		if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
 			Var[] kArgs
 
-			WorkshopScript currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
 			; 1.0.4 - Added sanity check
 			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop

@@ -335,6 +335,16 @@ Function HandleGameLoaded()
 EndFunction
 
 Function HandleInstallModChanges()
+	if(iInstalledVersion < 45)
+		; At some point scrap finders weren't being disabled after an export of the scrap profile, fixed in this version, but we need to one-time shut them all down to ensure they can run again
+		int i = 0
+		while(i < ScrapFinders.Length)
+			ScrapFinders[i].Stop()
+			
+			i += 1
+		endWhile
+	endif
+
 	if(iInstalledVersion < 27)
 		; This check was failing in patch 26 (1.2.0), because F4SEManager was not correctly flagging before this quest initialized
 		if(F4SEManager.IsF4SERunning)
@@ -1543,7 +1553,7 @@ Int Function ExportUnlinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 			ModTrace("[Export] Unlinked Item thread details: iAwaitingExportCallbacks (before prediction correction) = " + iAwaitingExportCallbacks + ", iPredictedThreads = " + iPredictedThreads + ", iActualThreads = " + iActualThreads)
 			iAwaitingExportCallbacks -= iPredictedThreads - iActualThreads
 	
-			;ScrapFinderQuest.Stop()
+			ScrapFinderQuest.Stop()
 		endif
 	endif
 	
