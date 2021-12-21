@@ -164,6 +164,10 @@ Group VendorTypes
 	{ list of form lists, indexed by VendorType 
 		- each form list is indexed by vendor level
 	}
+	FormList[] Property WSFW_InjectionVendorContainers Auto Hidden ; Intentionally hidden - we'll fill on startup
+	{ list of form lists, indexed by VendorType 
+		- each form list is indexed by vendor level
+	}
 EndGroup
 
 Group FarmDiscount 
@@ -938,6 +942,12 @@ int iFormID_WSFW_NPCManager = 0x000091E2 Const
 int iFormID_WSFW_DoNotAutoassignKeyword = 0x000082A5 Const ; WSFW 1.0.8
 int iFormID_WSFW_MessageManager = 0x000092C5 Const ; WSFW 1.0.8
 int iFormID_WorkshopEnemyFaction = 0x001357E7 Const ; WSFW 1.1.10
+int iFormID_WSFW_InjectionVendorContainers_Armor = 0x000092B9 Const ; WSFW Version 2.0.17c
+int iFormID_WSFW_InjectionVendorContainers_Bar = 0x000092BA Const ; WSFW Version 2.0.17c
+int iFormID_WSFW_InjectionVendorContainers_Clinic = 0x000092BB Const ; WSFW Version 2.0.17c
+int iFormID_WSFW_InjectionVendorContainers_Clothing = 0x000092BC Const ; WSFW Version 2.0.17c
+int iFormID_WSFW_InjectionVendorContainers_General = 0x000092BD Const ; WSFW Version 2.0.17c
+int iFormID_WSFW_InjectionVendorContainers_Weapons = 0x000092BE Const ; WSFW Version 2.0.17c
 
 Function FillWSFWVars()
 	if( ! WSFW_NPCManager)
@@ -1024,6 +1034,48 @@ Function FillWSFWVars()
 	
 	if( ! WorkshopEnemyFaction)
 		WorkshopEnemyFaction = Game.GetFormFromFile(iFormID_WorkshopEnemyFaction, "Fallout4.esm") as Faction
+	endif
+	
+	if(WSFW_InjectionVendorContainers == None || WSFW_InjectionVendorContainers.Length == 0)
+		WSFW_InjectionVendorContainers = new Formlist[0]
+		
+		; Need to do these in same order as vanilla WorkshopVendorContainers array, which is: General, Armor, Weapons, Bar, Clinic, Clothing
+		
+		Formlist thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_General, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
+		
+		thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_Armor, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
+		
+		thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_Weapons, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
+		
+		thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_Bar, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
+		
+		thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_Clinic, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
+		
+		thisContainerList = Game.GetFormFromFile(iFormID_WSFW_InjectionVendorContainers_Clothing, "WorkshopFramework.esm") as Formlist
+		
+		if(thisContainerList)
+			WSFW_InjectionVendorContainers.Add(thisContainerList)
+		endif
 	endif
 Endfunction
 

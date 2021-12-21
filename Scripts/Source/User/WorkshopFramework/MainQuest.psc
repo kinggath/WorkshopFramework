@@ -95,6 +95,16 @@ Int Property iSaveFileMonitor Auto Hidden ; Important - only meant to be edited 
 ; Events
 ; ---------------------------------------------
 
+Event ObjectReference.OnCellLoad(ObjectReference akSender)
+	WorkshopScript thisWorkshop = akSender as WorkshopScript
+	
+	UnregisterForRemoteEvent(akSender, "OnCellLoad")
+	
+	if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
+		F4SEManager.WSFWID_CheckAndFixPowerGrid(thisWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+	endif
+EndEvent
+
 ; Extending to fire off settlement enter/exit events
 Event OnTimer(Int aiTimerID)
 	Parent.OnTimer(aiTimerID)
@@ -112,7 +122,11 @@ Event OnTimer(Int aiTimerID)
 				currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
 				
 				if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
-					F4SEManager.WSFWID_CheckAndFixPowerGrid(currentWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+					if(currentWorkshop.GetParentCell().IsLoaded())
+						F4SEManager.WSFWID_CheckAndFixPowerGrid(currentWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+					else
+						RegisterForRemoteEvent(currentWorkshop, "OnCellLoad")
+					endif
 				endif
 			endif
 		endif

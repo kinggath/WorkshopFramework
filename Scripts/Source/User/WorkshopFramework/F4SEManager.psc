@@ -243,7 +243,9 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 	if(abFixAndScan) ; Should be fixed
 		Results = CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
 		
+		ModTrace("abFixAndScan == true, Rescan with iFix == 0: " + akWorkshopRef + " results: " + Results)
 		if(abResetIfFixFails && Results.broken)
+			ModTrace("Corrupt power grid detected, calling WSFWID_ResetPowerGrid on " + akWorkshopRef + ".")
 			WSFWID_ResetPowerGrid(akWorkshopRef)
 		endif
 	endif
