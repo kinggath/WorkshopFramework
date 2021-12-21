@@ -77,6 +77,7 @@ EndGroup
 Group InjectableRecords
 	InjectableActorMap[] Property InjectableLeveledActors Auto Const
 	InjectableItemMap[] Property InjectableLeveledItems Auto Const
+	; 2.0.18 - Note that we cleared out all the default inject formlists for the shops, as we were never actually using the WSFW_InjectableItemHolder leveled lists to replace the vanilla ones. This system has now been overhauled and instead an extra container for each vendor/level is spawned at the settlement, and when the player loads into it, those items are moved into the actual workshop vendor container. In addition, we switched these InjectableItemHolder LLs for the shops to Use All. We may need to do make all of these changes to all of the WSFW_InjectableItemHolder LLs.
 EndGroup
 
 

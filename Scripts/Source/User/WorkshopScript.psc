@@ -1527,17 +1527,33 @@ ObjectReference[] function GetVendorContainersByType(int vendorType)
 	endif
 endFunction
 
+
 ObjectReference[] function InitializeVendorChests(int vendorType)
 	; initialize array
-	int containerArraySize = VendorTopLevel + 1
+	int containerArraySize = WorkshopParent.VendorTopLevel + 1
 	ObjectReference[] vendorContainers = new ObjectReference[containerArraySize]
 
 	; create the chests
 	FormList vendorContainerList = WorkshopParent.WorkshopVendorContainers[vendorType]
+	FormList WSFW_InjectionContainerList = WorkshopParent.WSFW_InjectionVendorContainers[vendorType]
+	
 	int vendorLevel = 0
-	while vendorLevel <= VendorTopLevel
+	while vendorLevel <= WorkshopParent.VendorTopLevel
 		; create ref for each vendor level
-		vendorContainers[vendorLevel] = WorkshopParent.WorkshopHoldingCellMarker.PlaceAtMe(vendorContainerList.GetAt(vendorLevel))
+		ObjectReference thisVendorContainer = WorkshopParent.WorkshopHoldingCellMarker.PlaceAtMe(vendorContainerList.GetAt(vendorLevel))
+		
+		vendorContainers[vendorLevel] = thisVendorContainer
+		
+		if(WSFW_InjectionContainerList != None)
+			ObjectReference kWSFWInjectionContainerRef = Self.PlaceAtMe(WSFW_InjectionContainerList.GetAt(vendorLevel))
+			
+			if(kWSFWInjectionContainerRef != None)
+				;Debug.Trace(">>>>>>>>>>>>>>> Linking injection container " + kWSFWInjectionContainerRef + " (base object: " + kWSFWInjectionContainerRef.GetBaseObject() + "), to vendor container " + thisVendorContainer + " (base object: " + kWSFWInjectionContainerRef.GetBaseObject() + ")")
+				
+				kWSFWInjectionContainerRef.SetLinkedRef(thisVendorContainer, (kWSFWInjectionContainerRef as WorkshopFramework:ObjectRefs:MoveContainerItemsOnLoad).MoveToLinkedRefOnKeyword)
+			endif
+		endif
+		
 		vendorLevel += 1
 	endWhile
 

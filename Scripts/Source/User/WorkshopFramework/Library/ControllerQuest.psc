@@ -52,6 +52,7 @@ EndEvent
 
 
 Event Actor.OnPlayerLoadGame(Actor akActorRef)  
+	;Debug.Trace(Self + " OnPlayerLoadGame called.")
 	; Run GameLoaded code
 	GameLoaded()
 EndEvent
