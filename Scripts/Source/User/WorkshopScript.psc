@@ -294,6 +294,8 @@ Group WSFW_AVs
 	ActorValue Property Caravan Auto Hidden
 	ActorValue Property Radio Auto Hidden
 	ActorValue Property WorkshopGuardPreference Auto Hidden
+	
+	ActorValue Property WorkshopHideHappinessBarAV Auto Hidden ; 2.0.18a
 EndGroup
 
 Group WSFW_Added
@@ -452,6 +454,7 @@ int iFormID_Beds = 0x00000334 Const
 int iFormID_MissingBeds = 0x0012723B Const
 int iFormID_Caravan = 0x000A46FD Const
 int iFormID_Radio = 0x00127241 Const
+int iFormID_WorkshopHideHappinessBarAV = 0x00249E91 Const
 int iFormID_WorkshopGuardPreference = 0x00113342 Const
 int iFormID_WorkshopType02 = 0x00249FD7 Const
 int iFormID_WorkshopCaravanKeyword = 0x00061C0C Const
@@ -2267,6 +2270,12 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 		return
 	endif
 	
+	if(GetValue(WorkshopHideHappinessBarAV) > 0)
+		; This settlement isn't using happiness - likely an interior player home settlement
+		
+		return
+	endif
+	
 	
 	; ----------------------------
 	; Update Happiness 
@@ -3486,7 +3495,11 @@ Function FillWSFWVars()
 	if( ! Radio)
 		Radio = Game.GetFormFromFile(iFormID_Radio, sFO4_Plugin) as ActorValue
 	endif
-
+	
+	if( ! WorkshopHideHappinessBarAV)
+		WorkshopHideHappinessBarAV = Game.GetFormFromFile(iFormID_WorkshopGuardPreference, sFO4_Plugin) as ActorValue
+	endif
+	
 	if( ! WorkshopGuardPreference)
 		WorkshopGuardPreference = Game.GetFormFromFile(iFormID_WorkshopGuardPreference, sFO4_Plugin) as ActorValue
 	endif
