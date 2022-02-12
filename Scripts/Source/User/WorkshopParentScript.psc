@@ -2750,7 +2750,7 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	assignedActor.EvaluatePackage()
 
 	if( ! bResetMode && ! workshopRef.RecalculateWorkshopResources()) ; 2.0.2 - Added bResetMode check
-		; WSWF - Added if(assignedActor.bCountsForPopulation) to ensure it isn't increased when sending those NPCs
+		; WSFW - Added if(assignedActor.bCountsForPopulation) to ensure it isn't increased when sending those NPCs
 		if(assignedActor.bCountsForPopulation)
 			ModifyResourceData(WorkshopRatings[WorkshopRatingPopulation].resourceValue, workshopRef, 1)
 		endif
