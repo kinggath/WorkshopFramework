@@ -34,6 +34,26 @@ Group Settings
 	GlobalVariable Property Setting_IgnoreF4SEVersion Auto Const Mandatory
 EndGroup
 
+Group Controllers
+	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
+EndGroup
+
+Group Messages	
+	Message Property Menu_RemoteSettlementOption Auto Const Mandatory
+	Message Property Confirm_ScanPowerGrid Auto Const Mandatory
+	Message Property Confirm_RepairPowerGrid Auto Const Mandatory
+	Message Property Confirm_ResetPowerGrid Auto Const Mandatory
+	Message Property Confirm_ResetLocation Auto Const Mandatory
+
+	Message Property Complete_ScanPowerGrid Auto Const Mandatory
+	Message Property Failure_RepairPowerGrid Auto Const Mandatory
+	Message Property Success_RepairPowerGrid Auto Const Mandatory
+	Message Property Complete_ResetPowerGrid Auto Const Mandatory
+	Message Property Failure_ResetLocation Auto Const Mandatory
+	Message Property Success_ResetLocation Auto Const Mandatory
+	Message Property ConfirmOverride_RemoteSettlement Auto Const Mandatory
+EndGroup
+
 ; ---------------------------------------------
 ; Properties
 ; ---------------------------------------------
@@ -304,6 +324,79 @@ EndFunction
 
 Function MCM_ScanPowerGrid()
 	Bool bSuccess = WSFWID_ScanPowerGrid(akWorkshopRef = None)
+EndFunction
+
+
+Function ShowRemoteLocationManagementMenu()
+	; Pick Settlement
+	Location ChosenLocation = PlayerRef.OpenWorkshopSettlementMenuEx(None, ConfirmOverride_RemoteSettlement, abExcludeZeroPopulation = false, abOnlyOwnedWorkshops = false, abTurnOffHeader = true, abOnlyPotentialVassalSettlements = false, abDisableReservedByQuests = false)
+	
+	if(ChosenLocation != None)
+		WorkshopScript kChosenWorkshop = WorkshopParent.GetWorkshopFromLocation(ChosenLocation)
+		
+		if(kChosenWorkshop == None)
+			return
+		endif		
+		
+		; Pick Option
+		int iChoice = Menu_RemoteSettlementOption.Show()
+		
+		if(iChoice == 0)
+			return ; Cancel
+		elseif(iChoice == 1)
+			; Scan Power Grid
+			iChoice = Confirm_ScanPowerGrid.Show()
+			
+			if(iChoice == 0)
+				return ; Cancel
+			else
+				Bool bSuccess = WSFWID_ScanPowerGrid(akWorkshopRef = kChosenWorkshop)
+				
+				Complete_ScanPowerGrid.Show()
+			endif
+		elseif(iChoice == 2)
+			; Repair Power Grid
+			iChoice = Confirm_RepairPowerGrid.Show()
+			
+			if(iChoice == 0)
+				return ; Cancel
+			else
+				Bool bSuccess = WSFWID_CheckAndFixPowerGrid(akWorkshopRef = kChosenWorkshop, abFixAndScan = true, abResetIfFixFails = false)
+				
+				if(bSuccess)
+					Success_RepairPowerGrid.Show()
+				else
+					Failure_RepairPowerGrid.Show()
+				endif
+			endif
+		elseif(iChoice == 3)
+			; Reset Power Grid
+			iChoice = Confirm_ResetPowerGrid.Show()
+			
+			if(iChoice == 0)
+				return ; Cancel
+			else
+				Bool bSuccess = WSFWID_ResetPowerGrid(kChosenWorkshop)
+				
+				Complete_ResetPowerGrid.Show()
+			endif
+		elseif(iChoice == 4)
+			if(kChosenWorkshop.Is3dLoaded())
+				Failure_ResetLocation.Show()
+			else
+				; Reset Location
+				iChoice = Confirm_ResetLocation.Show()
+				
+				if(iChoice == 0)
+					return ; Cancel
+				else
+					ChosenLocation.Reset()
+					
+					Success_ResetLocation.Show()
+				endif
+			endif
+		endif
+	endif
 EndFunction
 
 ;

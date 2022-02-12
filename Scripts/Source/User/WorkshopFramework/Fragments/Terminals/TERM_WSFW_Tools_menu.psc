@@ -44,7 +44,16 @@ HUDFrameworkManager.ResetAllWidgets()
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_07
+Function Fragment_Terminal_07(ObjectReference akTerminalRef)
+;BEGIN CODE
+F4SEManager.ShowRemoteLocationManagementMenu()
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 WorkshopFramework:MainQuest Property MainQuest Auto Const Mandatory
 WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory
+WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
