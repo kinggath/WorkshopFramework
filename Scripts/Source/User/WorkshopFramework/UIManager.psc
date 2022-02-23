@@ -74,6 +74,8 @@ Group MessageSelectorSystem
 	ReferenceAlias Property MessageSelectorTitleAlias Auto Const Mandatory
 	ReferenceAlias[] Property MessageSelectorItemLineAliases Auto Const Mandatory
 	{ REMINDER: You must set up different Message forms to handle more aliases, our default (MessageSelector_Default) only displays one for the title of the selection type and another for the current option. }
+	
+	Form Property RenamableDummyForm Auto Const Mandatory
 EndGroup
 
 Group SettlementSelect
@@ -993,6 +995,11 @@ EndFunction
 
 
 Int Function ShowMessageSelectorMenuFormlistAndWaitV2(Formlist aSelectFromOptionsList, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None, Float afMaxWaitForSelector = 0.0)
+	return ShowMessageSelectorMenuFormlistAndWaitV3(aSelectFromOptionsList, aMessageTitleNameHolder, aNoOptionsWarningOverride, afMaxWaitForSelector, aiStartingIndex = 0)
+EndFunction
+
+
+Int Function ShowMessageSelectorMenuFormlistAndWaitV3(Formlist aSelectFromOptionsList, Form aMessageTitleNameHolder = None, Message aNoOptionsWarningOverride = None, Float afMaxWaitForSelector = 0.0, Int aiStartingIndex = 0)
 	if( ! aSelectFromOptionsList)
 		return iMessageSelectorReturn_Failure
 	endif
@@ -1060,7 +1067,7 @@ Int Function ShowMessageSelectorMenuFormlistAndWaitV2(Formlist aSelectFromOption
 	MessageSelectorTitleAlias.ForceRefTo(kTitleRef)
 	
 	; Start the selection loop
-	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = 0, aiSource = iSource)
+	ShowMessageSelectorMenuLoop_InternalOnly(aiIndexToDisplay = aiStartingIndex, aiSource = iSource)
 	
 	bMessageSelectorInUse = false
 	MessageSelectorFormArray = new Form[0] ; Clear this array
@@ -1092,8 +1099,14 @@ Function ShowMessageSelectorMenuLoop_InternalOnly(Int aiIndexToDisplay = 0, Int 
 		endif
 		
 		; Setup text replacement
-		ObjectReference kNameRef = kSafeSpawnPoint.PlaceAtMe(CurrentForm)
-		MessageSelectorItemLineAliases[0].ForceRefTo(kNameRef)
+		if(CurrentForm as Message)
+			ObjectReference kNameRef = kSafeSpawnPoint.PlaceAtMe(RenamableDummyForm)
+			kNameRef.AddTextReplacementData("RenameMe", CurrentForm)
+			MessageSelectorItemLineAliases[0].ForceRefTo(kNameRef)
+		else
+			ObjectReference kNameRef = kSafeSpawnPoint.PlaceAtMe(CurrentForm)
+			MessageSelectorItemLineAliases[0].ForceRefTo(kNameRef)
+		endif
 		
 		; Should we show More Info option?
 		MenuControl_MessageSelector_MoreInfo.SetValueInt(0)

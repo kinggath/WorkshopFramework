@@ -34,6 +34,8 @@ ActorValue Property PowerRequired Auto Const Mandatory
 { Autofill }
 ActorValue Property PowerGenerated Auto Const Mandatory
 { Autofill }
+ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory
+{ Autofill }
 ActorValue Property WorkshopResourceObject Auto Const Mandatory
 { Autofill }
 ActorValue Property WorkshopCurrentDraws Auto Const Mandatory
@@ -41,6 +43,8 @@ ActorValue Property WorkshopCurrentDraws Auto Const Mandatory
 ActorValue Property WorkshopCurrentTriangles Auto Const Mandatory
 { Autofill }
 Keyword Property WorkshopCanBePowered Auto Const Mandatory
+{ Autofill }
+Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory
 { Autofill }
 Keyword Property WorkshopItemKeyword Auto Const Mandatory
 { Autofill }
@@ -82,6 +86,7 @@ Float Property fAngleY = 0.0 Auto Hidden
 Float Property fAngleZ = 0.0 Auto Hidden 
 Float Property fScale = 1.0 Auto Hidden ; 1.1.6 - Defaulting to 1
 Bool Property bFadeIn = false Auto Hidden ; 1.0.5 - Adding option to allow fading these items in instead of popping them in
+Bool Property bPreventAddingToPowerGrid = false Auto Hidden ; 2.0.20 - Adding option to ensure the item spawned can't become part of a power grid
 Bool Property bStartEnabled = true Auto Hidden
 Bool Property bForceStatic = false Auto Hidden ; 1.0.5 - Default to false
 Bool Property bFauxPowered = false Auto Hidden ; 1.0.5 - Default to false
@@ -357,7 +362,9 @@ Function RunCode()
 				endif
 				
 				if(kResult.HasKeyword(WorkshopCanBePowered))
-					if(bFauxPowered)
+					if(bPreventAddingToPowerGrid)
+						PreventAddingToPowerGrid(kResult)
+					elseif(bFauxPowered)
 						FauxPowered(kResult)
 					endif
 					
@@ -542,6 +549,14 @@ Function FauxPowered(ObjectReference akRef)
 	akRef.SetValue(PowerGenerated, 0.1)
 	akRef.SetValue(WorkshopResourceObject, 1.0)
 	akRef.AddKeyword(FauxPoweredKeyword)
+EndFunction
+
+
+Function PreventAddingToPowerGrid(ObjectReference akRef)
+	akRef.RemoveKeyword(WorkshopCanBePowered)
+	akRef.RemoveKeyword(WorkshopPowerConnectionDUPLICATE000)
+	akRef.SetValue(PowerGenerated, 0.0)
+	akRef.SetValue(WorkshopSnapTransmitsPower, 0.0)
 EndFunction
 
 

@@ -973,7 +973,12 @@ Int Function ConsumeFromWorkshopV2(Form aConsumeMe, Int aiCount, WorkshopScript 
 		if(kContainers.Length > 0)
 			int i = 0
 			while(i < kContainers.Length && iRemainingToConsume > 0)
-				iRemainingToConsume -= ConsumeResourceV2(kContainers[i], aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
+				if(kContainers[i] != None)
+					int iConsumed = ConsumeResourceV2(kContainers[i], aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
+					
+					ModTrace("        Consuming " + iConsumed + " " + aConsumeMe + " from container " + kContainers[i] + " at workshop " + akWorkshopRef)
+					iRemainingToConsume -= iConsumed
+				endif
 				
 				i += 1
 			endWhile
@@ -984,11 +989,15 @@ Int Function ConsumeFromWorkshopV2(Form aConsumeMe, Int aiCount, WorkshopScript 
 	if(iRemainingToConsume > 0)
 		ObjectReference workshopContainer = akWorkshopRef.GetContainer()
 		
-		if(kContainers.Find(workshopContainer) < 0)
-			iRemainingToConsume -= ConsumeResourceV2(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
+		if(workshopContainer != None && kContainers.Find(workshopContainer) < 0)
+			int iConsumed = ConsumeResourceV2(workshopContainer, aConsumeMe, iRemainingToConsume, abIsComponentFormList, abCheckOnly)
+			
+			ModTrace("        Consuming " + iConsumed + " " + aConsumeMe + " from container " + workshopContainer + " at workshop " + akWorkshopRef)
+			
+			iRemainingToConsume -= iConsumed
 		endif
 		
-		if(iRemainingToConsume > 0 && ! abLinkedWorkshopConsumption)
+		if(iRemainingToConsume > 0 && abLinkedWorkshopConsumption)
 			; Check linked workshops and consume from them 
 			
 			; TODO - This is super inefficient and impractical (was in the vanilla game method as well). Although much harder to solve now that we've introduced custom consumption, so we can't even easily just flag a settlement as having nothing to ensure it is skipped in the next round of checks.
@@ -1003,7 +1012,11 @@ Int Function ConsumeFromWorkshopV2(Form aConsumeMe, Int aiCount, WorkshopScript 
 						WorkshopScript thisWorkshop = ResourceManager.Workshops[iLinkedWorkshopID]
 						
 						if(thisWorkshop.bAllowLinkedConsumption)
-							iRemainingToConsume -= ConsumeFromWorkshopV2(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList, true, abCheckOnly) ; Send true to second to last arg to prevent an infinite loop
+							int iConsumed = ConsumeFromWorkshopV2(aConsumeMe, iRemainingToConsume, thisWorkshop, aTargetContainerKeyword, abIsComponentFormList, true, abCheckOnly) ; Send true to second to last arg to prevent an infinite loop
+							
+							ModTrace("        Consuming " + iConsumed + " " + aConsumeMe + " from linked workshop " + thisWorkshop + " for cost from workshop " + akWorkshopRef)
+							
+							iRemainingToConsume -= iConsumed
 						endif
 					endif
 					
@@ -1014,6 +1027,7 @@ Int Function ConsumeFromWorkshopV2(Form aConsumeMe, Int aiCount, WorkshopScript 
 	endif
 	
 	; return amount consumed
+	ModTrace("        Total consumed (aiCount " + aiCount + " - iRemainingToConsume " + iRemainingToConsume + ") at " + akWorkshopRef + ": " + (aiCount - iRemainingToConsume))
 	return aiCount - iRemainingToConsume
 EndFunction
 
@@ -1186,6 +1200,8 @@ Int Function ConsumeResourceV2(ObjectReference akContainerRef, Form aConsumeMe, 
 		iContainerItemCount = akContainerRef.GetItemCount(aConsumeMe)
 	endif
 	
+	ModTrace("[ProductionManager] ConsumeResourceV2 called. Attempting to consume " + aiCount + " " + aConsumeMe + " from " + akContainerRef + ", abComponentFormList = " + abComponentFormList + ", abCheckOnly = " + abCheckOnly)
+	
 	Int iConsumedCount = 0
 	if(iContainerItemCount > 0)
 		if(iContainerItemCount >= aiCount)
@@ -1222,6 +1238,8 @@ Int Function ConsumeResourceV2(ObjectReference akContainerRef, Form aConsumeMe, 
 			endif
 		endif
 	endif
+	
+	ModTrace("[ProductionManager] ConsumeResourceV2 consuming " + iConsumedCount + " " + aConsumeMe + " from " + akContainerRef + ", abComponentFormList = " + abComponentFormList + ", abCheckOnly = " + abCheckOnly)
 	
 	return iConsumedCount
 EndFunction

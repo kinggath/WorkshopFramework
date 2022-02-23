@@ -1,5 +1,7 @@
 Scriptname WorkshopFramework:ObjectRefs:MoveContainerItemsOnLoad extends ObjectReference Const
 
+import WorkshopFramework:Library:UtilityFunctions
+
 Keyword Property MoveToLinkedRefOnKeyword = None Auto Const
 { Items will be moved to whatever GetLinkedRef(MoveToLinkedRefOnKeyword) returns }
 
@@ -19,7 +21,8 @@ EndEvent
 Function MoveItems()
 	ObjectReference kTargetRef = GetLinkedRef(MoveToLinkedRefOnKeyword)
 	
-	;Debug.Trace(">>>>>>>>>>>>>>> " + Self + " Moving " + Self.GetItemCount() + " items to " + kTargetRef)
+	ModTrace(">>>>>>>>>>>>>>> " + Self + " Moving " + Self.GetItemCount() + " items to " + kTargetRef)
+	
 	
 	if(kTargetRef != None)
 		Self.RemoveAllItems(kTargetRef, false)
