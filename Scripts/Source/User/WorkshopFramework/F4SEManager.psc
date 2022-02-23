@@ -327,6 +327,7 @@ Function MCM_ScanPowerGrid()
 EndFunction
 
 
+
 Function ShowRemoteLocationManagementMenu()
 	; Pick Settlement
 	Location ChosenLocation = PlayerRef.OpenWorkshopSettlementMenuEx(None, ConfirmOverride_RemoteSettlement, abExcludeZeroPopulation = false, abOnlyOwnedWorkshops = false, abTurnOffHeader = true, abOnlyPotentialVassalSettlements = false, abDisableReservedByQuests = false)
