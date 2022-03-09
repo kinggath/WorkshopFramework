@@ -2091,7 +2091,7 @@ bool bDailyUpdateInProgress = false
 
 function DailyUpdate(bool bRealUpdate = true)
 	; wait for update lock to be released
-	
+		
 	if(WorkshopParent.DailyUpdateInProgress)
 		if(bRealUpdate || bResetHappiness)
 			while(WorkshopParent.DailyUpdateInProgress)
@@ -2844,15 +2844,38 @@ endFunction
 ; helper function to recalc
 ; we don't normally want to do this when unloaded or everything will be 0
 ; TRUE = we did recalc; FALSE = we didn't
+Bool Property bRecalcRunning = false Auto Hidden
 bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
+	if(bRecalcRunning) ; WSFW 2.0.21 - preventing this from being spammed
+		return false
+	endif
+	
+	bRecalcRunning = true
+	
 	;if bOnlyIfLocationLoaded == false || myLocation.IsLoaded()
 	
 	;UFO4P 2.0.4 Bug #24122: replaced the previous line with the following line:
 	;While in workshop mode, the player's current location is 'none' (entering/leaving workshop mode triggers a location change event). Thus,
 	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
 	;periods of time in workshop mode.
-	if bOnlyIfLocationLoaded == false || Game.GetPlayer().GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
-	
+	Actor PlayerRef = Game.GetPlayer()
+	if bOnlyIfLocationLoaded == false || PlayerRef.GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
+		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
+		
+		; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
+		
+		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(Self)
+		
+		int i = 0
+		while(i < WorkshopActors.Length)
+			WorkshopActors[i].SetLinkedRef(PlayerRef, WorkshopItemKeyword)
+			Utility.WaitMenuMode(0.01)
+			WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)
+			
+			i += 1
+		endWhile
+		; End WSFW 2.0.21 hack
+		
 		RecalculateResources()
 		
 		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
@@ -2860,7 +2883,7 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 			ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
 			Float fSafetyValue = 0.0
 			
-			int i = 0
+			i = 0
 			while(i < SafetyObjects.Length)
 				if( ! SafetyObjects[i].IsDisabled())
 					Float fValue = SafetyObjects[i].GetValue(Safety)
@@ -2876,8 +2899,8 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		; WSFW 1.1.8 - Add up PowerRequired and store on workshop
 		ObjectReference[] PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
 		Float fPowerRequired = 0.0
-		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
-		int i = 0
+		
+		i = 0
 		while(i < PowerReqObjects.Length)
 			if( ! PowerReqObjects[i].IsDisabled() && PowerReqObjects[i].GetLinkedRef(WorkshopItemKeyword) == Self)
 				Float fValue = PowerReqObjects[i].GetValue(PowerRequired)
@@ -2889,10 +2912,14 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 
 		SetValue(WSFW_PowerRequired, fPowerRequired)		
 		
+		bRecalcRunning = false
+		
 		return true
-	else
-		return false
 	endif
+	
+	bRecalcRunning = false
+		
+	return false
 endFunction 
 
 ;----------------------------------------------------------------------------------------------------------------------------------------------------------
