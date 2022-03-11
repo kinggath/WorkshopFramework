@@ -515,7 +515,7 @@ Function ConfigureRadio(WorkshopObjectScript akWorkshopObject, WorkshopScript ak
 				akWorkshopRef.WorkshopRadioScene.Start()
 			endif
 		else 
-			akWorkshopObject.MakeTransmitterRepeater(WorkshopRadioRef, akWorkshopRef.workshopRadioInnerRadius, akWorkshopRef.workshopRadioOuterRadius)
+			akWorkshopObject.MakeTransmitterRepeater(WorkshopParent.WorkshopRadioRef, akWorkshopRef.workshopRadioInnerRadius, akWorkshopRef.workshopRadioOuterRadius)
 			if(WorkshopRadioScene01.IsPlaying() == false)
 				WorkshopRadioScene01.Start()
 			endif
@@ -525,13 +525,15 @@ Function ConfigureRadio(WorkshopObjectScript akWorkshopObject, WorkshopScript ak
 			WorkshopEventRadioBeacon.SendStoryEvent(akRef1 = akWorkshopRef)
 		endif
 	else
-		akWorkshopObject.MakeTransmitterRepeater(NONE, 0, 0)
-		
 		; if unique radio, turn it off completely
 		if(akWorkshopRef.WorkshopRadioRef && akWorkshopRef.bWorkshopRadioRefIsUnique)
+			akWorkshopObject.MakeTransmitterRepeater(akWorkshopRef.WorkshopRadioRef, 0, 0)
+			
 			akWorkshopRef.WorkshopRadioRef.Disable()
 			; stop custom scene if unique
 			akWorkshopRef.WorkshopRadioScene.Stop()
+		else
+			akWorkshopObject.MakeTransmitterRepeater(WorkshopParent.WorkshopRadioRef, 0, 0)
 		endif
 	endif
 	

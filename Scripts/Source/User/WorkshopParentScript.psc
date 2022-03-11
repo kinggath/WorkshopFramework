@@ -3360,14 +3360,16 @@ function UpdateRadioObject(WorkshopObjectScript radioObject)
 			WorkshopEventRadioBeacon.SendStoryEvent(akRef1 = workshopRef)
 		endif
 	else		
-		radioObject.MakeTransmitterRepeater(NONE, 0, 0)
-		
 		; if unique radio, turn it off completely
 		if(workshopRef.WorkshopRadioRef && workshopRef.bWorkshopRadioRefIsUnique)
+			radioObject.MakeTransmitterRepeater(workshopRef.WorkshopRadioRef, 0, 0)
+			
 			workshopRef.WorkshopRadioRef.Disable()
 			
 			; stop custom scene if unique
 			workshopRef.WorkshopRadioScene.Stop()
+		else
+			radioObject.MakeTransmitterRepeater(WorkshopRadioRef, 0, 0)
 		endif
 	endif
 	
@@ -3887,7 +3889,8 @@ endFunction
 
 
 ; clear and recalculate workshop ratings
-function ResetWorkshop(WorkshopScript workshopRef)
+function ResetWorkshop(WorkshopScript workshopRef)	
+	
 	int workshopID = workshopRef.GetWorkshopID()
 
 	if(workshopID != currentWorkshopID)
@@ -3951,6 +3954,7 @@ function ResetWorkshop(WorkshopScript workshopRef)
 	workshopRef.RecalculateWorkshopResources(false)
 	WorkshopCenterMarker.ForceRefTo(workshopRef.GetLinkedRef(WorkshopLinkCenter))
 
+	
 	;ADD THE ACTORS:
 	int maxIndex = WorkshopActors.length
 	
