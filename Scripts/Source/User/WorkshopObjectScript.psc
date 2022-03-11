@@ -403,9 +403,11 @@ endFunction
 
 
 Function AssignNPC(Actor newActor = None)
+	; Debug.Trace("     WorkshopObjectScript.AssignNPC(" + newActor + ")")
 	if(newActor)
 		; if this is a bed, and has faction ownership OR actor base ownership, just keep it
 		if( ! IsBed() || ! IsOwnedBy(newActor))
+			; Debug.Trace("     WorkshopObjectScript " + Self + " AssignNPC calling SetActorRefOwner " + newActor)
 			SetActorRefOwner(newActor, true)
 		endif
 		
@@ -661,6 +663,9 @@ endFunction
 
 Event OnActivate(ObjectReference akActionRef)
 	;WorkshopParent.wsTrace(self + " activated by " + akActionRef + " isradio?" + HasKeyword(WorkshopParent.WorkshopRadioObject))
+	
+	; Debug.Trace(self + " activated by " + akActionRef + " isradio?" + HasKeyword(WorkshopParent.WorkshopRadioObject) + ", CanProduceForWorkshop()? " + CanProduceForWorkshop())
+	
 	if akActionRef == Game.Getplayer() 
 		;WorkshopParent.wstrace(self + " activated by player")
 		if CanProduceForWorkshop()
@@ -671,6 +676,11 @@ Event OnActivate(ObjectReference akActionRef)
 				WorkshopParent.UpdateRadioObject(self)
 			endif
 		else
+			; Can't produce, so power must be off
+			if HasKeyword(WorkshopParent.WorkshopRadioObject)
+				bRadioOn = false
+				WorkshopParent.UpdateRadioObject(self)
+			endif
 		endif
 		
 		; player comment

@@ -953,6 +953,8 @@ EndFunction
 /;
 ;
 Function AssignNPCToObject(WorkshopObjectScript akWorkshopObject, Actor akNewActor = None, Bool abAutoHandleNPCAssignmentRules = true, Bool abAutoUpdateWorkshopNPCStatus = true, Bool abRecalculateWorkshopResources = true, Bool abGetLock = false)
+ 
+	ModTrace("NPCManager.AssignNPCToObject(" + akWorkshopObject + ", " + akNewActor + ", abAutoHandleNPCAssignmentRules = " + abAutoHandleNPCAssignmentRules + ", abAutoUpdateWorkshopNPCStatus = " + abAutoUpdateWorkshopNPCStatus + ", abRecalculateWorkshopResources = " + abRecalculateWorkshopResources + ", abGetLock = " + abGetLock + ")")
 	if( ! akWorkshopObject)
 		return
 	endif
@@ -987,8 +989,10 @@ Function AssignNPCToObject(WorkshopObjectScript akWorkshopObject, Actor akNewAct
 			
 			; Let workshopObject handle most code - this allows to have item level overrides
 			if(asWorkshopNPC) ; 2.0.4 - We need to call AssignActor or any workshop object overriding it won't be called
+				ModTrace("NPCManager.AssignNPCToObject calling AssignActor on " + akWorkshopObject)
 				akWorkshopObject.AssignActor(asWorkshopNPC)
 			else
+				ModTrace("NPCManager.AssignNPCToObject calling AssignNPC on " + akWorkshopObject)
 				akWorkshopObject.AssignNPC(akNewActor)
 			endif
 			

@@ -1208,7 +1208,7 @@ EndFunction
 /;
 Function AssignActorToObject(WorkshopObjectScript akWorkshopObject, Actor akNewActor = None, Bool abAutoHandleAssignmentRules = true, Bool abAutoUpdateActorStatus = true, Bool abRecalculateWorkshopResources = true) global
 	WorkshopFramework:NPCManager NPCManager = GetNPCManager()
-	
+	Debug.Trace("      WorkshopFunctions.AssignActorToObject called. Calling AssignNPCToObject on " + NPCManager)
 	NPCManager.AssignNPCToObject(akWorkshopObject, akNewActor, abAutoHandleAssignmentRules, abAutoUpdateActorStatus, abRecalculateWorkshopResources, abGetLock = true)
 EndFunction
 
