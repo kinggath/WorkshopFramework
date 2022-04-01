@@ -479,7 +479,7 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 			i = 0
 			iCount = DisabledDoors.GetCount()
 			while(i < iCount)
-				ObjectReference thisDoor = FoundDoors.GetAt(i)
+				ObjectReference thisDoor = DisabledDoors.GetAt(i)
 				if(thisDoor != None && thisDoor.IsDeleted())
 					UnregisterDoor(thisDoor)
 				endif
