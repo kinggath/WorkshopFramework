@@ -1349,6 +1349,29 @@ Location Function MakePermanentNPCFullSettler(Actor akActorRef, Bool abCommandab
 	return ChosenLocation
 EndFunction
 
+; -----------------------------------
+; FauxPowerWorkshopItem
+;
+; Description: Make a workshop object power itself
+; -----------------------------------
+Function FauxPowerWorkshopItem(ObjectReference akRef) global
+	ActorValue PowerRequired = GetPowerRequiredAV()
+	float fPowerReq = akRef.GetValue(PowerRequired)
+	if(fPowerReq > 0)
+		akRef.ModValue(PowerRequired, fPowerReq * -1)
+	endif
+	
+	ActorValue PowerGenerated = GetPowerGeneratedAV()
+	akRef.SetValue(PowerGenerated, 0.1)
+	
+	ActorValue WorkshopResourceObject = GetWorkshopResourceObjectAV()
+	akRef.SetValue(WorkshopResourceObject, 1.0)
+	
+	Keyword FauxPoweredKeyword = GetFauxPoweredKeyword()
+	akRef.AddKeyword(FauxPoweredKeyword)
+EndFunction
+
+
 
 ; -----------------------------------
 ; IsCaravanNPC
@@ -1724,6 +1747,10 @@ Keyword Function GetBrahminLinkKeyword() global
 	return Game.GetFormFromFile(0x0000D769, "WorkshopFramework.esm") as Keyword
 EndFunction
 
+Keyword Function GetFauxPoweredKeyword() global
+	return Game.GetFormFromFile(0x0001DB32, "WorkshopFramework.esm") as Keyword
+EndFunction
+
 ActorValue Function GetSelfActivationCountAV() global
 	return Game.GetFormFromFile(0x00022EE7, "WorkshopFramework.esm") as ActorValue
 EndFunction
@@ -1786,6 +1813,18 @@ EndFunction
 
 ActorValue Function GetRobotPopulationAV() global
 	return Game.GetFormFromFile(0x0012723F, "Fallout4.esm") as ActorValue 
+EndFunction
+
+ActorValue Function GetPowerRequiredAV() global
+	return Game.GetFormFromFile(0x00000330, "Fallout4.esm") as ActorValue 
+EndFunction
+
+ActorValue Function GetPowerGeneratedAV() global
+	return Game.GetFormFromFile(0x0000032E, "Fallout4.esm") as ActorValue 
+EndFunction
+
+ActorValue Function GetWorkshopResourceObjectAV() global
+	return Game.GetFormFromFile(0x00129A8C, "Fallout4.esm") as ActorValue 
 EndFunction
 
 GlobalVariable Function GetCurrentWorkshopIDGlobal() global
