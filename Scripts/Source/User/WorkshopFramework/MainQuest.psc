@@ -240,12 +240,13 @@ EndEvent
 Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
     if(asMenuName == "WorkshopMenu")
 		if(abOpening)
-			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
-			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
+			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetReference() as WorkshopScript
+			WorkshopScript lastWorkshop = LastWorkshopAlias.GetReference() as WorkshopScript
 
-			if(lastWorkshop != currentWorkshop)
-				 ; If this happens, there is likely some serious script lag happening - but since LastWorkshopAlias is used throughout our code, we don't ever want it to be incorrect, so use this opportunity to correct it
-				 if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+			if ( currentWorkshop == none || ! PlayerRef.IsWithinBuildableArea(currentWorkshop) )
+				; check currentWorkshop for none, it seems this can be called before WorkshopParent updates the alias
+				; If this happens, there is likely some serious script lag happening - but since LastWorkshopAlias is used throughout our code, we don't ever want it to be incorrect, so use this opportunity to correct it
+				if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 					currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 				endif
