@@ -148,7 +148,8 @@ Event OnTimer(Int aiTimerID)
 				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					currentWorkshop = None
 				else
-					if(currentWorkshop.myLocation != None)
+					; currentWorkshop can be none, add sanity check
+					if ( currentWorkshop != none && currentWorkshop.myLocation != none )
 						; Player is in limbo area - it is not flagged as part of a specific location (likely just the overworld location - ie. Commonwealth) and so another LocationChange event isn't likely to fire - so instead we'll do a 5 second repeating loop to check if they returned to the location tagged part of the settlement or are out of the build area
 						StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
 
