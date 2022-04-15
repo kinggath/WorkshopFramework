@@ -40,6 +40,8 @@ Group Controllers
 	WorkshopFramework:SettlementLayoutManager Property SettlementLayoutManager Auto Const Mandatory
 	
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
+	
+	WorkshopFramework:UIManager Property UIManager Auto Const Mandatory
 EndGroup
 
 
@@ -148,7 +150,7 @@ Event OnTimer(Int aiTimerID)
 				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					currentWorkshop = None
 				else
-					if(currentWorkshop.myLocation != None)
+					if(currentWorkshop != None && currentWorkshop.myLocation != None)
 						; Player is in limbo area - it is not flagged as part of a specific location (likely just the overworld location - ie. Commonwealth) and so another LocationChange event isn't likely to fire - so instead we'll do a 5 second repeating loop to check if they returned to the location tagged part of the settlement or are out of the build area
 						StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
 
@@ -244,7 +246,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 			if(lastWorkshop != currentWorkshop)
 				 ; If this happens, there is likely some serious script lag happening - but since LastWorkshopAlias is used throughout our code, we don't ever want it to be incorrect, so use this opportunity to correct it
-				 if( ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+				 if(currentWorkshop == None || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
 					; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 					currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 				endif
@@ -273,6 +275,13 @@ EndEvent
 ; ---------------------------------------------
 
 Function HandleInstallModChanges()
+	Int iVersion210 = 53
+	if(iInstalledVersion < iVersion210)
+		UIManager.Stop()
+		Utility.Wait(1.0)
+		UIManager.Start()
+	endif
+	
 	if(iInstalledVersion < 26)
 		PlayerRef.AddPerk(ActivationPerk)
 	endif
