@@ -106,7 +106,7 @@ EndEvent
 
 
 Event ObjectReference.OnOpen(ObjectReference akRef, ObjectReference akOpenedBy)
-	if(Setting_DoorManagement.GetValue() == 0 || (akOpenedBy != PlayerRef && Setting_AutoCloseDoorsOpenedByPlayer.GetValue() == 0) || (akOpenedBy == PlayerRef && Setting_AutoCloseDoorsOpenedByNPCs.GetValue() == 0) || akRef.HasKeyword(DoNotAutoCloseMe))
+	if(Setting_DoorManagement.GetValue() == 0 || (akOpenedBy == PlayerRef && Setting_AutoCloseDoorsOpenedByPlayer.GetValue() == 0) || (akOpenedBy != PlayerRef && Setting_AutoCloseDoorsOpenedByNPCs.GetValue() == 0) || akRef.HasKeyword(DoNotAutoCloseMe))
 		return
 	endif
 	
@@ -266,7 +266,15 @@ Int Function FindQueueIndex(ObjectReference akRef)
 		
 			if(index < 0)
 				index = DoorsToClose04.Find(akRef)
+				
+				if(index >= 0)
+					index += 384
+				endif
+			else
+				index += 256
 			endif
+		else
+			index += 128
 		endif
 	endif
 	
@@ -294,7 +302,7 @@ EndFunction
 Function AddToQueue(ObjectReference akRef)
 	Int index = FindQueueIndex(akRef)
 	
-	if(index <= 0)
+	if(index < 0)
 		int iNewIndex = NextQueueSlot
 		
 		if(iNewIndex >= 384)
@@ -385,47 +393,33 @@ Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
 	bAllDoorTogglingInProgress = true
 	bOpeningAllDoors = abOpen
 	
-	; Use an event to find all doors linked to the ref
-	int iCallerID = Utility.RandomInt(0, 999999)
-	
-	if(EventKeyword_DoorFinder.SendStoryEventAndWait(akWorkshopRef.myLocation, aiValue1 = iCallerID))
-		Utility.Wait(0.1) ; Give finder a moment to configure it's caller ID variable
-		WorkshopFramework:Quests:DoorFinder DoorFinder = None
-		int iQuestIndex = 0
-		while(iQuestIndex < DoorFinders.Length && DoorFinder == None)
-			if(DoorFinders[iQuestIndex].iCallerID == iCallerID)
-				DoorFinder = DoorFinders[iQuestIndex]
+	WorkshopFramework:Quests:DoorFinder DoorFinder = GetDoorFinder(akWorkshopRef)
+		
+	if(DoorFinder != None)
+		int i = 0
+		RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
+		
+		while(i < FoundDoors.GetCount())
+			ObjectReference thisDoor = FoundDoors.GetAt(i)
+			if( ! thisDoor.IsDisabled())
+				if( ! abOpen)
+					if( ! thisDoor.HasKeyword(DoNotAutoCloseMe))
+						thisDoor.SetOpen(false)
+					endif
+				else
+					; Unregister temporarily to avoid a bunch of event spam
+					UnregisterDoor(thisDoor)
+					
+					thisDoor.SetOpen(true)
+					
+					RegisterDoor(thisDoor)
+				endif
 			endif
 			
-			iQuestIndex += 1
+			i += 1
 		endWhile
 		
-		if(DoorFinder != None)
-			int i = 0
-			RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
-			
-			while(i < FoundDoors.GetCount())
-				ObjectReference thisDoor = FoundDoors.GetAt(i)
-				if( ! thisDoor.IsDisabled())
-					if( ! abOpen)
-						if( ! thisDoor.HasKeyword(DoNotAutoCloseMe))
-							thisDoor.SetOpen(false)
-						endif
-					else
-						; Unregister temporarily to avoid a bunch of event spam
-						UnregisterDoor(thisDoor)
-						
-						thisDoor.SetOpen(true)
-						
-						RegisterDoor(thisDoor)
-					endif
-				endif
-				
-				i += 1
-			endWhile
-			
-			DoorFinder.Stop()
-		endif
+		DoorFinder.Stop()
 	endif
 	
 	bAllDoorTogglingInProgress = false	
@@ -445,50 +439,36 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 	
 	bDoorRegistrationInProgress[iWorkshopID] = true
 	
-	; Use an event to find all doors linked to the ref
-	int iCallerID = Utility.RandomInt(0, 999999)
-	
-	if(EventKeyword_DoorFinder.SendStoryEventAndWait(akWorkshopRef.myLocation, aiValue1 = iCallerID))
-		Utility.Wait(0.1) ; Give finder a moment to configure it's caller ID variable
-		WorkshopFramework:Quests:DoorFinder DoorFinder = None
-		int iQuestIndex = 0
-		while(iQuestIndex < DoorFinders.Length && DoorFinder == None)
-			if(DoorFinders[iQuestIndex].iCallerID == iCallerID)
-				DoorFinder = DoorFinders[iQuestIndex]
+	WorkshopFramework:Quests:DoorFinder DoorFinder = GetDoorFinder(akWorkshopRef)
+		
+	if(DoorFinder != None)		
+		int i = 0
+		RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
+		int iCount = FoundDoors.GetCount()
+		
+		while(i < iCount)
+			ObjectReference thisDoor = FoundDoors.GetAt(i)
+			if(thisDoor != None)
+				RegisterDoor(thisDoor)
 			endif
 			
-			iQuestIndex += 1
+			i += 1
 		endWhile
 		
-		if(DoorFinder != None)		
-			int i = 0
-			RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
-			int iCount = FoundDoors.GetCount()
+		; Clean up deleted doors
+		RefCollectionAlias DisabledDoors = DoorFinder.DisabledDoors
+		i = 0
+		iCount = DisabledDoors.GetCount()
+		while(i < iCount)
+			ObjectReference thisDoor = FoundDoors.GetAt(i)
+			if(thisDoor != None && thisDoor.IsDeleted())
+				UnregisterDoor(thisDoor)
+			endif
 			
-			while(i < iCount)
-				ObjectReference thisDoor = FoundDoors.GetAt(i)
-				if(thisDoor != None)
-					RegisterDoor(thisDoor)
-				endif
-				
-				i += 1
-			endWhile
-			
-			; Clean up deleted doors
-			RefCollectionAlias DisabledDoors = DoorFinder.DisabledDoors
-			i = 0
-			iCount = DisabledDoors.GetCount()
-			while(i < iCount)
-				ObjectReference thisDoor = FoundDoors.GetAt(i)
-				if(thisDoor != None && thisDoor.IsDeleted())
-					UnregisterDoor(thisDoor)
-				endif
-				
-				i += 1
-			endWhile
-			
-			DoorFinder.Stop()
-		endif
+			i += 1
+		endWhile
+		
+		DoorFinder.Stop()
 	endif
 	
 	bDoorRegistrationInProgress[iWorkshopID] = false
@@ -503,4 +483,43 @@ Function SettingsUpdated()
 		; Let's make sure events for this settlement are registered for and all doors are registered
 		HandlePlayerEnteredSettlement(kWorkshopRef)
 	endif
+EndFunction
+
+
+
+WorkshopFramework:Quests:DoorFinder Function GetDoorFinder(WorkshopScript akWorkshopRef)
+	if ( akWorkshopRef == none )
+		return none
+	endif
+
+	; Use an event to find all doors linked to the ref
+	int iCallerID = Utility.RandomInt(0, 999999)
+	WorkshopFramework:Quests:DoorFinder DoorFinder = None
+
+	if ( EventKeyword_DoorFinder.SendStoryEventAndWait(akWorkshopRef.myLocation, aiValue1 = iCallerID) )
+		Utility.Wait(0.1) ; Give finder a moment to configure it's caller ID variable
+		int iQuestIndex = 0
+		while(iQuestIndex < DoorFinders.Length && DoorFinder == None)
+			if(DoorFinders[iQuestIndex].iCallerID == iCallerID)
+				DoorFinder = DoorFinders[iQuestIndex]
+			endif
+
+			iQuestIndex += 1
+		endWhile
+	endif
+
+	return DoorFinder
+EndFunction
+
+Function ForceRegisterAllDoors() DebugOnly
+	; debug function for force register all settlement doors
+	WorkshopScript kWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+
+	if ( kWorkshopRef == none )
+		return
+	endif
+
+	int iWorkshopID = kWorkshopRef.GetWorkshopID()
+	bDoorRegistrationInProgress[iWorkshopID] = false	; make sure this is false so we do not return early when calling RegisterAllDoors
+	RegisterAllDoors(kWorkshopRef)
 EndFunction
