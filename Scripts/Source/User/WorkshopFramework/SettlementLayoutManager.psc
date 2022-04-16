@@ -1096,13 +1096,21 @@ Function BuildSettlement(WorkshopScript akWorkshopRef)
 			int iCallbackTrackingIndex = FindAvailableLayoutTrackingSlot(Layouts[i])
 			
 			; Restore vanilla objects
-			Layouts[i].RestoreVanillaObjects(akWorkshopRef)
+			if(akWorkshopRef.Is3dLoaded())
+				Layouts[i].RestoreVanillaObjects(akWorkshopRef)
+			endif
 			
 			; Send our tracking index as a custom callback ID so we can track placement\
 				; Build non-workshop resources
-			int iThreadsStarted = Layouts[i].PlaceNonResourceObjects(akWorkshopRef, iCallbackTrackingIndex, abProtectFromScrapPhase = bIsScrappingQueued)
+			int iNonResourceThreadsStarted = Layouts[i].PlaceNonResourceObjects(akWorkshopRef, iCallbackTrackingIndex, abProtectFromScrapPhase = bIsScrappingQueued)
+			int iThreadsStarted = iNonResourceThreadsStarted
+			
+			ModTrace("[SettlementLayoutManager] Started " + iNonResourceThreadsStarted + " for layout " + Layouts[i] + " NonResourceObjects.")
 				; Build workshop resources
-			iThreadsStarted += Layouts[i].PlaceWorkshopResources(akWorkshopRef, iCallbackTrackingIndex, abProtectFromScrapPhase = bIsScrappingQueued)
+			int iResourceThreadsStarted = Layouts[i].PlaceWorkshopResources(akWorkshopRef, iCallbackTrackingIndex, abProtectFromScrapPhase = bIsScrappingQueued)
+			iThreadsStarted += iResourceThreadsStarted
+			
+			ModTrace("[SettlementLayoutManager] Started " + iResourceThreadsStarted + " for layout " + Layouts[i] + " WorkshopResources.")
 			
 			; If prediction was off, correct it
 			LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks -= Layouts[i].GetPredictedItemCount() - iThreadsStarted
@@ -1130,30 +1138,25 @@ Function PowerUpSettlement(WorkshopScript akWorkshopRef, WorkshopFramework:Weapo
 	
 	if(aSpecificLayout != None)
 		int iIndex = Layouts.Find(aSpecificLayout)
-		if(iIndex < 0 || ! akWorkshopRef.LayoutPlacementComplete[iIndex] || aSpecificLayout.PowerConnections == None || aSpecificLayout.PowerConnections.Length == 0)
+		if(iIndex < 0 || ! akWorkshopRef.LayoutPlacementComplete[iIndex])
 			return
 		endif		
 	else
-		Bool bPowerDataFound = false
 		int i = 0
-		while(i < Layouts.Length && ! bPowerDataFound)
-			if(akWorkshopRef.LayoutPlacementComplete[i])
-				if(Layouts[i].PowerConnections != None && Layouts[i].PowerConnections.Length > 0)
-					bPowerDataFound = true
-				endif
+		while(i < Layouts.Length)
+			if( ! akWorkshopRef.LayoutPlacementComplete[i])
+				return
 			endif
 			
 			i += 1
 		endWhile
-		
-		if( ! bPowerDataFound)
-			return
-		endif
 	endif
 	
 	
 	if(aSpecificLayout != None)		
 		aSpecificLayout.PowerUp(akWorkshopRef)
+		
+		
 	else
 		int i = 0
 		while(i < Layouts.Length)
@@ -1165,8 +1168,33 @@ Function PowerUpSettlement(WorkshopScript akWorkshopRef, WorkshopFramework:Weapo
 		endWhile
 	endif
 	
+	ShutOffSkipPowerItems(akWorkshopRef)
+	
 	int iWorkshopID = akWorkshopRef.GetWorkshopID()
 	UpdatePowerUpPhaseStatus(iWorkshopID, true)
+EndFunction
+
+
+Function ShutOffSkipPowerItems(WorkshopScript akWorkshopRef)
+	if( ! akWorkshopRef.Is3dLoaded())
+		return
+	endif
+	
+	Formlist SkipPowerOnList = GetSkipPowerOnList()
+	ObjectReference[] ShutMeDown = akWorkshopRef.FindAllReferencesOfType(SkipPowerOnList, 20000.0) 
+	
+	int i = 0
+	while(i < ShutMeDown.Length)
+		ShutMeDown[i].SetOpen(false) ; This will turn off any switches on the devices
+		ShutMeDown[i].OnPowerOff()
+						
+		i += 1
+	endWhile
+EndFunction
+
+
+Formlist Function GetSkipPowerOnList()
+	return Game.GetFormFromFile(0x000158CD, "WorkshopFramework.esm") as Formlist
 EndFunction
 
 
