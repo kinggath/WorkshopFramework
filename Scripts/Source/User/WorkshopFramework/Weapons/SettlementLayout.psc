@@ -1043,23 +1043,6 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 EndFunction
 
 
-Function ShutOffSkipPowerItems(WorkshopScript akWorkshopRef)
-	if( ! akWorkshopRef.Is3dLoaded())
-		return
-	endif
-	
-	Formlist SkipPowerOnList = GetSkipPowerOnList()
-	ObjectReference[] ShutMeDown = akWorkshopRef.FindAllReferencesOfType(SkipPowerOnList, 20000.0) 
-	
-	int i = 0
-	while(i < ShutMeDown.Length)
-		ShutMeDown[i].SetOpen(false) ; This will turn off any switches on the devices
-		ShutMeDown[i].OnPowerOff()
-						
-		i += 1
-	endWhile
-EndFunction
-
 
 ObjectReference Function FindPowereableRef(PowerConnectionLookup[] aLookupGroup, PowerConnectionMap aPowerConnectionMap, Bool abSearchForIndexA = true)
 	if(aLookupGroup.Length > 0)
@@ -1125,10 +1108,6 @@ EndFunction
 
 Keyword Function GetWorkshopKeyword()
 	return Game.GetFormFromFile(0x00054BA7, "Fallout4.esm") as Keyword
-EndFunction
-
-Formlist Function GetSkipPowerOnList()
-	return Game.GetFormFromFile(0x000158CD, "WorkshopFramework.esm") as Formlist
 EndFunction
 
 ActorValue Function GetWorkshopPowerConnectionAV()
