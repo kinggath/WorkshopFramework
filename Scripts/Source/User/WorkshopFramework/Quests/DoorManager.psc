@@ -456,9 +456,9 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 		endWhile
 		
 		; Clean up deleted doors
-		RefCollectionAlias DisabledDoors = DoorFinder.DisabledDoors
+		FoundDoors = DoorFinder.DisabledDoors
 		i = 0
-		iCount = DisabledDoors.GetCount()
+		iCount = FoundDoors.GetCount()
 		while(i < iCount)
 			ObjectReference thisDoor = FoundDoors.GetAt(i)
 			if(thisDoor != None && thisDoor.IsDeleted())
