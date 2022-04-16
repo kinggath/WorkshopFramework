@@ -227,13 +227,13 @@ Bool bUpdatingFoodTypesBlock  ; 1.0.4
 ObjectReference[] RouteContainers ; Holds containers we'll monitor for OnItemAdded to re-distribute items to appropriate containers
 
 Int iMaxProduceItemRecordIndex = 1023
-Int iNextWorkshopTargetContainerRecordIndex = 0
+Int iNextWorkshopTargetContainerRecordIndex = -1
 Int Property NextWorkshopTargetContainerRecordIndex
 	Int Function Get()
 		iNextWorkshopTargetContainerRecordIndex += 1
 		
 		if(iNextWorkshopTargetContainerRecordIndex > iMaxProduceItemRecordIndex)
-			iNextWorkshopTargetContainerRecordIndex = 1 ; 1.0.4 - Never use 0, since we're setting this index as an AV, we need to be able to treat 0 as the container not being part of this system
+			iNextWorkshopTargetContainerRecordIndex = 0
 		endif
 		
 		return iNextWorkshopTargetContainerRecordIndex
@@ -301,10 +301,10 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		int iWorkshopID = thisWorkshop.GetWorkshopID()
 		
 		; Likely one of our temporary containers
-		int iWorkshopTargetContainerIndex = akAddedTo.GetValue(WorkshopTargetContainerHolderValue) as Int
+		int iWorkshopTargetContainerIndex = (akAddedTo.GetValue(WorkshopTargetContainerHolderValue) - 1) as Int  ; Have to subtract 1 as we added one when setting it to ensure we never try and use 0 as the AV value
 		
 		ModTrace("[WSFW]  >>>>>>>>>>>>>> OnItemAdded Event: WorkshopTargetContainerIndex for temp container: " + iWorkshopTargetContainerIndex)
-		if(iWorkshopTargetContainerIndex > 0)
+		if(iWorkshopTargetContainerIndex >= 0)
 			WorkshopTargetContainer WorkshopTargetData = GetWorkshopTargetContainerRecord(iWorkshopTargetContainerIndex)
 			
 			ObjectReference kSpawnPoint = SafeSpawnPoint.GetRef()
@@ -1085,12 +1085,12 @@ Function ProcessSurplusResources()
 					; Production record specified a specific destination
 					kContainer = GetContainer(thisWorkshop, kRecord.ContainerKeyword)	
 
-					ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to specific container: " + kContainer)				
+					ModTrace("[WSFW]             Moving the " + kRecord.TemporaryContainer.GetItemCount() + " surplus items from " + kRecord.TemporaryContainer + " to specific container: " + kContainer )				
 				else
 					; Send to route container so we can determine where things should go based on type
 					kContainer = RouteContainers[kRecord.iWorkshopID]
 					
-					ModTrace("[WSFW]             Moving all surplus items from " + kRecord.TemporaryContainer + " to routing container: " + kContainer)
+					ModTrace("[WSFW]             Moving the " + kRecord.TemporaryContainer.GetItemCount() + " surplus items from " + kRecord.TemporaryContainer + " to routing container: " + kContainer)
 					; Prevent OnItemAdded spam
 					Utility.Wait(fThrottleContainerRouting)
 				endif
@@ -1789,8 +1789,7 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 		; Set up a tracking record so we can pair the destination container keyword and workshop ID with the final created items
 	int iWorkshopTargetContainerIndex = PrepareWorkshopTargetContainerRecord_Lock(iWorkshopID, aTargetContainerKeyword)
 	
-	if(iWorkshopTargetContainerIndex < 1) ; Couldn't prep a record - just drop it in the container directly
-	; 1.0.4 - Changed check to < 1, we don't want to use index 0 as it makes it impossible to check for the index as an AV without a potential false positive
+	if(iWorkshopTargetContainerIndex < 0) ; Couldn't prep a record - just drop it in the container directly
 		; This should never happen as we're just looping through the indexes, but just to be thorough....
 		ObjectReference kContainer = GetContainer(akWorkshopRef, aTargetContainerKeyword)
 					
@@ -1801,7 +1800,7 @@ Function ProduceItems(Form aProduceMe, WorkshopScript akWorkshopRef, Int aiCount
 	else
 		; Setup our temp container and tag it with the WorkshopTargetContainerRecord index
 		ObjectReference kTempContainer = SafeSpawnPoint.GetRef().PlaceAtMe(DummyContainerForm, abDeleteWhenAble = false)
-		kTempContainer.SetValue(WorkshopTargetContainerHolderValue, iWorkshopTargetContainerIndex)
+		kTempContainer.SetValue(WorkshopTargetContainerHolderValue, iWorkshopTargetContainerIndex + 1) ; Can't use 0, so always adding 1. We'll subtract 1 when checking later.
 		kTempContainer.SetLinkedRef(akWorkshopRef, WorkshopItemKeyword)
 		
 		; After the item is created in the temporary container, we'll check the AV, and record the final actual items that are being produced. The consumption cycle will then consume things from the temporary containers and the Workshop Workbench, when it finishes, it will create the remaining surplus items in the corresponding containers and clear all of the temporary containers/records.
