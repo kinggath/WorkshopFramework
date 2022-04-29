@@ -36,6 +36,7 @@ EndGroup
 
 Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
+	WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
 EndGroup
 
 Group Messages	
@@ -140,7 +141,15 @@ String Function GetDisplayName(ObjectReference akObjectRef)
 	return sName
 EndFunction
 
-
+Function TestAttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
+	ObjectReference kWireRef = akOriginRef.AttachWire(akTargetRef, akSpline)
+	
+	if(kWireRef != None)
+		kWireRef.Enable(false)
+	else
+		Debug.MessageBox("Failed to attach wire.")
+	endif
+EndFunction
 
 ObjectReference Function AttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
 	return akOriginRef.AttachWire(akTargetRef, akSpline)
@@ -266,7 +275,7 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 		ModTrace("abFixAndScan == true, Rescan with iFix == 0: " + akWorkshopRef + " results: " + Results)
 		if(abResetIfFixFails && Results.broken)
 			ModTrace("Corrupt power grid detected, calling WSFWID_ResetPowerGrid on " + akWorkshopRef + ".")
-			WSFWID_ResetPowerGrid(akWorkshopRef)
+			WSFWID_ResetPowerGrid(akWorkshopRef, abAutoRan = true)
 		endif
 	endif
 	
@@ -277,7 +286,7 @@ Function MCM_RepairPowerGrid()
 	bool bSuccess = WSFWID_CheckAndFixPowerGrid(akWorkshopRef = None, abFixAndScan = true, abResetIfFixFails = false)
 EndFunction
 
-Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None)
+Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None, Bool abAutoRan = false)
 	if(akWorkshopRef == None)
 		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
 		
@@ -289,13 +298,25 @@ Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None)
 	
 	Bool bSuccess = ResetPowerGrid(akWorkshopRef)
 	
+	if(bSuccess)
+		if(abAutoRan)
+			if(PlayerRef.IsWithinBuildableArea(akWorkshopRef))
+				WSFW_Main.OfferPostResetPowerGridRebuild(akWorkshopRef)
+			else
+				akWorkshopRef.bPowerGridRebuildOfferNeeded = true
+				
+				WSFW_Main.ShowPowerGridResetWarning(akWorkshopRef)
+			endif
+		endif
+	endif
+	
 	ModTrace("ResetPowerGrid " + akWorkshopRef + " returned: " + bSuccess)
 	
 	return bSuccess
 EndFunction
 
 Function MCM_ResetPowerGrid()
-	bool bSuccess = WSFWID_ResetPowerGrid(akWorkshopRef = None)
+	bool bSuccess = WSFWID_ResetPowerGrid(akWorkshopRef = None, abAutoRan = false)
 EndFunction
 
 Bool Function WSFWID_ScanPowerGrid(WorkshopScript akWorkshopRef = None)
@@ -377,7 +398,7 @@ Function ShowRemoteLocationManagementMenu()
 			if(iChoice == 0)
 				return ; Cancel
 			else
-				Bool bSuccess = WSFWID_ResetPowerGrid(kChosenWorkshop)
+				Bool bSuccess = WSFWID_ResetPowerGrid(kChosenWorkshop, abAutoRan = false)
 				
 				Complete_ResetPowerGrid.Show()
 			endif

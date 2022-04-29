@@ -181,14 +181,18 @@ Bool Property bPlayerIsEnemy = false Auto Hidden
 Int Property iCreateInvadingSettlers = -1 Auto Hidden
 
 	; Attackers
-ActorBase Property SpawnAttackerForm Auto Hidden
-Int Property iSpawnAttackers = 0 Auto Hidden ; This number of SpawnAttackerForm will be created
+AssaultSpawnCount[] Property SpawnAttackerCounts Auto Hidden ; 2.1.2 - Replacing SpawnAttackerForm and iSpawnAttackers
+
+ActorBase Property SpawnAttackerForm Auto Hidden ; 2.1.2 - Maintaining for backward compatibility
+Int Property iSpawnAttackers = 0 Auto Hidden ; 2.1.2 - Maintaining for backward compatibility This number of SpawnAttackerForm will be created
 RefCollectionAlias Property OtherAttackers Auto Hidden ; collection from another quest of additional attackers
 Faction Property AttackingFaction Auto Hidden
 
 	; Defenders
-ActorBase Property SpawnDefenderForm Auto Hidden
-Int Property iSpawnDefenders = 0 Auto Hidden ; This number of SpawnDefenderForm will be created
+AssaultSpawnCount[] Property SpawnDefenderCounts Auto Hidden ; 2.1.2 - Replacing SpawnDefenderForm and iSpawnDefenders
+
+ActorBase Property SpawnDefenderForm Auto Hidden ; 2.1.2 - Maintaining for backward compatibility
+Int Property iSpawnDefenders = 0 Auto Hidden ; 2.1.2 - Maintaining for backward compatibility  This number of SpawnDefenderForm will be created
 RefCollectionAlias Property OtherDefenders Auto Hidden ; collection from another quest of additional guards
 Faction Property DefendingFaction Auto Hidden
 
@@ -556,25 +560,13 @@ Function SetupAssault()
 	
 	; Spawn extra defenders
 	if(iSpawnDefenders > 0 && SpawnDefenderForm != None)
+		SpawnDefenders(SpawnDefenderForm, iSpawnDefenders, kDefendFromRef)
+	endif
+	
+	if(SpawnDefenderCounts != None)
 		int i = 0
-		while(i < iSpawnDefenders)
-			Actor kDefenderRef = kDefendFromRef.PlaceActorAtMe(SpawnDefenderForm)
-			
-			if(kDefenderRef)
-				SpawnedDefendersAlias.AddRef(kDefenderRef)
-				Defenders.AddRef(kDefenderRef)
-				DefenderFactionAlias.AddRef(kDefenderRef)
-				
-				if(iCurrentAssaultType != AssaultManager.iType_Defend)
-					; Spawned NPCs should just be killed unless unique/essential already
-					if(ShouldForceSubdue(kDefenderRef))
-						SubdueToComplete.AddRef(kDefenderRef)
-					else
-						ClearProtectedStatus(kDefenderRef)
-						KillToComplete.AddRef(kDefenderRef)					
-					endif
-				endif
-			endif
+		while(i < SpawnDefenderCounts.Length)
+			SpawnDefenders(SpawnDefenderCounts[i].SpawnActor, SpawnDefenderCounts[i].iCount, kDefendFromRef)
 			
 			i += 1
 		endWhile
@@ -583,30 +575,15 @@ Function SetupAssault()
 	; Setup attackers outside of the settlement somewhere
 	ObjectReference kAttackFrom = AttackFromAlias.GetRef()
 	
-	; Spawn extra attackers
+	; Spawn extra attackers	
 	if(iSpawnAttackers > 0 && SpawnAttackerForm != None)
+		SpawnAttackers(SpawnAttackerForm, iSpawnAttackers, kAttackFrom)
+	endif
+	
+	if(SpawnAttackerCounts != None)
 		int i = 0
-		while(i < iSpawnAttackers)
-			Actor kAttackerRef = kAttackFrom.PlaceActorAtMe(SpawnAttackerForm)
-			
-			if(kAttackerRef)
-				SpawnedAttackersAlias.AddRef(kAttackerRef)
-				Attackers.AddRef(kAttackerRef)
-				AttackerFactionAlias.AddRef(kAttackerRef)
-				
-				if(iCurrentAssaultType == AssaultManager.iType_Defend)
-					; Spawned NPCs should just be killed unless unique/essential already
-					if(ShouldForceSubdue(kAttackerRef))
-						SubdueToComplete.AddRef(kAttackerRef)
-					else
-						if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
-							ClearProtectedStatus(kAttackerRef)
-						endif
-						
-						KillToComplete.AddRef(kAttackerRef)
-					endif
-				endif
-			endif
+		while(i < SpawnAttackerCounts.Length)
+			SpawnAttackers(SpawnAttackerCounts[i].SpawnActor, SpawnAttackerCounts[i].iCount, kAttackFrom)
 			
 			i += 1
 		endWhile
@@ -629,7 +606,6 @@ Function SetupAssault()
 		else
 			int i = 0
 			int iCount = OtherAttackers.GetCount()
-			ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
 			
 			while(i < iCount)
 				Actor thisActor = OtherAttackers.GetAt(i) as Actor
@@ -637,7 +613,7 @@ Function SetupAssault()
 				if(thisActor)
 					; Move OtherAttackers into position
 					if(bMoveAttackersToStartPoint)
-						thisActor.MoveTo(kAttackFromRef)
+						thisActor.MoveTo(kAttackFrom)
 					endif
 				endif
 				
@@ -695,6 +671,62 @@ Function SetupAssault()
 			Stop()
 		endif		
 	endif
+EndFunction
+
+
+; 2.1.2 - Refactoring
+Function SpawnDefenders(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference akSpawnAt)
+	int i = 0
+	while(i < aiSpawnCount)
+		Actor kDefenderRef = akSpawnAt.PlaceActorAtMe(aSpawnMe)
+		
+		if(kDefenderRef)
+			SpawnedDefendersAlias.AddRef(kDefenderRef)
+			Defenders.AddRef(kDefenderRef)
+			DefenderFactionAlias.AddRef(kDefenderRef)
+			
+			if(iCurrentAssaultType != AssaultManager.iType_Defend)
+				; Spawned NPCs should just be killed unless unique/essential already
+				if(ShouldForceSubdue(kDefenderRef))
+					SubdueToComplete.AddRef(kDefenderRef)
+				else
+					ClearProtectedStatus(kDefenderRef)
+					KillToComplete.AddRef(kDefenderRef)					
+				endif
+			endif
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+; 2.1.2 - Refactoring
+Function SpawnAttackers(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference akSpawnAt)
+	int i = 0
+	while(i < aiSpawnCount)
+		Actor kAttackerRef = akSpawnAt.PlaceActorAtMe(aSpawnMe)
+		
+		if(kAttackerRef)
+			SpawnedAttackersAlias.AddRef(kAttackerRef)
+			Attackers.AddRef(kAttackerRef)
+			AttackerFactionAlias.AddRef(kAttackerRef)
+			
+			if(iCurrentAssaultType == AssaultManager.iType_Defend)
+				; Spawned NPCs should just be killed unless unique/essential already
+				if(ShouldForceSubdue(kAttackerRef))
+					SubdueToComplete.AddRef(kAttackerRef)
+				else
+					if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
+						ClearProtectedStatus(kAttackerRef)
+					endif
+					
+					KillToComplete.AddRef(kAttackerRef)
+				endif
+			endif
+		endif
+		
+		i += 1
+	endWhile
 EndFunction
 
  ; 1.1.3
@@ -1249,12 +1281,14 @@ Function CleanupAssault()
 	bPlayerIsEnemy = false
 	iCreateInvadingSettlers = -1	
 	
+	SpawnAttackerCounts = None
 	SpawnAttackerForm = None
 	iSpawnAttackers = 0
 	OtherAttackers = None
 	bMoveAttackersToStartPoint = true
 	SpawnDefenderForm = None
 	iSpawnDefenders = 0
+	SpawnDefenderCounts = None
 	OtherDefenders = None
 	bMoveDefendersToCenterPoint = true
 	; 1.1.2 - Hide all objectives

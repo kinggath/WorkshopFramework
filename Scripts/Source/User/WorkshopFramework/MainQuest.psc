@@ -42,6 +42,7 @@ Group Controllers
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	
 	WorkshopFramework:UIManager Property UIManager Auto Const Mandatory
+	WorkshopFramework:WorkshopObjectManager Property WorkshopObjectManager Auto Const Mandatory
 EndGroup
 
 
@@ -78,6 +79,15 @@ Group Messages
 	Message Property ManageSettlementMenu Auto Const Mandatory
 	Message Property ScrapConfirmation Auto Const Mandatory
     Message Property IncreaseLimitsMenu Auto Const Mandatory
+	Message Property RepairPowerGridConfirm Auto Const Mandatory
+	Message Property AutoWireConfirm Auto Const Mandatory
+	Message Property FauxPowerConfirm Auto Const Mandatory
+	Message Property DestroyPowerGridConfirm Auto Const Mandatory
+	Message Property ClaimSettlementConfirm  Auto Const Mandatory
+	Message Property UnclaimSettlementConfirm  Auto Const Mandatory
+	Message Property PowerToolsMenu Auto Const Mandatory
+	Message Property PowerGridResetWarning Auto Const Mandatory
+	Message Property PostResetPowerGridRebuildConfirm Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -407,6 +417,12 @@ Function HandleLocationChange(Location akNewLoc)
 
 		StartTimer(1.0, LocationChangeTimerID)
 	endif
+	
+	WorkshopScript kWorkshopRef = WorkshopParent.GetWorkshopFromLocation(akNewLoc)
+	
+	if(kWorkshopRef != None && kWorkshopRef.bPowerGridRebuildOfferNeeded)
+		OfferPostResetPowerGridRebuild(kWorkshopRef)
+	endif
 EndFunction
 
 
@@ -420,12 +436,11 @@ Function PresentManageSettlementMenu(WorkshopScript akWorkshopRef)
 	int iChoice = ManageSettlementMenu.Show()
 
 	if(iChoice == 0)
-		; PresentLayoutManagementMenu triggers a series of menus that loop, let's not get this main quest caught up in the thread - so instead trigger a new thread via CallFunctionNoWait
-		Var[] kArgs = new Var[1]
-		kArgs[0] = akWorkshopRef
-
-		SettlementLayoutManager.CallFunctionNoWait("PresentLayoutManagementMenu", kArgs)
+		 ; build limits
+        PresentIncreaseLimitsMenu(akWorkshopRef)
 	elseif(iChoice == 1)
+		PresentPowerToolsMenu(akWorkshopRef)
+	elseif(iChoice == 2)
 		; Scrap Settlement
 		int iConfirm = ScrapConfirmation.Show()
 
@@ -441,14 +456,114 @@ Function PresentManageSettlementMenu(WorkshopScript akWorkshopRef)
 			; Scrap entire settlement
 			SettlementLayoutManager.ScrapSettlement(akWorkshopRef, abScrapLinkedAndCollectLootables = true)
 		endif
-	elseif(iChoice == 2)
-        ; build limits
-        PresentIncreaseLimitsMenu(akWorkshopRef)
 	elseif(iChoice == 3)
+		; PresentLayoutManagementMenu triggers a series of menus that loop, let's not get this main quest caught up in the thread - so instead trigger a new thread via CallFunctionNoWait
+		Var[] kArgs = new Var[1]
+		kArgs[0] = akWorkshopRef
+
+		SettlementLayoutManager.CallFunctionNoWait("PresentLayoutManagementMenu", kArgs)
+	elseif(iChoice == 4)
+		PresentOwnershipMenu(akWorkshopRef)
+	elseif(iChoice == 5)
 		; Cancel
 	endif
+EndFunction
 
-	; TODO - Claim/Unclaim workshop option  (Force take or give up control of workshop)
+
+Function ShowPowerGridResetWarning(WorkshopScript akWorkshopRef)
+	Location HoldLocation = PreviousLocation.GetLocation()
+	
+	PreviousLocation.ForceLocationTo(akWorkshopRef.myLocation)
+	PowerGridResetWarning.Show()
+	
+	if(HoldLocation != None)
+		PreviousLocation.ForceLocationTo(HoldLocation)
+	else
+		PreviousLocation.Clear()
+	endif
+EndFunction
+
+Function OfferPostResetPowerGridRebuild(WorkshopScript akWorkshopRef)
+	akWorkshopRef.bPowerGridRebuildOfferNeeded = false
+	int iConfirm = PostResetPowerGridRebuildConfirm.Show()
+	
+	if(iConfirm == 0)
+		; Cancel
+	else
+		WorkshopObjectManager.RewireSettlement(akWorkshopRef)
+	endif
+EndFunction
+
+
+Function PresentPowerToolsMenu(WorkshopScript akWorkshopRef = None)
+	if( ! akWorkshopRef)
+		akWorkshopRef = GetNearestWorkshop(PlayerRef)
+		
+		if(akWorkshopRef == None)
+			return
+		endif
+	endif
+	
+	Bool bReshowMenu = false
+	
+	int iConfirm = PowerToolsMenu.Show()
+	
+	if(iConfirm == 0)
+		; cancel
+	elseif(iConfirm == 1)
+		; Auto Wire
+		iConfirm = AutoWireConfirm.Show()
+		if(iConfirm == 0)
+			; Cancel
+			bReshowMenu = true
+		elseif(iConfirm == 1)
+			WorkshopObjectManager.AutoWireSettlement(akWorkshopRef)
+		endif
+	elseif(iConfirm == 2)
+		; Convert to Faux Powered
+		iConfirm = FauxPowerConfirm.Show()
+		if(iConfirm == 0)
+			; Cancel
+			bReshowMenu = true
+		elseif(iConfirm == 1)
+			WorkshopObjectManager.FauxPowerSettlement(akWorkshopRef)
+		endif
+	elseif(iConfirm == 3)
+		; Rebuild Power Grid and Wiring
+		if( ! WorkshopObjectManager.RewireSettlement(akWorkshopRef))
+			bReshowMenu = true
+		endif
+	elseif(iConfirm == 4)
+		; Repair Power Grid
+		iConfirm = RepairPowerGridConfirm.Show()
+		if(iConfirm == 0)
+			; Cancel
+			bReshowMenu = true
+		elseif(iConfirm == 1)
+			F4SEManager.WSFWID_CheckAndFixPowerGrid(akWorkshopRef, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+		endif
+	elseif(iConfirm == 5)
+		; Destroy Power Grid
+		iConfirm = DestroyPowerGridConfirm.Show()
+		if(iConfirm == 0)
+			; Cancel
+			bReshowMenu = true
+		elseif(iConfirm == 1)
+			F4SEManager.WSFWID_ResetPowerGrid(akWorkshopRef)
+		endif
+	elseif(iConfirm == 6)
+		; Destroy Wires
+		if( ! WorkshopObjectManager.DestroyWires(akWorkshopRef))
+			bReshowMenu = true
+		endif
+	endif
+	
+	if(bReshowMenu)
+		Var[] kArgs = new Var[0]		
+		kArgs.Add(akWorkshopRef)
+		
+		CallFunctionNoWait("PresentPowerToolsMenu", kArgs) ; Call async to avoid stack depth limit
+	endif
 EndFunction
 
 Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
@@ -515,6 +630,31 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 EndFunction
 
 
+Function PresentOwnershipMenu(WorkshopScript akWorkshopRef = None)
+	if( ! akWorkshopRef)
+		akWorkshopRef = GetNearestWorkshop(PlayerRef)
+	endif
+	
+	; We don't really need a menu yet - let's just offer to claim or unclaim
+	if(akWorkshopRef.OwnedByPlayer)
+		int iConfirm = UnclaimSettlementConfirm.Show()
+		
+		if(iConfirm == 0)
+			; cancel
+		else
+			UnclaimSettlement(akWorkshopRef)
+		endif
+	else
+		int iConfirm = ClaimSettlementConfirm.Show()
+		if(iConfirm == 0)
+			; cancel
+		else
+			ClaimSettlement(akWorkshopRef)
+		endif
+	endif
+EndFunction
+
+
 ; 1.0.4 - Adding method for players to claim a settlement, this will help players recover after the bug from 1.0.3 that could cause happiness to tank
 Function ClaimSettlement(WorkshopScript akWorkshopRef = None)
 	if( ! akWorkshopRef)
@@ -523,6 +663,18 @@ Function ClaimSettlement(WorkshopScript akWorkshopRef = None)
 
 	if(akWorkshopRef)
 		akWorkshopRef.SetOwnedByPlayer(true)
+	else
+		CannotFindSettlement.Show()
+	endif
+EndFunction
+
+Function UnclaimSettlement(WorkshopScript akWorkshopRef = None)
+	if( ! akWorkshopRef)
+		akWorkshopRef = GetNearestWorkshop(PlayerRef)
+	endif
+
+	if(akWorkshopRef)
+		akWorkshopRef.SetOwnedByPlayer(false)
 	else
 		CannotFindSettlement.Show()
 	endif

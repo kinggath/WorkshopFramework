@@ -253,6 +253,7 @@ Function ScrapConnectedWires(ObjectReference akObjectToCheck)
 	while(i < kConnected.Length)
 		if(kConnected[i].GetBaseObject().GetFormID() == 0x0001D971) ; Vanilla wire spline
 			; Wires themselves are not stored in power grids, just delete
+			kConnected[i].SetLinkedRef(None, WorkshopItemKeyword)
 			kConnected[i].Disable(false)
 			kConnected[i].Delete()
 		endif
