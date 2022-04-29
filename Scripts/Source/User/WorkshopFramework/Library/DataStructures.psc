@@ -532,3 +532,16 @@ Struct StoryEventRequestStruct
 	
 	Float Timeout = 0.0
 EndStruct
+
+
+Struct Coordinates
+	Float fX = 0.0
+	Float fY = 0.0
+	Float fZ = 0.0
+EndStruct
+
+
+Struct AssaultSpawnCount
+	ActorBase SpawnActor
+	Int iCount = 0
+EndStruct

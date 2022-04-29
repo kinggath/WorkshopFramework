@@ -389,6 +389,19 @@ Bool Function SetupCapture(int aiReserveID, FactionControl aAttackingFactionData
 EndFunction
 
 Bool Function SetupAttackers(int aiReserveID, Faction aAttackingFaction = None, ActorBase akAttackerType = None, Int aiSpawnAttackers = 0, RefCollectionAlias aOtherAttackers = None)
+	AssaultSpawnCount[] SpawnMe = new AssaultSpawnCount[0]
+	if(akAttackerType != None)
+		AssaultSpawnCount thisCount = new AssaultSpawnCount
+		thisCount.SpawnActor = akAttackerType
+		thisCount.iCount = aiSpawnAttackers
+		
+		SpawnMe.Add(thisCount)
+	endif
+	
+	return SetupAttackersV2(aiReserveID, aAttackingFaction, aSpawnAttackers = SpawnMe, aOtherAttackers = aOtherAttackers)
+EndFunction
+
+Bool Function SetupAttackersV2(int aiReserveID, Faction aAttackingFaction = None, AssaultSpawnCount[] aSpawnAttackers = None, RefCollectionAlias aOtherAttackers = None)
 	Quest kQuestRef = FindAssaultQuest(aiReserveID)
 	
 	if( ! kQuestRef)
@@ -398,8 +411,12 @@ Bool Function SetupAttackers(int aiReserveID, Faction aAttackingFaction = None, 
 	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
 		
 	if(asAssaultQuest)
-		asAssaultQuest.SpawnAttackerForm = akAttackerType
-		asAssaultQuest.iSpawnAttackers = aiSpawnAttackers
+		if(aSpawnAttackers == None)
+			asAssaultQuest.SpawnAttackerCounts = None
+		else
+			asAssaultQuest.SpawnAttackerCounts = (aSpawnAttackers as Var[]) as AssaultSpawnCount[]
+		endif
+		
 		asAssaultQuest.OtherAttackers = aOtherAttackers
 		asAssaultQuest.AttackingFaction = aAttackingFaction
 	else
@@ -410,6 +427,19 @@ Bool Function SetupAttackers(int aiReserveID, Faction aAttackingFaction = None, 
 EndFunction
 
 Bool Function SetupDefenders(int aiReserveID, Faction aDefendingFaction = None, ActorBase akDefenderType = None, Int aiSpawnDefenders = 0, RefCollectionAlias aOtherDefenders = None)
+	AssaultSpawnCount[] SpawnMe = new AssaultSpawnCount[0]
+	if(akDefenderType != None)
+		AssaultSpawnCount thisCount = new AssaultSpawnCount
+		thisCount.SpawnActor = akDefenderType
+		thisCount.iCount = aiSpawnDefenders
+		
+		SpawnMe.Add(thisCount)
+	endif
+	
+	return SetupDefendersV2(aiReserveID, aDefendingFaction = None, aSpawnDefenders = SpawnMe, aOtherDefenders = aOtherDefenders)
+EndFunction
+
+Bool Function SetupDefendersV2(int aiReserveID, Faction aDefendingFaction = None, AssaultSpawnCount[] aSpawnDefenders = None, RefCollectionAlias aOtherDefenders = None)
 	Quest kQuestRef = FindAssaultQuest(aiReserveID)
 	
 	if( ! kQuestRef)
@@ -419,8 +449,12 @@ Bool Function SetupDefenders(int aiReserveID, Faction aDefendingFaction = None, 
 	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
 		
 	if(asAssaultQuest)
-		asAssaultQuest.SpawnDefenderForm = akDefenderType
-		asAssaultQuest.iSpawnDefenders = aiSpawnDefenders
+		if(aSpawnDefenders == None)
+			asAssaultQuest.SpawnDefenderCounts = None
+		else
+			asAssaultQuest.SpawnDefenderCounts = (aSpawnDefenders as Var[]) as AssaultSpawnCount[]
+		endif
+		
 		asAssaultQuest.OtherDefenders = aOtherDefenders
 		asAssaultQuest.DefendingFaction = aDefendingFaction
 	else

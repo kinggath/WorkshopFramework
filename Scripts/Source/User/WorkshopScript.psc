@@ -1427,6 +1427,9 @@ int VendorTopLevel = 2 const ; WSFW - Copied from WorkshopParent
 
 Bool Property bPropertiesConfigured = false Auto Hidden ; Flag from WSFW ResourceManager after it has configured all AVs, etc.
 
+; WSFW 2.2.0 - Power Tools
+Bool Property bPowerGridRebuildOfferNeeded = false Auto Hidden
+
 ; timer IDs
 int buildWorkObjectTimerID = 0 const
 int dailyUpdateTimerID = 1 const

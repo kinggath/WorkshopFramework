@@ -1913,6 +1913,10 @@ function AssignActorToObject(WorkshopNPCScript assignedActor, WorkshopObjectScri
 EndFunction
 
 function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectScript assignedObject, bool bResetMode = false, bool bAddActorCheck = true, bool bUpdateObjectArray = true)
+	if(assignedActor == None || assignedObject == None)
+		return
+	endIf
+	
 	int workshopID = assignedObject.workshopID
 	WorkshopScript workshopRef
 
@@ -3335,8 +3339,10 @@ function UpdateRadioObject(WorkshopObjectScript radioObject)
 	
 	; radio
 	if(radioObject.bRadioOn && radioObject.IsPowered())
+		;Debug.MessageBox("Radio on!")
 		; make me a transmitter and start radio scene
 		if(workshopRef.WorkshopRadioRef)
+			;Debug.MessageBox("MakeTransmitterRepeater called on specific ref")
 			workshopRef.WorkshopRadioRef.Enable() ; enable in case this is a unique station
 			
 			radioObject.MakeTransmitterRepeater(workshopRef.WorkshopRadioRef, workshopRef.workshopRadioInnerRadius, workshopRef.workshopRadioOuterRadius)
@@ -3349,6 +3355,7 @@ function UpdateRadioObject(WorkshopObjectScript radioObject)
 				WorkshopRadioScene01.Start()
 			endif
 		else 
+			;Debug.MessageBox("MakeTransmitterRepeater called on general ref")
 			radioObject.MakeTransmitterRepeater(WorkshopRadioRef, workshopRadioInnerRadius, workshopRadioOuterRadius)
 			
 			if(WorkshopRadioScene01.IsPlaying() == false)
@@ -3359,7 +3366,8 @@ function UpdateRadioObject(WorkshopObjectScript radioObject)
 		if(workshopRef.RadioBeaconFirstRecruit == false)
 			WorkshopEventRadioBeacon.SendStoryEvent(akRef1 = workshopRef)
 		endif
-	else		
+	else
+		;Debug.MessageBox("Radio off.")
 		; if unique radio, turn it off completely
 		if(workshopRef.WorkshopRadioRef && workshopRef.bWorkshopRadioRefIsUnique)
 			radioObject.MakeTransmitterRepeater(workshopRef.WorkshopRadioRef, 0, 0)

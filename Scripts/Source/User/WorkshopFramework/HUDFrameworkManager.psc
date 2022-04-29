@@ -52,6 +52,8 @@ EndProperty
 Float Property fWSFWWidget_HUDFrameworkX = 1000.0 Auto Hidden ; right side of screen
 Float Property fWSFWWidget_HUDFrameworkY = 70.0 Auto Hidden
 
+Float fWSFWWidget_HUDFrameworkXSS2Override = 900.0 Const
+
 int iNextProgressBarID = 0
 Int Property NextProgressBarID
 	Int Function Get()
@@ -114,7 +116,16 @@ Function HandleGameLoaded()
 	endif
 	
 	; Register any of the WorkshopFramework included widgets
-	RegisterWidget(Self, sWSFWWidget_Framework, fWSFWWidget_HUDFrameworkX, fWSFWWidget_HUDFrameworkY)
+	Float fX = fWSFWWidget_HUDFrameworkX
+	if(Game.IsPluginInstalled("SS2.esm"))
+		fX = fWSFWWidget_HUDFrameworkXSS2Override
+	endif
+	
+	if(RegisteredWidgets.Find(sWSFWWidget_Framework) < 0)
+		RegisterWidget(Self, sWSFWWidget_Framework, fX, fWSFWWidget_HUDFrameworkY)
+	else
+		SetWidgetPosition(sWSFWWidget_Framework, fX, fWSFWWidget_HUDFrameworkY)
+	endif
 	
 	if(iNextProgressBarID > MAXPROGRESSBARID)
 		; Make sure we never go out of bounds
