@@ -76,7 +76,7 @@ ObjectReference Property kPositionRelativeTo Auto Hidden
 WorkshopScript Property kWorkshopRef Auto Hidden
 ObjectReference Property kSpawnAt Auto Hidden
 ObjectReference Property kMoveToWorldspaceRef Auto Hidden ; 1.0.8 - If set, objects will be moved to this item post-rotation, pre-positioning so they are placed in the correct worldspace
-Bool Property bRequiresWorkshopOrWorldspace = false Auto Hidden ; 2.0.19 - This will be used to prevent a failure where kWorkshopRef or kMoveToWorldspaceRef was set when the thread was created, but was None when it came time to spawn and move the item
+Bool Property bRequiresWorkshopOrWorldspace = true Auto Hidden ; 2.0.19 - This will be used to prevent a failure where kWorkshopRef or kMoveToWorldspaceRef was set when the thread was created, but was None when it came time to spawn and move the item
 Form Property SpawnMe Auto Hidden
 Float Property fPosX = 0.0 Auto Hidden
 Float Property fPosY = 0.0 Auto Hidden
@@ -271,11 +271,11 @@ Function RunCode()
 		
 		
 		; 1.0.8 - Added kMoveToWorldspaceRef to ensure objects end up in the correct worldspace before the coordinates are set
-		if( ! kMoveToWorldspaceRef && kWorkshopRef && ! kWorkshopRef.Is3dLoaded()) ; 1.1.6, skip moving to worldspace for workshop ref items if the player is there
+		if(kMoveToWorldspaceRef == None && kWorkshopRef != None)
 			kMoveToWorldspaceRef = kWorkshopRef
 		endif
 		
-		if(kMoveToWorldspaceRef)
+		if(kMoveToWorldspaceRef != None)
 			kTempPositionHelper.MoveTo(kMoveToWorldspaceRef, abMatchRotation = false)
 		else
 			if(bRequiresWorkshopOrWorldspace)
