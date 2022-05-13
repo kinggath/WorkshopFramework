@@ -32,6 +32,8 @@ int iMessageSelectorSource_Formlist = 1 Const
 int iMessageSelectorReturn_Failure = -1 Const
 int iMessageSelectorReturn_Cancel = -2 Const
 
+int iSortingComplete = -999 Const
+
 Group DoNotEdit
 	int Property iAcceptStolen_None = 0 autoReadOnly
 	int Property iAcceptStolen_Only = 1 autoReadOnly
@@ -177,7 +179,9 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 			if(kCurrentPhantomVendor.IsInFaction(PhantomVendorFaction_StolenOnly) || kCurrentPhantomVendor.IsInFaction(PhantomVendorFaction_StolenOnly_Unfiltered))
 				akItemReference.SetFactionOwner(MakeStolenFaction)
 				
-				ModTrace("[UIManager] New ref " + akItemReference + " (form " + akBaseItem + ") created for stolen selection, adding to StolenFaction")
+				ModTrace("[UIManager] New ref " + akItemReference + " (form " + akBaseItem + ") created for stolen selection, adding to StolenFaction.")
+			else
+				ModTrace("[UIManager] New ref " + akItemReference + " (form " + akBaseItem + ") created for selection.")
 			endif
 		endif
 		
@@ -215,13 +219,13 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		iAwaitingSorting -= 1
 		if(iAwaitingSorting <= 0)
 			Utility.Wait(1.0)
-			; No longer need to monitor this event as we're only watching for items initially set up via the aAvailableOptionsFormlist
+			; No longer need to monitor this event
 			UnregisterForRemoteEvent(kCurrentPhantomVendorContainer, "OnItemAdded")
 			
 			; Move any refs we created into the selection container now that we've unregistered for OnItemAdded
 			kCurrentPhantomVendor.RemoveAllItems(kCurrentPhantomVendorContainer)
 			
-			iAwaitingSorting = -999
+			iAwaitingSorting = iSortingComplete
 			ModTrace("[UIManager] Completed sorting of barter items. Vendor container " + kCurrentPhantomVendorContainer + " has " + kCurrentPhantomVendorContainer.GetItemCount() + " items. The vendor has " + kCurrentPhantomVendor.GetItemCount() + " items.")
 		endif
     endif
@@ -310,8 +314,8 @@ Int Function ShowCachedBarterSelectMenuV4(Form afBarterDisplayNameForm, ObjectRe
 		endWhile
 		
 		iWaitCount = 0
-		; Next attempt to wait a couple extra seconds until iAwaitingSorting is marked as -999
-		while(iAwaitingSorting <= 0 && iAwaitingSorting > -999 && iWaitCount < 20) ; -999 is used by our OnItemAdded event to tell us when it's safe to continue
+		; Next attempt to wait a couple extra seconds until iAwaitingSorting is marked as iSortingComplete
+		while(iAwaitingSorting <= 0 && iAwaitingSorting > iSortingComplete && iWaitCount < 20)
 			Utility.Wait(0.1) 
 			iWaitCount += 1
 		endWhile
@@ -416,24 +420,41 @@ int Function ShowFormlistBarterSelectMenuV4(Form afBarterDisplayNameForm, Formli
 	bStoreResultsAsReferences = abStoreResultsAsReferences
 	StartBarterSelectedFormList = aStartBarterSelectedFormlist
 	
+	; Register for event so items get sorted
+	RegisterForRemoteEvent(kCurrentPhantomVendorContainer, "OnItemAdded")
+	
 	; Add items to vendor container and start barter
 	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
 	
 	Int iListSize = aAvailableOptionsFormlist.GetSize()
 	iAwaitingSorting = iListSize
+	int iExpectedAwaitingValue = iAwaitingSorting
 	int i = 0
-	while(i < iListSize)	
+	while(i < iListSize)
+		iExpectedAwaitingValue -= 1
 		Form thisForm = aAvailableOptionsFormlist.GetAt(i)
 		if(thisForm && SortItem(thisForm))
-			; Spawning refs, as just adding items does not seem to work well with our dynamic filtering
-			ObjectReference kSpawnedRef = kSafeSpawnPoint.PlaceAtMe(thisForm)
-			if(kSpawnedRef)
-				kCurrentPhantomVendorContainer.AddItem(kSpawnedRef)
+			if(abAvailableOptionItemsAreReferences)
+				kCurrentPhantomVendorContainer.AddItem(thisForm)
+			else
+				; Spawning refs, as just adding items does not seem to work well with our dynamic filtering
+				ObjectReference kSpawnedRef = kSafeSpawnPoint.PlaceAtMe(thisForm)
+				if(kSpawnedRef)			
+					kCurrentPhantomVendorContainer.AddItem(kSpawnedRef)
+				endif
 			endif
+			
+			while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete)
+				Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements
+			endWhile
+		else
+			iAwaitingSorting -= 1
 		endif
 		
 		i += 1
 	endWhile	
+	
+	Utility.Wait(1.0) ; Give it a moment to handle the last OnItemAdded event
 	
 	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
 	kCurrentPhantomVendor.ShowBarterMenu()
@@ -503,6 +524,7 @@ int Function ShowBarterSelectMenuV3(Form afBarterDisplayNameForm, Form[] aAvaila
 EndFunction
 
 int Function ShowBarterSelectMenuV4(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Float afMaxWaitForBarterSelect = 0.0)
+	ModTrace("ShowBarterSelectMenuV4 called.")
 	if(bPhantomVendorInUse)
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -531,21 +553,46 @@ int Function ShowBarterSelectMenuV4(Form afBarterDisplayNameForm, Form[] aAvaila
 	bStartBarterSelectedFormlistAreReferences = abStartBarterSelectedFormlistAreReferences
 	bStoreResultsAsReferences = abStoreResultsAsReferences
 	
+	; Register for event so items get sorted
+	RegisterForRemoteEvent(kCurrentPhantomVendorContainer, "OnItemAdded")
+	
 	; Add items to vendor container and start barter
+	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
 	Int iCount = aAvailableOptions.Length
+	iAwaitingSorting = iCount
+	int iExpectedAwaitingValue = iAwaitingSorting
+	
 	int i = 0
 	while(i < iCount)
+		iExpectedAwaitingValue -= 1
 		Form FormToAdd = aAvailableOptions[i]
 		
 		if(FormToAdd != None)
 			if(SortItem(FormToAdd))
-				kCurrentPhantomVendor.AddItem(FormToAdd)
+				Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements so we force latent wait call
+				
+				if(abAvailableOptionItemsAreReferences)
+					kCurrentPhantomVendorContainer.AddItem(FormToAdd)
+				else
+					; Spawning refs, as just adding items does not seem to work well with our dynamic filtering
+					ObjectReference kSpawnedRef = kSafeSpawnPoint.PlaceAtMe(FormToAdd)
+					if(kSpawnedRef)			
+						kCurrentPhantomVendorContainer.AddItem(kSpawnedRef)
+					endif
+				endif
 			endif
+			
+			while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete)
+				Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements
+			endWhile
+		else
+			iAwaitingSorting -= 1
 		endif
 		
 		i += 1
 	endWhile
-		
+	
+	Utility.Wait(1.0) ; Give it a moment to handle the last OnItemAdded event
 	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
 	kCurrentPhantomVendor.ShowBarterMenu()
 	
@@ -568,6 +615,7 @@ Int Function ShowBarterSelectMenuAndWaitV2(Form afBarterDisplayNameForm, Form[] 
 EndFunction
 
 Int Function ShowBarterSelectMenuAndWaitV3(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
+	ModTrace("ShowBarterSelectMenuAndWaitV3 called.")
 	if(bPhantomVendorInUse)
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -724,7 +772,7 @@ EndFunction
 
 
 Function ProcessItemPool(Form[] aItemPool)
-	; ModTrace("ProcessItemPool called. ItemPool size = " + aItemPool.Length + ", bVendorSideEqualsChoice = " + bVendorSideEqualsChoice)
+	ModTrace("ProcessItemPool called. ItemPool size = " + aItemPool.Length + ", bVendorSideEqualsChoice = " + bVendorSideEqualsChoice)
     While(aItemPool.Length > 0)
         Form thisForm = aItemPool[0]
         
@@ -737,7 +785,7 @@ Function ProcessItemPool(Form[] aItemPool)
 				bSelected = (kCurrentPhantomVendorContainer.GetItemCount(thisForm) > 0)
 			endif
 			
-			; ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kCurrentPhantomVendorContainer + " which currently has " + kCurrentPhantomVendorContainer.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
+			ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kCurrentPhantomVendorContainer + " which currently has " + kCurrentPhantomVendorContainer.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
 		else
 			int iPlayerItemCount = 0
 			if(bAvailableOptionItemsAreReferences && (thisForm as ObjectReference) != None)
@@ -750,11 +798,11 @@ Function ProcessItemPool(Form[] aItemPool)
 				bSelected = (iPlayerItemCount > 0)
 			endif
 			
-			; ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + PlayerRef + ", found :" + iPlayerItemCount)
+			ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + PlayerRef + ", found :" + iPlayerItemCount)
 		endif
 		
 		if(bSelected)
-			; ModTrace("ProcessItemPool form was selected: " + thisForm)
+			ModTrace("ProcessItemPool form was selected: " + thisForm)
 		
 			iTotalSelected += 1
 			
@@ -812,12 +860,15 @@ Function ProcessItemPool(Form[] aItemPool)
 			; ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 			
 			; Item was left in select container, don't count as selected, but return to cache
-			if(bVendorSideEqualsChoice)
-				PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
-			else
-				; ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
-				
-				kCurrentPhantomVendorContainer.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+			if(kCurrentCacheRef != None || ! bAvailableOptionItemsAreReferences)
+				; If bAvailableOptionItemsAreReferences == true and not using a cache, we'll let the caller deal with them
+				if(bVendorSideEqualsChoice)				
+					PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				else
+					; ModTrace("[UIManager] Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+					
+					kCurrentPhantomVendorContainer.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				endif
 			endif
         endif
         

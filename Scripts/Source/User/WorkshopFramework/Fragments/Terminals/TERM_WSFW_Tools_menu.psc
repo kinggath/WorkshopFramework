@@ -52,8 +52,17 @@ F4SEManager.ShowRemoteLocationManagementMenu()
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_08
+Function Fragment_Terminal_08(ObjectReference akTerminalRef)
+;BEGIN CODE
+SettlementLayoutManager.FindAndRemoveMisplacedItems()
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 WorkshopFramework:MainQuest Property MainQuest Auto Const Mandatory
 WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory
 WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
+WorkshopFramework:SettlementLayoutManager Property SettlementLayoutManager Auto Const Mandatory

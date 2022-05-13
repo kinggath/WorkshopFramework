@@ -34,6 +34,8 @@ Keyword Property TurretKeyword Auto Const Mandatory
 Keyword Property WorkshopPowerConnectionDUPLICATE000 Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
 Keyword Property WorkshopCanBePowered Auto Const Mandatory ; 2.0.13 - Additional delete safety check
 
+Form[] Property NeverScrapForms Auto Const Mandatory
+
 ActorValue Property WorkshopSnapTransmitsPower Auto Const Mandatory ; 1.0.6 - Used to check for delete safety
 ActorValue property UnassignedPopulationAV Auto Const Mandatory ; 2.0.9 - Used to remote handle RemoveObjectPUBLIC's work without needing to use the locking mechanism on workshopparent
 
@@ -292,6 +294,12 @@ Bool Function ScrapSafetyCheck(ObjectReference akScrapMe)
 		
 		return false
 	else
+		Form BaseForm = akScrapMe.GetBaseObject()
+		
+		if(NeverScrapForms.Find(BaseForm) >= 0)
+			return false
+		endIf
+		
 		return true
 	endif
 EndFunction

@@ -53,6 +53,7 @@ Group Quests
 	WorkshopFramework:F4SEManager Property F4SEManager Auto Const Mandatory
 	WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
 	WorkshopFramework:HUDFrameworkManager Property HUDFrameworkManager Auto Const Mandatory
+	WorkshopFramework:Quests:FindLayoutItems Property FindLayoutItemsQuest Auto Const Mandatory
 EndGroup
 
 Group ActorValues
@@ -102,6 +103,7 @@ EndGroup
 Group Keywords
 	Keyword Property EventKeyword_ScrapFinder Auto Const Mandatory
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
+	Keyword Property LinkCustom10 Auto Const Mandatory
 	Keyword Property PowerArmorKeyword Auto Const Mandatory
 	Keyword Property PreventScrappingKeyword Auto Const Mandatory
 	
@@ -125,6 +127,10 @@ Group Messages
 	Message Property ScrappingProgressUpdate Auto Const Mandatory
 	Message Property BuildingProgressUpdate Auto Const Mandatory
 	Message Property ScrappingFinished Auto Const Mandatory
+	Message Property WSFW_SettlementLayout_MisplacedItemCleanup_NoSS2 Auto Const Mandatory
+	Message Property WSFW_SettlementLayout_MisplacedItemCleanup_SS2 Auto Const Mandatory
+	Message Property WSFW_SettlementLayout_MisplacedItemCleanup_Started Auto Const Mandatory
+	Message Property WSFW_SettlementLayout_MisplacedItemCleanup_NoneFound Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -1662,6 +1668,101 @@ Function ScrappingCompleted()
 	endif
 	
 	bManualScrapTriggered = false
+EndFunction
+
+
+Function FindAndRemoveMisplacedItems()
+	; Check area around player for items linked to a workbench that isn't in the current location
+	if(FindLayoutItemsQuest.IsRunning())
+		return
+	endif
+	
+	FindLayoutItemsQuest.Start()
+	
+	Utility.Wait(0.1) ; Give quest a moment to start
+	
+	Message FinishedMessage = WSFW_SettlementLayout_MisplacedItemCleanup_NoSS2
+	if(Game.IsPluginInstalled("SS2.esm"))
+		FinishedMessage = WSFW_SettlementLayout_MisplacedItemCleanup_SS2
+	endif
+	
+	Bool bClearingLocationChanged = false
+	Location ClearingLocation = None
+	WorkshopScript kNearestWorkshop = FindLayoutItemsQuest.NearestWorkshop.GetRef() as WorkshopScript
+	Location NearestWorkshopLocation = FindLayoutItemsQuest.NearestWorkshopLocation.GetLocation()
+	int i = FindLayoutItemsQuest.FoundItems.GetCount()
+	if(i > 0)
+		WSFW_SettlementLayout_MisplacedItemCleanup_Started.Show(i as Float)
+	else
+		WSFW_SettlementLayout_MisplacedItemCleanup_NoneFound.Show()
+	endif
+	
+	while(i > 0)
+		i -= 1
+		
+		ObjectReference thisRef = FindLayoutItemsQuest.FoundItems.GetAt(i)
+		
+		if(thisRef != None)
+			Location thisLocation = thisRef.GetCurrentLocation()
+			
+			if(thisLocation != NearestWorkshopLocation)
+				ObjectReference kLinkedWorkbench = thisRef.GetLinkedRef(WorkshopItemKeyword)
+				Keyword LinkedToKeyword = WorkshopItemKeyword
+				if(kLinkedWorkbench == None)
+					LinkedToKeyword = LinkCustom10
+					kLinkedWorkbench = thisRef.GetLinkedRef(LinkCustom10)
+				endif
+				
+				if(kLinkedWorkbench != None && kLinkedWorkbench != kNearestWorkshop)
+					Location WorkbenchLocation = kLinkedWorkbench.GetCurrentLocation()
+					if(ClearingLocation != WorkbenchLocation)
+						bClearingLocationChanged = true
+						ClearingLocation = WorkbenchLocation
+						FindLayoutItemsQuest.CleaningItemsFromLocation.ForceLocationTo(ClearingLocation)
+					endif
+					
+					thisRef.SetLinkedRef(None, LinkedToKeyword)
+					
+					WorkshopFramework:ObjectRefs:Thread_ScrapObject kThread = ThreadManager.CreateThread(ScrapObjectThread) as WorkshopFramework:ObjectRefs:Thread_ScrapObject
+
+					if(kThread)
+						kThread.kScrapMe = thisRef
+						kThread.kWorkshopRef = kLinkedWorkbench as WorkshopScript
+						
+						String sCallbackID = sScrapObjectCallbackID
+						if( ! bManualImportInProgress && ! bManualScrapTriggered)
+							sCallbackID = "" ; We don't need the event
+						endif
+						
+						ThreadManager.QueueThread(kThread)
+					else
+						; Failed to start thread
+						thisRef.Disable(false)
+						thisRef.Delete()
+					endif
+				endif
+				
+				
+			endif
+			
+			FindLayoutItemsQuest.FoundItems.RemoveRef(thisRef)
+		endif
+		
+		if(i == 0)
+			; Last entry for this loop
+			if(bClearingLocationChanged)
+				FinishedMessage.Show()
+				bClearingLocationChanged = false
+			endif
+			
+			if(FindLayoutItemsQuest.FoundItems.GetCount() > 0)
+				; Restart loop
+				i = FindLayoutItemsQuest.FoundItems.GetCount()
+			endif
+		endif
+	endWhile
+	
+	FindLayoutItemsQuest.Stop()
 EndFunction
 
 
