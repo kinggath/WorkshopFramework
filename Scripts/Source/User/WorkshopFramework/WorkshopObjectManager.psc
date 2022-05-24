@@ -421,25 +421,26 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 	
 	int i = 0
 	int iTransmittedTo = 0
+	bool bIsWireArrayFull = false		; break condition added as we keep looping and the player perceives this as the game hanging
+	bool bIsPowerableArrayFull = false	; break condition added
 	while(i < kLinkedRefs.Length)
 		if( ! kLinkedRefs[i].IsDisabled())
 			Bool bIsWire = (kLinkedRefs[i].GetBaseObject().GetFormID() == 0x0001D971)
 			
-			if(bIsWire)
-				if(abCollectWires)
-					if(CollectedWires01.Length < 128)
-						CollectedWires01.Add(kLinkedRefs[i])
-					elseif(CollectedWires02.Length < 128)
-						CollectedWires02.Add(kLinkedRefs[i])
-					elseif(CollectedWires03.Length < 128)
-						CollectedWires03.Add(kLinkedRefs[i])
-					elseif(CollectedWires04.Length < 128)
-						CollectedWires04.Add(kLinkedRefs[i])
-					else
-						Debug.MessageBox("More than 512 wires found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
-					endif
+			if(bIsWire && abCollectWires && ! bIsWireArrayFull)	; consolidated if statements, add break condition check
+				if(CollectedWires01.Length < 128)
+					CollectedWires01.Add(kLinkedRefs[i])
+				elseif(CollectedWires02.Length < 128)
+					CollectedWires02.Add(kLinkedRefs[i])
+				elseif(CollectedWires03.Length < 128)
+					CollectedWires03.Add(kLinkedRefs[i])
+				elseif(CollectedWires04.Length < 128)
+					CollectedWires04.Add(kLinkedRefs[i])
+				else
+					bIsWireArrayFull = true	; toggle break condition so we no longer check wires
+					Debug.MessageBox("More than 512 wires found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
 				endif
-			else
+			elseif ( ! bIsPowerableArrayFull )	; add break condition check (no sense checking if CollectedPowerableRefsXX arrays are full)
 				Bool bCollectMe = false
 				if(abWireableOnly)
 					if(kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword))
@@ -469,6 +470,7 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 					elseif(CollectedPowerableRefs08.Length < 128)
 						CollectedPowerableRefs08.Add(kLinkedRefs[i])
 					else
+						bIsPowerableArrayFull = true	; toggle break condition so we no longer check for powerable objects
 						Debug.MessageBox("More than 1024 powered objects found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
 					endif
 				endif
