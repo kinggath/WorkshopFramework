@@ -134,6 +134,8 @@ Int Function GetVendorLevel()
 			return ((Self as ObjectReference) as WorkshopObjectScript).VendorLevel
 		endif
 	endif
+	
+	return 2	; just default to a L3 vendor if we failed to get iVendorLevel previously
 EndFunction
 
 Function CreateRealInventoryDisplayMarkerRefs()
