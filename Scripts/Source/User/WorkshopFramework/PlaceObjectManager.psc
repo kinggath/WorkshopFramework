@@ -580,6 +580,7 @@ ObjectReference Function CreateObjectImmediately(WorldObject aPlaceMe, WorkshopS
 			
 			ObjectReference kCreatedRef = kThread.kResult
 			
+			;ModTrace("CreateObjectImmediately thread " + kThread + " returned result " + kCreatedRef + ", it had been fed: FormToPlace = " + FormToPlace + " and aPlaceMe = " + aPlaceMe)
 			if( ! kThread.bAwaitingOnLoadEvent)
 				kThread.SelfDestruct()
 			endif

@@ -26,7 +26,7 @@ Float Property fTimerLength = 0.0 Auto Hidden
 Bool Property bRealtimeTimer = true Auto Hidden
 Int Property iTotalIterations = 1 Auto Hidden
 Bool Property bFirstIterationImmediate = false Auto Hidden
-
+Bool Property bCountFailedIterations = true Auto Hidden ; If set to false and HandleExecute/HandleCannotExecute fail - the iteration won't count towards the total and the timer will be restarted
 
 Bool Property bAutoDestroy = true Auto Hidden ; Note: When turning off AutoDestroy - you are in charge of calling SelfDestruct on this thread when you are done
 Int Property iUniqueTaskID = -1 Auto Hidden
@@ -92,19 +92,21 @@ EndFunction
 
 Function RunCode()
 	Bool bCompleted = false
-	Bool bSuccess = false
+	Bool bSuccess = false	
 	
 	if(CanExecute())
-		bSuccess = HandleExecute()
-		
-		iIterations += 1
-		
-		if(iTotalIterations > 0 && iIterations >= iTotalIterations)
-			Complete()
-			bCompleted = true
-		endif
+		bSuccess = HandleExecute()	
 	else
 		bSuccess = HandleCannotExecute()
+	endif
+	
+	if(bSuccess || bCountFailedIterations)
+		iIterations += 1
+	endif
+	
+	if(iTotalIterations > 0 && iIterations >= iTotalIterations)
+		Complete()
+		bCompleted = true
 	endif
 	
 	if( ! bCompleted)

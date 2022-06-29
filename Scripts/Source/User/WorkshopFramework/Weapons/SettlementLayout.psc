@@ -658,6 +658,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				kThread.fAngleZ = aObjectsToPlace[i].fAngleZ
 				kThread.fScale = aObjectsToPlace[i].fScale
 				kThread.kWorkshopRef = akWorkshopRef
+				kThread.bRequiresWorkshopOrWorldspace = true
 				
 				if(aObjectsToPlace[i].fExtraDataFlag == fExtraDataFlag_SkipWorkshopItemLink)
 					kThread.bBypassWorkshopItemLink = true
