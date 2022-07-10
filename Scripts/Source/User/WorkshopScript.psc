@@ -2863,22 +2863,11 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	;periods of time in workshop mode.
 	Actor PlayerRef = Game.GetPlayer()
 	if bOnlyIfLocationLoaded == false || PlayerRef.GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
-		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
-		
-		; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
-		
-		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(Self)
-		
-		int i = 0
-		while(i < WorkshopActors.Length)
-			WorkshopActors[i].SetLinkedRef(PlayerRef, WorkshopItemKeyword)
-			Utility.WaitMenuMode(0.01)
-			WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)
-			
-			i += 1
-		endWhile
-		; End WSFW 2.0.21 hack
-		
+		; PlayerRef.GetCurrentLocation() == myLocation doesn't make sence in reference to the UFO4P 2.0.4 Bug #24122 above
+		; myLocation.IsLoaded() should return properly whether the player is in WS mode or not. (myLocation is the WS location, not the player)
+		; to me it should be if (bOnlyIfLocationLoaded == false || UFO4P_InWorkshopMode == true || myLocation.IsLoaded())
+
+		ReApplyWorkshopActorLinkedRefs()	; move WSFW - 2.0.21 code to new function
 		RecalculateResources()
 		
 		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
@@ -2924,6 +2913,41 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		
 	return false
 endFunction 
+
+Function ReApplyWorkshopActorLinkedRefs()		
+	; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
+
+	; ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(Self)
+	
+	; int i = 0
+	; while(i < WorkshopActors.Length)
+	;	WorkshopActors[i].SetLinkedRef(PlayerRef, WorkshopItemKeyword)
+	;	Utility.WaitMenuMode(0.01)
+	;	WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)
+		
+	;	i += 1
+	; endWhile
+	; End WSFW 2.0.21 hack
+	
+	; optimize the original code above -
+	Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
+	ObjectReference[] WorkshopActors = GetWorkshopResourceObjects(Population)	; originally called WorkshopParent.GetWorkshopActors. WS rating - population AV defined in this script (Self is ObjectReference) we can save an external call to the busy WS Parent
+	
+	int i = WorkshopActors.Length
+	while ( i > 0 )
+		i -= 1
+		WorkshopActors[i].SetLinkedRef(none, WorkshopItemKeyword)	; original code linked to PlayerRef. wouldn't none would work?
+	endWhile
+
+	; Utility.WaitMenuMode(0.01)	; I doubt this call is required... leaving here as a reminder that it may be needed.
+
+	i = WorkshopActors.Length
+	while ( i > 0 )
+		i -= 1
+		WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)	; re-link ref to workshop
+	endWhile
+
+EndFunction
 
 ;----------------------------------------------------------------------------------------------------------------------------------------------------------
 ;	Added by UFO4P 2.0.2 for bug #21408:
