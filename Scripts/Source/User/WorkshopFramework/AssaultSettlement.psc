@@ -261,6 +261,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		endif
 		
 		if(bPlayerInvolved)
+			Actor PlayerRef = PlayerAlias.GetRef() as Actor	; cleanup code a little...
 			if(iCurrentAssaultType != AssaultManager.iType_Defend)
 				if(bAutoHandleObjectives)
 					SetObjectiveDisplayed(10)					
@@ -268,21 +269,18 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				
 				ObjectReference kAttackFrom = AttackFromAlias.GetRef()
 				
-				if(PlayerAlias.GetRef().GetDistance(kAttackFrom) < fPlayerArriveDistance)
+				if(PlayerRef.GetDistance(kAttackFrom) < fPlayerArriveDistance)
 					SetStage(iStage_PlayerArrived)
 				else
-					RegisterForDistanceLessThanEvent(PlayerAlias.GetRef(), kAttackFrom, fPlayerArriveDistance)
+					RegisterForDistanceLessThanEvent(PlayerRef, kAttackFrom, fPlayerArriveDistance)
 				endif
 				
-				
-				Actor PlayerRef = PlayerAlias.GetRef() as Actor
 				AttackerFactionAlias.AddRef(PlayerRef)
 			else
 				if(bAutoHandleObjectives)
 					SetObjectiveDisplayed(17)					
 				endif
 				
-				Actor PlayerRef = PlayerAlias.GetRef() as Actor
 				DefenderFactionAlias.AddRef(PlayerRef)
 			endif
 			
@@ -434,6 +432,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			AutoResolveAssault()
 		endif
 	elseif(aiStageID == iStage_Shutdown)
+		UnregisterForAllEvents()	; this sholdn't be needed as all events are unregistered on quest shutdown... unless... Todd...
 		CleanupAssault() ; Need to do this before actual shutdown is called or the aliases won't be full and certain functions (such as RestoreBleedoutRecovery) won't run correctly
 		
 		Stop()
@@ -448,13 +447,16 @@ Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float a
 EndEvent
 
 
-Event OnQuestShutdown()
-	UnregisterForAllEvents()
-	
-	CleanupAssault()
-	
-	Reset() ; 1.1.1 - Reset quest to clear objectives from pipboy
-EndEvent
+; Event OnQuestShutdown()
+;	Extended Function 'Stop' does all this, so to me it seems like extra work. (likely code remaining before Stop was extended)
+;	In my experience (I could be remembering wrong) Reset doesn't actually reset the quest until Start is called.
+
+;	UnregisterForAllEvents()
+;	
+;	CleanupAssault()
+;	
+;	Reset() ; 1.1.1 - Reset quest to clear objectives from pipboy
+; EndEvent
 
 Event Location.OnLocationLoaded(Location akLocationRef)
 	if(bAutoStartAssaultOnLoad)
@@ -666,9 +668,7 @@ Function SetupAssault()
 				RegisterForRemoteEvent(thisLocation, "OnLocationLoaded")
 			endif
 		else
-			CleanupAssault()
-			
-			Stop()
+			SetStage(iStage_Shutdown)
 		endif		
 	endif
 EndFunction
@@ -1292,7 +1292,7 @@ Function CleanupAssault()
 	OtherDefenders = None
 	bMoveDefendersToCenterPoint = true
 	; 1.1.2 - Hide all objectives
-	HideAllObjectives()
+	HideAllObjectives()	; is this needed? if GetStageDone(iStage_Success), CompleteAllObjectives is called. if GetStageDone(iStage_Failed), FailAllObjectives is called. if neither stage is done, extended function Stop calls HideAllObjectives.
 	
 	; 1.1.9 - Moved this to the last thing
 	RestoreBleedoutRecovery()
@@ -1302,7 +1302,7 @@ EndFunction
 ; 1.1.2 - Override
 Function Stop()
 	; Hide objectives before stopping or they end up stuck displayed
-	if( ! GetStageDone(90) && ! GetStageDone(100))
+		if( ! GetStageDone(iStage_Failed) && ! GetStageDone(iStage_Success))	; use vars instead of magic numbers
 		HideAllObjectives()
 	endif
 	
@@ -1341,51 +1341,43 @@ Function StopCombatAlarmOnCollection(RefCollectionAlias aCollection)
 EndFunction
 
 
-
 Function RestoreBleedoutRecovery()
 	ActorValue HealthAV = Game.GetHealthAV()
 	
-	int i = 0
-	while(i < Attackers.GetCount())
-		Actor thisActor = Attackers.GetAt(i) as Actor
-		
-		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
-			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
-			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
-			
-			thisActor.RestoreValue(HealthAV, fRestore)
-			thisActor.SetNoBleedoutRecovery(false)
-			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
-		endif
-		
-		i += 1
-	endWhile
+	RestoreBleedoutRecoveryOnRefColl(Attackers)
+	RestoreBleedoutRecoveryOnRefColl(Defenders)	; Proposed change, I assume this is needed to restore settlers as they are defenders in a settlement attack
+	RestoreBleedoutRecoveryOnRefColl(SubdueToComplete)
+EndFunction
+
+
+Function RestoreBleedoutRecoveryOnRefColl(RefCollectionAlias aActorsToRestore, ActorValue aHealthAV = none)
+	if ( aHealthAV == none )
+		aHealthAV = Game.GetHealthAV()
+	endif
 	
-	i = 0
-	while(i < SubdueToComplete.GetCount())
-		Actor thisActor = SubdueToComplete.GetAt(i) as Actor
+	int i = aActorsToRestore.GetCount()
+	while ( i > 0 )
+		i -= 1
+		Actor thisActor = aActorsToRestore.GetAt(i) as Actor
+		
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
 			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
 			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
+			; is this code needed? In vanilla, to restore turrets, Beth just calls RestoreValue(HealthAV, 9999)
 			
-			thisActor.RestoreValue(HealthAV, fRestore)
+			; Float fCurrentHealth = thisActor.GetValue(HealthAV)
+			; Float fRestore = 10.0
+			; 
+			; if(fCurrentHealth < 0)
+			; 	fRestore += fCurrentHealth * -1
+			; endif
 			
+			; thisActor.RestoreValue(HealthAV, fRestore)
+			thisActor.RestoreValue(HealthAV, 9999)	; proposed change, vanilla does this to restore damaged turrets
 			thisActor.SetNoBleedoutRecovery(false)
 			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
 		endif
-		
-		i += 1
-	endWhile
+	endWhile	
 EndFunction
 
 
