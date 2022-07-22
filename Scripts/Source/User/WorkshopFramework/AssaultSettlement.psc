@@ -1343,24 +1343,12 @@ EndFunction
 
 
 Function RestoreBleedoutRecovery()
-	ActorValue HealthAV = Game.GetHealthAV()
-	
 	int i = 0
 	while(i < Attackers.GetCount())
 		Actor thisActor = Attackers.GetAt(i) as Actor
 		
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
-			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
-			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
-			
-			thisActor.RestoreValue(HealthAV, fRestore)
-			thisActor.SetNoBleedoutRecovery(false)
-			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
+			RestoreActorBleedoutRecovery(thisActor)
 		endif
 		
 		i += 1
@@ -1370,22 +1358,27 @@ Function RestoreBleedoutRecovery()
 	while(i < SubdueToComplete.GetCount())
 		Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
-			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
-			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
-			
-			thisActor.RestoreValue(HealthAV, fRestore)
-			
-			thisActor.SetNoBleedoutRecovery(false)
-			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
+			RestoreActorBleedoutRecovery(thisActor)
 		endif
 		
 		i += 1
 	endWhile
+EndFunction
+
+
+Function RestoreActorBleedoutRecovery(Actor akActorRef)
+	; First make sure they have some health or they will immediately drop dead
+	ActorValue HealthAV = Game.GetHealthAV()
+	Float fCurrentHealth = akActorRef.GetValue(HealthAV)
+	Float fRestore = 10.0
+	
+	if(fCurrentHealth < 0)
+		fRestore += fCurrentHealth * -1
+	endif
+	
+	akActorRef.RestoreValue(HealthAV, fRestore)
+	akActorRef.SetNoBleedoutRecovery(false)
+	akActorRef.RemoveKeyword(BleedoutRecoveryStopped)
 EndFunction
 
 

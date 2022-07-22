@@ -188,6 +188,21 @@ Struct IndexMappedBool
 EndStruct
 
 
+Struct ScriptPropertyChange
+	String sPropertyToChange
+	
+	Int ValueToUse = 0
+	{ 0 = ValueAsBool, 1 = ValueAsFloat, 2 = ValueAsInt, 3 = ValueAsString }
+	String ValueAsString
+	Int ValueAsInt
+	Float ValueAsFloat
+	Bool ValueAsBool
+	
+	String ReverseStringValue
+	{ If ValueToUse = 1 (ie ValueAsFloat is used), and this ScriptPropertyChange needs to be undone, this is what will be set }
+EndStruct
+
+
 Struct LinkToMe
 	ObjectReference kLinkToMe = None
 	

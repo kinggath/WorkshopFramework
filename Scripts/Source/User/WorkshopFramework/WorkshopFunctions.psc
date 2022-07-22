@@ -1489,26 +1489,35 @@ Location Function OpenKeywordFilteredWorkshopSettlementMenuEx(Keyword akActionKW
 	Formlist ExcludeKeywordList = Game.GetFormFromFile(0x0002E55D, "WorkshopFramework.esm") as Formlist
 	
 	IncludeKeywordList.Revert()
-	int i = 0
-	while(i < akIncludeFilterKeywords.Length)
-		IncludeKeywordList.AddForm(akIncludeFilterKeywords[i])
-		
-		i += 1
-	endWhile
+	if(akIncludeFilterKeywords == None || akIncludeFilterKeywords.Length == 0)
+		IncludeKeywordList = None
+	else
+		int i = 0
+		while(i < akIncludeFilterKeywords.Length)
+			IncludeKeywordList.AddForm(akIncludeFilterKeywords[i])
+			
+			i += 1
+		endWhile
+	endif
 	
 	ExcludeKeywordList.Revert()
-	i = 0
-	while(i < akExcludeFilterKeywords.Length)
-		ExcludeKeywordList.AddForm(akExcludeFilterKeywords[i])
-		
-		i += 1
-	endWhile
+	if(akExcludeFilterKeywords == None || akExcludeFilterKeywords.Length == 0)
+		ExcludeKeywordList = None
+	else
+		int i = 0
+		while(i < akExcludeFilterKeywords.Length)
+			ExcludeKeywordList.AddForm(akExcludeFilterKeywords[i])
+			
+			i += 1
+		endWhile
+	endif
 	
 	if(akRunOn == None)
 		akRunOn = Game.GetPlayer()
 	endIf
 	
-	; Can we dynamically populate a list for use with OpenWorkshopSettlementMenuEx? I vaguely recall that we can't from tests with Conqueror
+	Debug.Trace("WorkshopFunctions calling " + akRunOn + " .OpenWorkshopSettlementMenuEx(" + akActionKW + ", " + astrConfirm + ", " + aLocToHighlight + ", " + IncludeKeywordList + ", " + ExcludeKeywordList + ", " + abExcludeZeroPopulation + ", " + abOnlyOwnedWorkshops + ", " + abTurnOffHeader + ", " + abOnlyPotentialVassalSettlements + ", " + abDisableReservedByQuests + ")")
+	
 	return akRunOn.OpenWorkshopSettlementMenuEx(akActionKW, astrConfirm, aLocToHighlight, IncludeKeywordList, ExcludeKeywordList, abExcludeZeroPopulation, abOnlyOwnedWorkshops, abTurnOffHeader, abOnlyPotentialVassalSettlements, abDisableReservedByQuests)	
 EndFunction
 

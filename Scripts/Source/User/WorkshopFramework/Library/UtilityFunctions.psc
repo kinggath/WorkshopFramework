@@ -1599,3 +1599,54 @@ WorldSpace Function GetWorkshopWorldspace(WorkshopScript akWorkshopRef) global
 
     return akWorkshopRef.GetWorldspace()
 EndFunction
+
+
+; ------------------------------
+; ApplyScriptPropertyChange
+; 
+; Description: Uses SetPropertyValue on akTargetRef based on settings of aChange
+;
+; ------------------------------
+Function ApplyScriptPropertyChange(ObjectReference akTargetRef, ScriptPropertyChange aChange, Bool abReverse = false) global
+	if(akTargetRef == None || aChange == None || aChange.sPropertyToChange == "")
+		return
+	endif
+	
+	if(aChange.ValueToUse == 0)
+		Bool bValue = aChange.ValueAsBool
+		
+		if(abReverse)
+			bValue = ! bValue
+		endif
+		
+		akTargetRef.SetPropertyValue(aChange.sPropertyToChange, bValue)
+	elseif(aChange.ValueToUse == 1)
+		Float fValue = aChange.ValueAsFloat
+		
+		if(abReverse)
+			Float CurrentValue = akTargetRef.GetPropertyValue(aChange.sPropertyToChange) as Float
+			
+			fValue = CurrentValue - aChange.ValueAsFloat			
+		endif
+		
+		akTargetRef.SetPropertyValue(aChange.sPropertyToChange, fValue)
+	elseif(aChange.ValueToUse == 2)
+		Int iValue = aChange.ValueAsInt
+		
+		if(abReverse)
+			Int CurrentValue = akTargetRef.GetPropertyValue(aChange.sPropertyToChange) as Int
+			
+			iValue = CurrentValue - aChange.ValueAsInt			
+		endif
+		
+		akTargetRef.SetPropertyValue(aChange.sPropertyToChange, iValue)
+	elseif(aChange.ValueToUse == 3)
+		String sValue = aChange.ValueAsString
+		
+		if(abReverse)
+			sValue = aChange.ReverseStringValue
+		endif
+		
+		akTargetRef.SetPropertyValue(aChange.sPropertyToChange, sValue)
+	endif
+EndFunction

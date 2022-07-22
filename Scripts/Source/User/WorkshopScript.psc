@@ -2862,7 +2862,7 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
 	;periods of time in workshop mode.
 	Actor PlayerRef = Game.GetPlayer()
-	if bOnlyIfLocationLoaded == false || PlayerRef.GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
+	if bOnlyIfLocationLoaded == false || myLocation.IsLoaded() || UFO4P_InWorkshopMode == true
 		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
 		
 		; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
@@ -2900,7 +2900,14 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		endif
 		
 		; WSFW 1.1.8 - Add up PowerRequired and store on workshop
-		ObjectReference[] PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+		ObjectReference[] PowerReqObjects = new ObjectReference[0]
+		
+		if(Is3dLoaded())
+			PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+		else
+			PowerReqObjects = GetWorkshopResourceObjects()
+		endif
+		
 		Float fPowerRequired = 0.0
 		
 		i = 0

@@ -36,7 +36,7 @@ EndGroup
 
 Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
-	WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
+	;WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
 EndGroup
 
 Group Messages	
@@ -244,18 +244,18 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 EndFunction
 
 ;
-; Below funcitons provided by WSFWIdentifier.dll, created by cdante
+; Below functions provided by WSFWIdentifier.dll, created by cdante
 ;
 
 String Function WSFWID_GetReferenceName(ObjectReference akObjectRef)
-	String sName = GetReferenceName(akObjectRef)
+	String sName = WSFWIdentifier.GetReferenceName(akObjectRef)
 	
 	return sName
 EndFunction
 
 Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, Bool abFixAndScan = true, Bool abResetIfFixFails = false)
 	if(akWorkshopRef == None)
-		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		;akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
 		
 		if(akWorkshopRef == None)
 			ModTrace("WSFWID_CheckAndFixPowerGrid could not find a valid settlement to check.")
@@ -265,12 +265,12 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 	
 	Int iFix = abFixAndScan as Int
 	
-	PowerGridStatistics Results = CheckAndFixPowerGrid(akWorkshopRef, iFix)
+	PowerGridStatistics Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, iFix)
 	
 	ModTrace("CheckAndFixPowerGrid " + akWorkshopRef + " results: " + Results)
 	
 	if(abFixAndScan) ; Should be fixed
-		Results = CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
+		Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
 		
 		ModTrace("abFixAndScan == true, Rescan with iFix == 0: " + akWorkshopRef + " results: " + Results)
 		if(abResetIfFixFails && Results.broken)
@@ -288,7 +288,7 @@ EndFunction
 
 Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None, Bool abAutoRan = false)
 	if(akWorkshopRef == None)
-		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		;akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
 		
 		if(akWorkshopRef == None)
 			ModTrace("WSFWID_ResetPowerGrid could not find a valid settlement to check.")
@@ -296,16 +296,16 @@ Bool Function WSFWID_ResetPowerGrid(WorkshopScript akWorkshopRef = None, Bool ab
 		endif
 	endif
 	
-	Bool bSuccess = ResetPowerGrid(akWorkshopRef)
+	Bool bSuccess = WSFWIdentifier.ResetPowerGrid(akWorkshopRef)
 	
 	if(bSuccess)
 		if(abAutoRan)
 			if(PlayerRef.IsWithinBuildableArea(akWorkshopRef))
-				WSFW_Main.OfferPostResetPowerGridRebuild(akWorkshopRef)
+				;WSFW_Main.OfferPostResetPowerGridRebuild(akWorkshopRef)
 			else
 				akWorkshopRef.bPowerGridRebuildOfferNeeded = true
 				
-				WSFW_Main.ShowPowerGridResetWarning(akWorkshopRef)
+				;WSFW_Main.ShowPowerGridResetWarning(akWorkshopRef)
 			endif
 		endif
 	endif
@@ -321,7 +321,7 @@ EndFunction
 
 Bool Function WSFWID_ScanPowerGrid(WorkshopScript akWorkshopRef = None)
 	if(akWorkshopRef == None)
-		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		;akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
 		
 		if(akWorkshopRef == None)
 			ModTrace("WSFWID_ScanPowerGrid could not find a valid settlement to check.")
@@ -330,13 +330,13 @@ Bool Function WSFWID_ScanPowerGrid(WorkshopScript akWorkshopRef = None)
 	endif
 	
 	; First make sure a grid exists or this will crash the game
-	PowerGridStatistics Results = CheckAndFixPowerGrid(akWorkshopRef, 0)
+	PowerGridStatistics Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, 0)
 	
 	if(Results.totalGrids <= 0)
 		return true
 	endif
 	
-	Bool bSuccess = ScanPowerGrid(akWorkshopRef)
+	Bool bSuccess = WSFWIdentifier.ScanPowerGrid(akWorkshopRef)
 	
 	ModTrace("ScanPowerGrid " + akWorkshopRef + " returned: " + bSuccess + ". Full grid output dumped to Documents\\My Games\\Fallout4\\F4SE\\wsfw_identifier.log.")
 	

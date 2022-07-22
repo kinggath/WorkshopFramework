@@ -1696,6 +1696,7 @@ Function FindAndRemoveMisplacedItems()
 	else
 		WSFW_SettlementLayout_MisplacedItemCleanup_NoneFound.Show()
 	endif
+	int iValidObjectsFoundByMistake = 0
 	
 	while(i > 0)
 		i -= 1
@@ -1705,16 +1706,20 @@ Function FindAndRemoveMisplacedItems()
 		if(thisRef != None)
 			Location thisLocation = thisRef.GetCurrentLocation()
 			
-			if(thisLocation != NearestWorkshopLocation)
-				ObjectReference kLinkedWorkbench = thisRef.GetLinkedRef(WorkshopItemKeyword)
+			if(thisLocation != NearestWorkshopLocation || thisRef.IsInInterior()) ; Interior settlements may still end up with incorrectly placed items
+				WorkshopScript kLinkedWorkbench = thisRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
 				Keyword LinkedToKeyword = WorkshopItemKeyword
 				if(kLinkedWorkbench == None)
 					LinkedToKeyword = LinkCustom10
-					kLinkedWorkbench = thisRef.GetLinkedRef(LinkCustom10)
+					kLinkedWorkbench = thisRef.GetLinkedRef(LinkCustom10) as WorkshopScript
 				endif
 				
 				if(kLinkedWorkbench != None && kLinkedWorkbench != kNearestWorkshop)
-					Location WorkbenchLocation = kLinkedWorkbench.GetCurrentLocation()
+					Location WorkbenchLocation = kLinkedWorkbench.myLocation
+					if(WorkbenchLocation == None)
+						WorkbenchLocation = kLinkedWorkbench.GetCurrentLocation()
+					endif
+					
 					if(ClearingLocation != WorkbenchLocation)
 						bClearingLocationChanged = true
 						ClearingLocation = WorkbenchLocation
@@ -1740,9 +1745,11 @@ Function FindAndRemoveMisplacedItems()
 						thisRef.Disable(false)
 						thisRef.Delete()
 					endif
+				else
+					iValidObjectsFoundByMistake += 1
 				endif
-				
-				
+			else
+				iValidObjectsFoundByMistake += 1
 			endif
 			
 			FindLayoutItemsQuest.FoundItems.RemoveRef(thisRef)
@@ -1761,6 +1768,10 @@ Function FindAndRemoveMisplacedItems()
 			endif
 		endif
 	endWhile
+	
+	if(iValidObjectsFoundByMistake > 0)
+		Debug.MessageBox("Misplaced item removal complete!\n\n" + iValidObjectsFoundByMistake + " of the objects detected by the tool were not actually misplaced and have been left in place.")
+	endif
 	
 	FindLayoutItemsQuest.Stop()
 EndFunction

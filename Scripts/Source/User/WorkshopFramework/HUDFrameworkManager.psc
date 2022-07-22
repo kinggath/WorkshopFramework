@@ -754,22 +754,6 @@ Function NudgeWidgetScale(String asWidgetName, Float afAmount = 0.1)
 EndFunction
 
 
-Function ShowHUDWidgetsInWorkshopMode()
-	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
-		return 
-	endif
-	
-	Var[] Args = new Var[5]
-	Args[0] = "HUDFramework"
-	Args[1] = "SwitchToPA"
-	Args[2] = "1"
-	Args[3] = true
-	Args[4] = false
-	
-	HudInstance.CallFunction("SendMessageString", Args)
-EndFunction
-
-
 Function ResetWidget(String asWidgetName)
 	; Tell HUDFramework to Unload/Load widget
 	if( ! IsHUDFrameworkInstalled)
@@ -792,4 +776,20 @@ Function ResetAllWidgets()
 		ResetWidget(RegisteredWidgets[i])
 		i += 1
 	endWhile
+EndFunction
+
+
+Function ShowHUDWidgetsInWorkshopMode()
+	if( ! IsHUDFrameworkInstalled) ; 1.0.5 - Needs HF to continue
+		return 
+	endif
+	
+	Var[] Args = new Var[5]
+	Args[0] = "HUDFramework"
+	Args[1] = "SwitchToPA"
+	Args[2] = "1"
+	Args[3] = true
+	Args[4] = false
+	
+	HudInstance.CallFunction("SendMessageString", Args)
 EndFunction

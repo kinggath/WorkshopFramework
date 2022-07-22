@@ -158,6 +158,9 @@ EndProperty
 
 ObjectReference Property myIdleMarkerRef = none auto
 
+Form Property WSFWOverwriteCheck = None Auto Hidden
+{ Used by Workshop Framework to verify if this script has been overwritten }
+
 ;--------------------------------------------------------
 ;	Added by UFO4P 2.0.6 for Bug #25215 
 ;--------------------------------------------------------
@@ -172,6 +175,8 @@ int resourceID = -2
 ;--------------------------------------------------------
 
 Event OnInit()
+	WSFWOverwriteCheck = Game.GetFormFromFile(0x00000F99, "WorkshopFramework.esm")
+	
 ;	;WorkshopParent.wsTrace(self + " OnInit")
 	; if an actor that requires power, make unconscious
 	Actor meActor = (self as ObjectReference) as Actor
