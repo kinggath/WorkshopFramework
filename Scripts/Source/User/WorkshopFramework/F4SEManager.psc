@@ -244,7 +244,7 @@ String Function GetPluginNameFromForm(Form aFormOrReference, Bool abCheckLightPl
 EndFunction
 
 ;
-; Below funcitons provided by WSFWIdentifier.dll, created by cdante
+; Below functions provided by WSFWIdentifier.dll, created by cdante
 ;
 
 String Function WSFWID_GetReferenceName(ObjectReference akObjectRef)

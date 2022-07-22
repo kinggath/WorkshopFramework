@@ -43,6 +43,8 @@ Group Controllers
 	
 	WorkshopFramework:UIManager Property UIManager Auto Const Mandatory
 	WorkshopFramework:WorkshopObjectManager Property WorkshopObjectManager Auto Const Mandatory
+	WorkshopFramework:PlaceObjectManager Property PlaceObjectManager Auto Const Mandatory
+	WorkshopFramework:NPCManager Property NPCManager Auto Const Mandatory
 EndGroup
 
 
@@ -88,6 +90,7 @@ Group Messages
 	Message Property PowerToolsMenu Auto Const Mandatory
 	Message Property PowerGridResetWarning Auto Const Mandatory
 	Message Property PostResetPowerGridRebuildConfirm Auto Const Mandatory
+	Message Property WorkshopScriptOverwriteWarning Auto Const Mandatory
 EndGroup
 
 ; ---------------------------------------------
@@ -190,7 +193,7 @@ Event OnTimer(Int aiTimerID)
 
 			;Debug.Trace(">>>>>>>>>>>>>>>> bLastWorkshopRefFound: " + bLastWorkshopRefFound + ", kPreviousLoc: " + kPreviousLoc + ", kNewLoc: " + kNewLoc + ", lastWorkshop: " + lastWorkshop + ", currentWorkshop: " + currentWorkshop + ", bCurrentWorkshopRefFound: " + bCurrentWorkshopRefFound + ", bLastSettlementUnloaded: " + bLastSettlementUnloaded)
 			if(bLastWorkshopRefFound)
-				Bool bLastWorkshopLoaded = lastWorkshop.GetCurrentLocation().IsLoaded()
+				Bool bLastWorkshopLoaded = lastWorkshop.myLocation.IsLoaded()
 				kArgs = new Var[2]
 				kArgs[0] = lastWorkshop
 				kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
@@ -237,7 +240,7 @@ Event OnTimer(Int aiTimerID)
 		else
 			LatestLocation.ForceLocationTo(PlayerLocation)
 			; Player probably exited settlement
-			Bool bLastWorkshopLoaded = currentWorkshop.GetCurrentLocation().IsLoaded()
+			Bool bLastWorkshopLoaded = currentWorkshop.myLocation.IsLoaded()
 			Var[] kArgs = new Var[2]
 			kArgs[0] = currentWorkshop
 			kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
@@ -301,50 +304,7 @@ Function HandleInstallModChanges()
 	endif
 EndFunction
 
-function deduplicateAllVendorLists()
-	ModTrace("[WSFW] List deduplication BEGIN")
-	; iterate all workshop
-	WorkshopScript[] Workshops = WorkshopParent.Workshops
-	int i = 0
-	while(i < Workshops.Length)
-		deduplicateVendorListsForWorkshop(Workshops[i])
-		i += 1
-	endWhile
-	ModTrace("[WSFW] List deduplication END")
-endFunction
 
-function deduplicateVendorListsForWorkshop(WorkshopScript ws)
-	; vanilla
-	ws.VendorContainersMisc 	= deduplicateObjectReferenceArray(ws.VendorContainersMisc)
-	ws.VendorContainersArmor 	= deduplicateObjectReferenceArray(ws.VendorContainersArmor)
-	ws.VendorContainersWeapons 	= deduplicateObjectReferenceArray(ws.VendorContainersWeapons)
-	ws.VendorContainersBar 		= deduplicateObjectReferenceArray(ws.VendorContainersBar)
-	ws.VendorContainersClinic 	= deduplicateObjectReferenceArray(ws.VendorContainersClinic)
-	ws.VendorContainersClothing = deduplicateObjectReferenceArray(ws.VendorContainersClothing)
-
-	; IN THEORY, this a) shouldn't be possible for custom ones and b) I don't think this can be done safely
-
-endFunction
-
-ObjectReference[] function deduplicateObjectReferenceArray(ObjectReference[] list)
-	if(list == none || list.length == 0)
-		return list
-	endif
-
-	ObjectReference[] result = new ObjectReference[0]
-
-	int i=0
-	while(i<list.length)
-		ObjectReference thisRef = list[i]
-		if(result.length == 0 || result.Find(thisRef) < 0)
-			result.add(thisRef)
-		endif
-		i += 1
-	endwhile
-
-	ModTrace("[WSFW] List deduplication: before: "+list.length+", after: "+result.length)
-	return result
-endFunction
 
 Function HandleGameLoaded()
 	; Make sure our debug log is open
@@ -357,6 +317,8 @@ Function HandleGameLoaded()
 	else
 		RegisterForRemoteEvent(WorkshopParent as Quest, "OnStageSet")
 	endif
+	
+	CheckForWorkshopScriptOverwrites()
 
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 	UpdatePluginFlags()
@@ -808,6 +770,118 @@ Function MCM_ToggleWorkshopTutorials()
 	else
 		DisableWorkshopTutorials()
 	endif
+EndFunction
+
+
+function deduplicateAllVendorLists()
+	ModTrace("[WSFW] List deduplication BEGIN")
+	; iterate all workshop
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		deduplicateVendorListsForWorkshop(Workshops[i])
+		i += 1
+	endWhile
+	ModTrace("[WSFW] List deduplication END")
+endFunction
+
+function deduplicateVendorListsForWorkshop(WorkshopScript ws)
+	; vanilla
+	ws.VendorContainersMisc 	= deduplicateObjectReferenceArray(ws.VendorContainersMisc)
+	ws.VendorContainersArmor 	= deduplicateObjectReferenceArray(ws.VendorContainersArmor)
+	ws.VendorContainersWeapons 	= deduplicateObjectReferenceArray(ws.VendorContainersWeapons)
+	ws.VendorContainersBar 		= deduplicateObjectReferenceArray(ws.VendorContainersBar)
+	ws.VendorContainersClinic 	= deduplicateObjectReferenceArray(ws.VendorContainersClinic)
+	ws.VendorContainersClothing = deduplicateObjectReferenceArray(ws.VendorContainersClothing)
+
+	; IN THEORY, this a) shouldn't be possible for custom ones and b) I don't think this can be done safely
+
+endFunction
+
+ObjectReference[] function deduplicateObjectReferenceArray(ObjectReference[] list)
+	if(list == none || list.length == 0)
+		return list
+	endif
+
+	ObjectReference[] result = new ObjectReference[0]
+
+	int i=0
+	while(i<list.length)
+		ObjectReference thisRef = list[i]
+		if(result.length == 0 || result.Find(thisRef) < 0)
+			result.add(thisRef)
+		endif
+		i += 1
+	endwhile
+
+	ModTrace("[WSFW] List deduplication: before: "+list.length+", after: "+result.length)
+	return result
+endFunction
+
+
+
+Function CheckForWorkshopScriptOverwrites()
+	Bool bOverwriteFound = false
+	
+	ModTrace("Checking for workshop script overwrites...")
+	
+	WorkshopScript kSanctuaryRef = Game.GetFormFromFile(0x000250FE, "Fallout4.esm") as WorkshopScript
+	
+	; Make sure vars had a chance to fill
+	kSanctuaryRef.OnInit() ; if WSFW version is installed, this will call FillWSFWVars() on it and WorkshopParent
+		
+	; Check WorkshopParent
+	var WorkshopParentCheck = WorkshopParent.GetPropertyValue("WSFW_Setting_AutoAssignBeds")
+	if( ! (WorkshopParentCheck as GlobalVariable))
+		ModTrace("   WorkshopParentScript: Overwritten!")
+		bOverwriteFound = true
+	else
+		ModTrace("   WorkshopParentScript: Passed.")
+	endif
+	
+	; Check WorkshopScript
+	var WorkshopScriptCheck = kSanctuaryRef.GetPropertyValue("WSFW_Setting_minProductivity")
+	if( ! (WorkshopScriptCheck as GlobalVariable))
+		ModTrace("   WorkshopScript: Overwritten!")
+		bOverwriteFound = true
+	else
+		ModTrace("   WorkshopScript: Passed.")
+	endif
+	
+	; Check WorkshopObjectScript
+	Form ScavStation = Game.GetFormFromFile(0x0008674C, "Fallout4.esm") as Form
+	WorkshopObjectScript kTempRef = kSanctuaryRef.PlaceAtMe(ScavStation) as WorkshopObjectScript
+	
+	var WorkshopObjectScriptCheck = kTempRef.GetPropertyValue("WSFWOverwriteCheck")
+	if( ! (WorkshopObjectScriptCheck as Quest))
+		ModTrace("   WorkshopObjectScript: Overwritten!")
+		bOverwriteFound = true
+	else
+		ModTrace("   WorkshopObjectScript: Passed.")
+	endif
+	
+	; Check WorkshopNPCScript
+	WorkshopNPCScript kTempNPC = NPCManager.CreateNPC(NPCManager.SettlerActorBase, kTempRef) as WorkshopNPCScript
+	
+	var WorkshopNPCScriptCheck = kTempRef.GetPropertyValue("WSFWOverwriteCheck")
+	if( ! (WorkshopNPCScriptCheck as Quest))
+		ModTrace("   WorkshopNPCScript: Overwritten!")
+		bOverwriteFound = true
+	else
+		ModTrace("   WorkshopNPCScript: Passed.")
+	endif
+	
+	kTempRef.Disable(false)
+	kTempRef.Delete()
+	
+	kTempNPC.Disable(false)
+	kTempNPC.Delete()
+	
+	if(bOverwriteFound)
+		WorkshopScriptOverwriteWarning.Show()
+	endif
+	
+	ModTrace("Completed check for workshop script overwrites. Overwrites found?: " + bOverwriteFound)
 EndFunction
 
 

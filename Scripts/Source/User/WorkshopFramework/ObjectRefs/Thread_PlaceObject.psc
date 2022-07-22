@@ -225,6 +225,10 @@ Function RunCode()
 	
 	kResult = None
 	; Place temporary object at player
+	if(kSpawnAt == None)
+		kSpawnAt = Game.GetPlayer()
+	endif
+	
 	ObjectReference kTempPositionHelper = kSpawnAt.PlaceAtMe(PositionHelper, abInitiallyDisabled = true)
 	
 	if(kTempPositionHelper)
@@ -271,8 +275,12 @@ Function RunCode()
 		
 		
 		; 1.0.8 - Added kMoveToWorldspaceRef to ensure objects end up in the correct worldspace before the coordinates are set
-		if(kMoveToWorldspaceRef == None && kWorkshopRef != None)
-			kMoveToWorldspaceRef = kWorkshopRef
+		if(kMoveToWorldspaceRef == None)
+			if(kWorkshopRef != None)
+				kMoveToWorldspaceRef = kWorkshopRef
+			elseif(kPositionRelativeTo != None)
+				kMoveToWorldspaceRef = kPositionRelativeTo
+			endif
 		endif
 		
 		if(kMoveToWorldspaceRef != None)

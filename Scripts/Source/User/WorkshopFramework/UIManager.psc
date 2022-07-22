@@ -470,7 +470,7 @@ int Function ShowFormlistBarterSelectMenuV5(Form afBarterDisplayNameForm, Formli
 			if(iAwaitingSorting > 0)
 				ModTraceCustom(sUILog, "Waiting for item to sort (when iAwaitingSorting [" + iAwaitingSorting + "] = iExpectedAwaitingValue [" + iExpectedAwaitingValue + "])")
 				int iWaitCount = 0
-				while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete && iWaitCount < 1000)
+				while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete && iWaitCount < 500)
 					Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements
 					iWaitCount += 1
 				endWhile
@@ -627,7 +627,7 @@ int Function ShowBarterSelectMenuV5(Form afBarterDisplayNameForm, Form[] aAvaila
 			endif
 			
 			int iWaitCount = 0
-			while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete && iWaitCount < 1000)
+			while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete && iWaitCount < 500)
 				Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements
 				iWaitCount += 1
 			endWhile
