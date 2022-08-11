@@ -828,7 +828,10 @@ Function CheckForWorkshopScriptOverwrites()
 	WorkshopScript kSanctuaryRef = Game.GetFormFromFile(0x000250FE, "Fallout4.esm") as WorkshopScript
 	
 	; Make sure vars had a chance to fill
-	kSanctuaryRef.OnInit() ; if WSFW version is installed, this will call FillWSFWVars() on it and WorkshopParent
+	if ( ! kSanctuaryRef.OwnedByPlayer )
+		; assume if workshop owned, vars are filled - calling OnInit on an owned workshop will reset the build limit AVs
+		kSanctuaryRef.OnInit() ; if WSFW version is installed, this will call FillWSFWVars() on it and WorkshopParent
+	endif
 		
 	; Check WorkshopParent
 	var WorkshopParentCheck = WorkshopParent.GetPropertyValue("WSFW_Setting_AutoAssignBeds")
