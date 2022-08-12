@@ -658,6 +658,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				kThread.fAngleZ = aObjectsToPlace[i].fAngleZ
 				kThread.fScale = aObjectsToPlace[i].fScale
 				kThread.kWorkshopRef = akWorkshopRef
+				kThread.bRequiresWorkshopOrWorldspace = true
 				
 				if(aObjectsToPlace[i].fExtraDataFlag == fExtraDataFlag_SkipWorkshopItemLink)
 					kThread.bBypassWorkshopItemLink = true
@@ -861,6 +862,10 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 		; Wiring up is only reliable in WS Mode
 		if( ! akWorkshopRef.bHasEnteredWorkshopModeHere)
 			akWorkshopRef.StartWorkshop()
+			
+			Utility.Wait(0.1)
+			
+			akWorkshopRef.StartWorkshop(false)
 		endif
 		
 		if(PowerConnections != None)

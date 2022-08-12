@@ -261,6 +261,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		endif
 		
 		if(bPlayerInvolved)
+			Actor PlayerRef = PlayerAlias.GetActorRef()
 			if(iCurrentAssaultType != AssaultManager.iType_Defend)
 				if(bAutoHandleObjectives)
 					SetObjectiveDisplayed(10)					
@@ -268,21 +269,18 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				
 				ObjectReference kAttackFrom = AttackFromAlias.GetRef()
 				
-				if(PlayerAlias.GetRef().GetDistance(kAttackFrom) < fPlayerArriveDistance)
+				if(PlayerRef.GetDistance(kAttackFrom) < fPlayerArriveDistance)
 					SetStage(iStage_PlayerArrived)
 				else
-					RegisterForDistanceLessThanEvent(PlayerAlias.GetRef(), kAttackFrom, fPlayerArriveDistance)
+					RegisterForDistanceLessThanEvent(PlayerRef, kAttackFrom, fPlayerArriveDistance)
 				endif
 				
-				
-				Actor PlayerRef = PlayerAlias.GetRef() as Actor
 				AttackerFactionAlias.AddRef(PlayerRef)
 			else
 				if(bAutoHandleObjectives)
 					SetObjectiveDisplayed(17)					
 				endif
 				
-				Actor PlayerRef = PlayerAlias.GetRef() as Actor
 				DefenderFactionAlias.AddRef(PlayerRef)
 			endif
 			
@@ -434,6 +432,8 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			AutoResolveAssault()
 		endif
 	elseif(aiStageID == iStage_Shutdown)
+		UnregisterForAllEvents()
+		
 		CleanupAssault() ; Need to do this before actual shutdown is called or the aliases won't be full and certain functions (such as RestoreBleedoutRecovery) won't run correctly
 		
 		Stop()
@@ -666,9 +666,7 @@ Function SetupAssault()
 				RegisterForRemoteEvent(thisLocation, "OnLocationLoaded")
 			endif
 		else
-			CleanupAssault()
-			
-			Stop()
+			SetStage(iStage_Shutdown)
 		endif		
 	endif
 EndFunction
@@ -1302,7 +1300,7 @@ EndFunction
 ; 1.1.2 - Override
 Function Stop()
 	; Hide objectives before stopping or they end up stuck displayed
-	if( ! GetStageDone(90) && ! GetStageDone(100))
+	if( ! GetStageDone(iStage_Failed) && ! GetStageDone(iStage_Success	))
 		HideAllObjectives()
 	endif
 	
@@ -1343,49 +1341,37 @@ EndFunction
 
 
 Function RestoreBleedoutRecovery()
-	ActorValue HealthAV = Game.GetHealthAV()
-	
+	RestoreCollectionBleedoutRecovery(Attackers)
+	RestoreCollectionBleedoutRecovery(SubdueToComplete)
+	RestoreCollectionBleedoutRecovery(Defenders)
+EndFunction
+
+Function RestoreCollectionBleedoutRecovery(RefCollectionAlias aCollection)
 	int i = 0
-	while(i < Attackers.GetCount())
-		Actor thisActor = Attackers.GetAt(i) as Actor
-		
+	while(i < aCollection.GetCount())
+		Actor thisActor = aCollection.GetAt(i) as Actor
 		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
-			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
-			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
-			
-			thisActor.RestoreValue(HealthAV, fRestore)
-			thisActor.SetNoBleedoutRecovery(false)
-			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
+			RestoreActorBleedoutRecovery(thisActor)
 		endif
 		
 		i += 1
 	endWhile
+EndFunction
+
+
+Function RestoreActorBleedoutRecovery(Actor akActorRef)
+	; First make sure they have some health or they will immediately drop dead
+	ActorValue HealthAV = Game.GetHealthAV()
+	Float fCurrentHealth = akActorRef.GetValue(HealthAV)
+	Float fRestore = 10.0
 	
-	i = 0
-	while(i < SubdueToComplete.GetCount())
-		Actor thisActor = SubdueToComplete.GetAt(i) as Actor
-		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
-			; First make sure they have some health or they will immediately drop dead
-			Float fCurrentHealth = thisActor.GetValue(HealthAV)
-			Float fRestore = 10.0
-			
-			if(fCurrentHealth < 0)
-				fRestore += fCurrentHealth * -1
-			endif
-			
-			thisActor.RestoreValue(HealthAV, fRestore)
-			
-			thisActor.SetNoBleedoutRecovery(false)
-			thisActor.RemoveKeyword(BleedoutRecoveryStopped)
-		endif
-		
-		i += 1
-	endWhile
+	if(fCurrentHealth < 0)
+		fRestore += fCurrentHealth * -1
+	endif
+	
+	akActorRef.RestoreValue(HealthAV, fRestore)
+	akActorRef.SetNoBleedoutRecovery(false)
+	akActorRef.RemoveKeyword(BleedoutRecoveryStopped)
 EndFunction
 
 

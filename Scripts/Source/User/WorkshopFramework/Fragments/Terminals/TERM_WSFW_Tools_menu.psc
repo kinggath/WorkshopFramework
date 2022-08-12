@@ -47,6 +47,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_07
 Function Fragment_Terminal_07(ObjectReference akTerminalRef)
 ;BEGIN CODE
+Utility.Wait(0.1)
 F4SEManager.ShowRemoteLocationManagementMenu()
 ;END CODE
 EndFunction
@@ -56,6 +57,14 @@ EndFunction
 Function Fragment_Terminal_08(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SettlementLayoutManager.FindAndRemoveMisplacedItems()
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_09
+Function Fragment_Terminal_09(ObjectReference akTerminalRef)
+;BEGIN CODE
+MainQuest.RelinkLocalSettlers()
 ;END CODE
 EndFunction
 ;END FRAGMENT

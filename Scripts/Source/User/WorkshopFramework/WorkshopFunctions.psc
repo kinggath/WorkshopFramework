@@ -109,17 +109,9 @@ EndFunction
 
 ; Copied from WorkshopParent to reduce calls to it
 Function AssignHomeMarkerToActor(Actor akActorRef, WorkshopScript akWorkshopRef) global
-	; If sandbox link exists, use that - otherwise use center marker
-	Keyword WorkshopLinkSandbox = GetWorkshopLinkSandboxKeyword()
-	Keyword WorkshopLinkHome = GetWorkshopLinkHomeKeyword()
+	ObjectReference kHomeMarker = GetWorkshopHomeMarker(akWorkshopRef)
 	
-	ObjectReference kHomeMarker = akWorkshopRef.GetLinkedRef(WorkshopLinkSandbox)
-	if(kHomeMarker == None)
-		Keyword WorkshopLinkCenter = GetWorkshopLinkCenterKeyword()
-		kHomeMarker = akWorkshopRef.GetLinkedRef(WorkshopLinkCenter)
-	endif
-	
-	akActorRef.SetLinkedRef(kHomeMarker, WorkshopLinkHome)
+	akActorRef.SetLinkedRef(kHomeMarker, GetWorkshopLinkHomeKeyword())
 endFunction
 
 ; Copied from Workshop Parent to reduce calls to it
@@ -1489,26 +1481,35 @@ Location Function OpenKeywordFilteredWorkshopSettlementMenuEx(Keyword akActionKW
 	Formlist ExcludeKeywordList = Game.GetFormFromFile(0x0002E55D, "WorkshopFramework.esm") as Formlist
 	
 	IncludeKeywordList.Revert()
-	int i = 0
-	while(i < akIncludeFilterKeywords.Length)
-		IncludeKeywordList.AddForm(akIncludeFilterKeywords[i])
-		
-		i += 1
-	endWhile
+	if(akIncludeFilterKeywords == None || akIncludeFilterKeywords.Length == 0)
+		IncludeKeywordList = None
+	else
+		int i = 0
+		while(i < akIncludeFilterKeywords.Length)
+			IncludeKeywordList.AddForm(akIncludeFilterKeywords[i])
+			
+			i += 1
+		endWhile
+	endif
 	
 	ExcludeKeywordList.Revert()
-	i = 0
-	while(i < akExcludeFilterKeywords.Length)
-		ExcludeKeywordList.AddForm(akExcludeFilterKeywords[i])
-		
-		i += 1
-	endWhile
+	if(akExcludeFilterKeywords == None || akExcludeFilterKeywords.Length == 0)
+		ExcludeKeywordList = None
+	else
+		int i = 0
+		while(i < akExcludeFilterKeywords.Length)
+			ExcludeKeywordList.AddForm(akExcludeFilterKeywords[i])
+			
+			i += 1
+		endWhile
+	endif
 	
 	if(akRunOn == None)
 		akRunOn = Game.GetPlayer()
 	endIf
 	
-	; Can we dynamically populate a list for use with OpenWorkshopSettlementMenuEx? I vaguely recall that we can't from tests with Conqueror
+	Debug.Trace("WorkshopFunctions calling " + akRunOn + " .OpenWorkshopSettlementMenuEx(" + akActionKW + ", " + astrConfirm + ", " + aLocToHighlight + ", " + IncludeKeywordList + ", " + ExcludeKeywordList + ", " + abExcludeZeroPopulation + ", " + abOnlyOwnedWorkshops + ", " + abTurnOffHeader + ", " + abOnlyPotentialVassalSettlements + ", " + abDisableReservedByQuests + ")")
+	
 	return akRunOn.OpenWorkshopSettlementMenuEx(akActionKW, astrConfirm, aLocToHighlight, IncludeKeywordList, ExcludeKeywordList, abExcludeZeroPopulation, abOnlyOwnedWorkshops, abTurnOffHeader, abOnlyPotentialVassalSettlements, abDisableReservedByQuests)	
 EndFunction
 
@@ -1597,6 +1598,22 @@ ObjectReference Function GetWorkshopSpawnPoint(WorkshopScript akWorkshopRef) glo
 	endif
 	
 	return kSpawnPoint
+EndFunction
+
+ObjectReference Function GetWorkshopHomeMarker(WorkshopScript akWorkshopRef) global
+	ObjectReference homeMarker = None
+	if(akWorkshopRef != None)
+		homeMarker = akWorkshopRef.GetLinkedRef(GetWorkshopLinkSandboxKeyword())
+		if(homeMarker == None)
+			homeMarker = akWorkshopRef.GetLinkedRef(GetWorkshopLinkCenterKeyword())
+			
+			if(homeMarker == None)
+				homeMarker = akWorkshopRef
+			endif
+		endif
+	endif
+	
+	return homeMarker	
 EndFunction
 
 ;<<

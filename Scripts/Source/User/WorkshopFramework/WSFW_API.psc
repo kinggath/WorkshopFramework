@@ -34,6 +34,7 @@ import WorkshopFramework:Library:UtilityFunctions
 ; ------------------------------
 
 ObjectReference Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScript akWorkshopRef = None, ObjectReference akPositionRelativeTo = None, Bool abStartEnabled = true) global
+	;Debug.Trace("WSFW_API.CreateSettlementObject called")
 	WorkshopFramework:WSFW_APIQuest API = GetAPI()
 	
 	if( ! API)
@@ -41,7 +42,11 @@ ObjectReference Function CreateSettlementObject(WorldObject PlaceMe, WorkshopScr
 		return None
 	endif
 	
-	return API.PlaceObjectManager.CreateObjectImmediately(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled)
+	ObjectReference kCreatedRef = API.PlaceObjectManager.CreateObjectImmediately(PlaceMe, akWorkshopRef, None, -1, akPositionRelativeTo, abStartEnabled)
+	
+	;Debug.Trace("CreateObjectImmediately returned " + kCreatedRef + ", API = " + API + ", PlaceObjectManager = " + API.PlaceObjectManager)
+	
+	return kCreatedRef
 EndFunction
 
 

@@ -72,6 +72,10 @@ bool Property bApplyWorkshopOwnerFaction = true auto conditional
 LocationRefType Property CustomBossLocRefType Auto Const
 { Patch 1.4: custom loc ref type to use for this actor when assigning to workshop }
 
+
+Form Property WSFWOverwriteCheck = None Auto Hidden
+{ Used by Workshop Framework to verify if this script has been overwritten }
+
 group VendorData
 	int Property specialVendorType = -1 auto const
 	{ based on index from WorkshopParent VendorTypes - set for NPCs who have special vendor abilities }
@@ -224,6 +228,7 @@ auto state unassigned
 ; default state
 
 	Event OnInit()
+		WSFWOverwriteCheck = Game.GetFormFromFile(0x00000F99, "WorkshopFramework.esm")
 	
 		;UFO4P 2.0.4 Bug #24437: added this check:
 		if IsBoundGameObjectAvailable() == false

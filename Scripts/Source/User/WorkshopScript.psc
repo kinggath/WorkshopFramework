@@ -1412,6 +1412,9 @@ Bool Property bAllowLinkedConsumption = true Auto Hidden ; WSFW - Allow flagging
 ResourceShortage[] Property ShortResources Auto Hidden ; WSFW 1.0.8 - Resources that mods have reported are lacking
 
 
+Float Property fLastKnownPowerRequired = 0.0 Auto Hidden ; WSFW 2.2.3 - Replacing WSFW_PowerRequired AV, which was not reliable remotely
+
+
 ; WSFW 1.1.0 - Support for Control system - we don't want to use SettlementOwnershipFaction as it is used by the base game for another purpose
 Faction Property ControllingFaction Auto Hidden ; Non-WSFW specific for simple checks
 FactionControl Property FactionControlData Auto Hidden ; All WSFW data
@@ -1657,7 +1660,15 @@ Event OnInit()
 
 	; happiness target (don't want to set a default value)
 	SetValue(HappinessTarget, WorkshopParent.startingHappinessTarget)
+	
+	GoToState("Initialized")
 EndEvent
+
+; WSFW Added 2.2.3 so our trick of calling OnInit on Sanctuary for the sake of testing for overwritten workshop scripts can work without resetting the build limit and happiness target.
+State Initialized
+	Event OnInit()
+	EndEvent
+EndState
 
 Event OnLoad()
 	if( ! bWSFWVarsFilled)
@@ -1872,7 +1883,7 @@ function SetOwnedByPlayer(bool bIsOwned)
 		; flag as "lost control"
 		SetValue(WorkshopPlayerLostControl, 1.0)
 		; clear farm discount faction if we can get actors
-		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
+		ObjectReference[] WorkshopActors = GetWorkshopActors()
 		int i = 0
 		while(i < WorkshopActors.Length)
 			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actor
@@ -1927,7 +1938,7 @@ function SetOwnedByPlayer(bool bIsOwned)
 		AllowAttacksBeforeOwned = true
 
 		; add player owned actor value if possible
-		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
+		ObjectReference[] WorkshopActors = GetWorkshopActors()
 		int i = 0
 		while(i < WorkshopActors.Length)
 			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actors
@@ -1971,7 +1982,7 @@ Event OnWorkshopObjectPlaced(ObjectReference akReference)
 		Actor TurretRef = akReference as Actor
 		
 		if(TurretRef && ControlManager)
-			WorkshopScript thisWorkshop = GetLinkedRef(WorkshopParent.WorkshopItemKeyword) as WorkshopScript
+			WorkshopScript thisWorkshop = GetLinkedRef(WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()) as WorkshopScript
 			ControlManager.CaptureTurret(TurretRef, thisWorkshop, aFactionData = thisWorkshop.FactionControlData, abPlayerIsEnemy = (ControllingFaction.GetFactionReaction(Game.GetPlayer() as Actor) == 1), abForPlayer = thisWorkshop.OwnedByPlayer)
 		endif
 	endif
@@ -2123,7 +2134,7 @@ function DailyUpdate(bool bRealUpdate = true)
 
 	; if this is current workshop, update actors (in case some have been wounded since last update)
 	if(GetWorkshopID() == CurrentWorkshopID.GetValue() && WorkshopParent.UFO4P_IsWorkshopLoaded(self))
-		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
+		ObjectReference[] WorkshopActors = GetWorkshopActors()
 		int i = 0
 		while(i < WorkshopActors.Length)
 			; WSFW 2.0.0 - Switched to nonWorkshopNPCScript actors
@@ -2645,7 +2656,7 @@ function RepairDamageToResource(ActorValue resourceValue)
 			; if this is the current workshop, we can try to heal one of the actors (otherwise we don't have them)
 			if(workshopID == iCurrentWorkshopID)
 				int i = 0
-				ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(self)
+				ObjectReference[] WorkshopActors = GetWorkshopActors()
 				while(i < WorkshopActors.Length)
 					; WSFW 2.0.0 - Switch this section to use our global functions that avoid WorkshopNPCScript
 					Actor theActor = WorkshopActors[i] as Actor
@@ -2862,22 +2873,9 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
 	;periods of time in workshop mode.
 	Actor PlayerRef = Game.GetPlayer()
-	if bOnlyIfLocationLoaded == false || PlayerRef.GetCurrentLocation() == myLocation || UFO4P_InWorkshopMode == true
-		Keyword WorkshopItemKeyword = WorkshopParent.WorkshopItemKeyword
-		
-		; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
-		
-		ObjectReference[] WorkshopActors = WorkshopParent.GetWorkshopActors(Self)
-		
-		int i = 0
-		while(i < WorkshopActors.Length)
-			WorkshopActors[i].SetLinkedRef(PlayerRef, WorkshopItemKeyword)
-			Utility.WaitMenuMode(0.01)
-			WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)
-			
-			i += 1
-		endWhile
-		; End WSFW 2.0.21 hack
+	Bool bLocationLoaded = myLocation.IsLoaded()
+	if bOnlyIfLocationLoaded == false || bLocationLoaded || UFO4P_InWorkshopMode == true
+		Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
 		
 		RecalculateResources()
 		
@@ -2886,10 +2884,10 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 			ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
 			Float fSafetyValue = 0.0
 			
-			i = 0
+			int i = 0
 			while(i < SafetyObjects.Length)
 				if( ! SafetyObjects[i].IsDisabled())
-					Float fValue = SafetyObjects[i].GetValue(Safety)
+					Float fValue = SafetyObjects[i].GetBaseValue(Safety)
 					fSafetyValue += fValue
 				endif
 
@@ -2900,20 +2898,32 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		endif
 		
 		; WSFW 1.1.8 - Add up PowerRequired and store on workshop
-		ObjectReference[] PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+		ObjectReference[] PowerReqObjects = new ObjectReference[0]
+		
+		if(Is3dLoaded())
+			PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+		else
+			PowerReqObjects = GetWorkshopResourceObjects()
+		endif
+		
 		Float fPowerRequired = 0.0
 		
-		i = 0
+		int i = 0
 		while(i < PowerReqObjects.Length)
 			if( ! PowerReqObjects[i].IsDisabled() && PowerReqObjects[i].GetLinkedRef(WorkshopItemKeyword) == Self)
-				Float fValue = PowerReqObjects[i].GetValue(PowerRequired)
+				Float fValue = PowerReqObjects[i].GetBaseValue(PowerRequired)
 				fPowerRequired += fValue
 			endif
 
 			i += 1
 		endWhile
 
-		SetValue(WSFW_PowerRequired, fPowerRequired)		
+		SetValue(WSFW_PowerRequired, fPowerRequired)
+		
+		if(fPowerRequired > fLastKnownPowerRequired || bLocationLoaded)
+			; Only update this field if it increases, or if the location is loaded. This way we can be certain the power number will at least be pseudo accurate
+			fLastKnownPowerRequired = fPowerRequired
+		endif
 		
 		bRecalcRunning = false
 		
@@ -2924,6 +2934,34 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 		
 	return false
 endFunction 
+
+
+
+Function RelinkWorkshopActors()
+	GoToState("RelinkingActors")
+	; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
+		
+	Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
+	ObjectReference[] WorkshopActors = GetWorkshopActors()
+
+	Actor PlayerRef = Game.GetPlayer()
+	int i = WorkshopActors.Length
+	while ( i > 0 )
+		i -= 1
+		
+		WorkshopActors[i].SetLinkedRef(PlayerRef, WorkshopItemKeyword)
+	endWhile
+
+	Utility.Wait(1.0)
+	
+	i = WorkshopActors.Length
+	while ( i > 0 )
+		i -= 1
+		WorkshopActors[i].SetLinkedRef(Self, WorkshopItemKeyword)	; re-link ref to workshop
+	endWhile
+	
+	GoToState("Initialized")
+EndFunction
 
 ;----------------------------------------------------------------------------------------------------------------------------------------------------------
 ;	Added by UFO4P 2.0.2 for bug #21408:
@@ -3637,6 +3675,34 @@ EndFunction
 
 Function _SetMapMarker(ObjectReference akMapMarkerRef)
 	myMapMarker = akMapMarkerRef
+EndFunction
+
+
+State RelinkingActors
+	Function RelinkWorkshopActors()
+		; Don't run it multiple times simultaneously
+	EndFunction
+	
+	ObjectReference[] Function GetWorkshopActors()
+		while(GetState() == "RelinkingActors")
+			; This state is only entered by a manually run function, so we can wait a second at a time, rather than trying to ping every fraction of a second like we might otherwise
+			Utility.Wait(1.0)
+		endWhile
+		
+		if(Population != None)
+			return GetWorkshopResourceObjects(Population)
+		else
+			return WorkshopParent.GetWorkshopActors(Self)
+		endif
+	EndFunction
+EndState
+
+ObjectReference[] Function GetWorkshopActors()
+	if(Population != None)
+		return GetWorkshopResourceObjects(Population)
+	else
+		return WorkshopParent.GetWorkshopActors(Self)
+	endif
 EndFunction
 
 

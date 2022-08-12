@@ -134,6 +134,8 @@ Int Function GetVendorLevel()
 			return ((Self as ObjectReference) as WorkshopObjectScript).VendorLevel
 		endif
 	endif
+	
+	return 0
 EndFunction
 
 Function CreateRealInventoryDisplayMarkerRefs()

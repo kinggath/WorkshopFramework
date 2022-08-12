@@ -692,7 +692,7 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 		WorkshopParent.WSFW_AddToActorsWithoutBedsArray(akActorRef)
 	endif
 	
-	if(iNewWorkshopID == iCurrentWorkshopID)
+	if(iNewWorkshopID == iCurrentWorkshopID && (WSFW_Setting_AutoAssign_Beds.GetValueInt() == 1 || ! akWorkshopRef.OwnedByPlayer))
 		WorkshopParent.TryToAssignBeds(akWorkshopRef)
 	endif
 
@@ -707,6 +707,7 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 	Var[] kargs = new Var[2]
 	kargs[0] = akActorRef
 	kargs[1] = iNewWorkshopID
+	kArgs[2] = -1
 	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 endFunction
 
@@ -813,7 +814,6 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 		akActorRef.ClearFromOldLocations() ; make sure location data is correct
 	else
 		WorkshopParent.PermanentActorAliases.AddRef(akActorRef)
-		bAutoAssignBeds = true
 	endif
 
 	if(akWorkshopRef.PlayerHasVisited)
@@ -856,6 +856,7 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 	Var[] kargs = new Var[2]
 	kargs[0] = akActorRef
 	kargs[1] = iNewWorkshopID
+	kargs[2] = iOldWorkshopID
 	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 	
 	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )

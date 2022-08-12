@@ -384,6 +384,10 @@ ObjectReference[] Property CollectedWires01 Auto Hidden
 ObjectReference[] Property CollectedWires02 Auto Hidden
 ObjectReference[] Property CollectedWires03 Auto Hidden
 ObjectReference[] Property CollectedWires04 Auto Hidden
+ObjectReference[] Property CollectedWires05 Auto Hidden
+ObjectReference[] Property CollectedWires06 Auto Hidden
+ObjectReference[] Property CollectedWires07 Auto Hidden
+ObjectReference[] Property CollectedWires08 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs01 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs02 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs03 Auto Hidden
@@ -392,6 +396,14 @@ ObjectReference[] Property CollectedPowerableRefs05 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs06 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs07 Auto Hidden
 ObjectReference[] Property CollectedPowerableRefs08 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs09 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs10 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs11 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs12 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs13 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs14 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs15 Auto Hidden
+ObjectReference[] Property CollectedPowerableRefs16 Auto Hidden
 	
 Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCollectWires = true, Bool abWireableOnly = false, Bool abExcludeGenerators = false)
 	if(akWorkshopRef == None)
@@ -408,6 +420,10 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 	CollectedWires02 = new ObjectReference[0]
 	CollectedWires03 = new ObjectReference[0]
 	CollectedWires04 = new ObjectReference[0]
+	CollectedWires05 = new ObjectReference[0]
+	CollectedWires06 = new ObjectReference[0]
+	CollectedWires07 = new ObjectReference[0]
+	CollectedWires08 = new ObjectReference[0]
 	CollectedPowerableRefs01 = new ObjectReference[0]
 	CollectedPowerableRefs02 = new ObjectReference[0]
 	CollectedPowerableRefs03 = new ObjectReference[0]
@@ -416,17 +432,27 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 	CollectedPowerableRefs06 = new ObjectReference[0]
 	CollectedPowerableRefs07 = new ObjectReference[0]
 	CollectedPowerableRefs08 = new ObjectReference[0]
+	CollectedPowerableRefs09 = new ObjectReference[0]
+	CollectedPowerableRefs10 = new ObjectReference[0]
+	CollectedPowerableRefs11 = new ObjectReference[0]
+	CollectedPowerableRefs12 = new ObjectReference[0]
+	CollectedPowerableRefs13 = new ObjectReference[0]
+	CollectedPowerableRefs14 = new ObjectReference[0]
+	CollectedPowerableRefs15 = new ObjectReference[0]
+	CollectedPowerableRefs16 = new ObjectReference[0]
 	
 	ObjectReference[] kLinkedRefs = akWorkshopRef.GetLinkedRefChildren(WorkshopItemKeyword)
+	Bool bWireArraysFull = false
+	Bool bWireableArraysFull = false
 	
 	int i = 0
 	int iTransmittedTo = 0
-	while(i < kLinkedRefs.Length)
+	while(i < kLinkedRefs.Length && ( ! bWireableArraysFull || ! bWireArraysFull))
 		if( ! kLinkedRefs[i].IsDisabled())
 			Bool bIsWire = (kLinkedRefs[i].GetBaseObject().GetFormID() == 0x0001D971)
 			
 			if(bIsWire)
-				if(abCollectWires)
+				if(abCollectWires && ! bWireArraysFull)
 					if(CollectedWires01.Length < 128)
 						CollectedWires01.Add(kLinkedRefs[i])
 					elseif(CollectedWires02.Length < 128)
@@ -435,11 +461,20 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 						CollectedWires03.Add(kLinkedRefs[i])
 					elseif(CollectedWires04.Length < 128)
 						CollectedWires04.Add(kLinkedRefs[i])
+					elseif(CollectedWires05.Length < 128)
+						CollectedWires05.Add(kLinkedRefs[i])
+					elseif(CollectedWires06.Length < 128)
+						CollectedWires06.Add(kLinkedRefs[i])
+					elseif(CollectedWires07.Length < 128)
+						CollectedWires07.Add(kLinkedRefs[i])
+					elseif(CollectedWires08.Length < 128)
+						CollectedWires08.Add(kLinkedRefs[i])
 					else
-						Debug.MessageBox("More than 512 wires found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
+						bWireArraysFull = true
+						Debug.MessageBox("More than 1024 wires found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
 					endif
 				endif
-			else
+			elseif( ! bWireableArraysFull)
 				Bool bCollectMe = false
 				if(abWireableOnly)
 					if(kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword))
@@ -468,8 +503,25 @@ Bool Function CollectPoweredItems(WorkshopScript akWorkshopRef = None, Bool abCo
 						CollectedPowerableRefs07.Add(kLinkedRefs[i])
 					elseif(CollectedPowerableRefs08.Length < 128)
 						CollectedPowerableRefs08.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs09.Length < 128)
+						CollectedPowerableRefs09.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs10.Length < 128)
+						CollectedPowerableRefs10.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs11.Length < 128)
+						CollectedPowerableRefs11.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs12.Length < 128)
+						CollectedPowerableRefs12.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs13.Length < 128)
+						CollectedPowerableRefs13.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs14.Length < 128)
+						CollectedPowerableRefs14.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs15.Length < 128)
+						CollectedPowerableRefs15.Add(kLinkedRefs[i])
+					elseif(CollectedPowerableRefs16.Length < 128)
+						CollectedPowerableRefs16.Add(kLinkedRefs[i])
 					else
-						Debug.MessageBox("More than 1024 powered objects found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
+						bWireableArraysFull = true
+						Debug.MessageBox("More than 2048 powered objects found. Unable to process them all. (Psst... ask kinggath to expand the limit!)")
 					endif
 				endif
 			endif
@@ -539,6 +591,62 @@ Function DumpCollectedItems(Bool abPowerRefs = true, Bool abWires = true)
 			
 			i += 1
 		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs09.Length)
+			ModTrace("    " + CollectedPowerableRefs09[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs10.Length)
+			ModTrace("    " + CollectedPowerableRefs10[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs11.Length)
+			ModTrace("    " + CollectedPowerableRefs11[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs12.Length)
+			ModTrace("    " + CollectedPowerableRefs12[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs13.Length)
+			ModTrace("    " + CollectedPowerableRefs13[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs14.Length)
+			ModTrace("    " + CollectedPowerableRefs14[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs15.Length)
+			ModTrace("    " + CollectedPowerableRefs15[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedPowerableRefs16.Length)
+			ModTrace("    " + CollectedPowerableRefs16[i])
+			
+			i += 1
+		endWhile
 	endif
 	
 	if(abWires)
@@ -568,6 +676,34 @@ Function DumpCollectedItems(Bool abPowerRefs = true, Bool abWires = true)
 		i = 0
 		while(i < CollectedWires04.Length)
 			ModTrace("    " + CollectedWires04[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedWires05.Length)
+			ModTrace("    " + CollectedWires05[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedWires06.Length)
+			ModTrace("    " + CollectedWires06[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedWires07.Length)
+			ModTrace("    " + CollectedWires07[i])
+			
+			i += 1
+		endWhile
+		
+		i = 0
+		while(i < CollectedWires08.Length)
+			ModTrace("    " + CollectedWires08[i])
 			
 			i += 1
 		endWhile
@@ -615,7 +751,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 	endif
 	
 	if(CollectPoweredItems(akWorkshopRef, abCollectWires = false, abWireableOnly = true))
-		iAutoWireItemsFound = CollectedPowerableRefs01.Length + CollectedPowerableRefs02.Length + CollectedPowerableRefs03.Length + CollectedPowerableRefs04.Length + CollectedPowerableRefs05.Length + CollectedPowerableRefs06.Length + CollectedPowerableRefs07.Length + CollectedPowerableRefs08.Length
+		iAutoWireItemsFound = CollectedPowerableRefs01.Length + CollectedPowerableRefs02.Length + CollectedPowerableRefs03.Length + CollectedPowerableRefs04.Length + CollectedPowerableRefs05.Length + CollectedPowerableRefs06.Length + CollectedPowerableRefs07.Length + CollectedPowerableRefs08.Length + CollectedPowerableRefs09.Length + CollectedPowerableRefs10.Length + CollectedPowerableRefs11.Length + CollectedPowerableRefs12.Length + CollectedPowerableRefs13.Length + CollectedPowerableRefs14.Length + CollectedPowerableRefs15.Length + CollectedPowerableRefs16.Length
 		
 		ModTrace("AutoWireSettlement found " + iAutoWireItemsFound + " items that can be wired.")
 		
@@ -632,6 +768,14 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 		AutoWireData[] Data06 = new AutoWireData[0]
 		AutoWireData[] Data07 = new AutoWireData[0]
 		AutoWireData[] Data08 = new AutoWireData[0]
+		AutoWireData[] Data09 = new AutoWireData[0]
+		AutoWireData[] Data10 = new AutoWireData[0]
+		AutoWireData[] Data11 = new AutoWireData[0]
+		AutoWireData[] Data12 = new AutoWireData[0]
+		AutoWireData[] Data13 = new AutoWireData[0]
+		AutoWireData[] Data14 = new AutoWireData[0]
+		AutoWireData[] Data15 = new AutoWireData[0]
+		AutoWireData[] Data16 = new AutoWireData[0]
 		; Query once for data from each ref
 		if(CollectedPowerableRefs01.Length > 0)
 			Data01 = GatherDataForAutoWire(CollectedPowerableRefs01)
@@ -656,6 +800,38 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 				
 									if(CollectedPowerableRefs08.Length > 0)
 										Data08 = GatherDataForAutoWire(CollectedPowerableRefs08, 896)
+										
+										if(CollectedPowerableRefs09.Length > 0)
+											Data09 = GatherDataForAutoWire(CollectedPowerableRefs09, 1024)
+											
+											if(CollectedPowerableRefs10.Length > 0)
+												Data10 = GatherDataForAutoWire(CollectedPowerableRefs10, 1152)
+												
+												if(CollectedPowerableRefs11.Length > 0)
+													Data11 = GatherDataForAutoWire(CollectedPowerableRefs11, 1280)
+													
+													if(CollectedPowerableRefs12.Length > 0)
+														Data12 = GatherDataForAutoWire(CollectedPowerableRefs12, 1408)
+														
+														if(CollectedPowerableRefs13.Length > 0)
+															Data13 = GatherDataForAutoWire(CollectedPowerableRefs13, 1536)
+															
+															if(CollectedPowerableRefs14.Length > 0)
+																Data14 = GatherDataForAutoWire(CollectedPowerableRefs14, 1664)
+																
+																if(CollectedPowerableRefs15.Length > 0)
+																	Data15 = GatherDataForAutoWire(CollectedPowerableRefs15, 1792)
+																	
+																	if(CollectedPowerableRefs16.Length > 0)
+																		Data16 = GatherDataForAutoWire(CollectedPowerableRefs16, 1920)
+																	endif
+																endif
+															endif
+														endif
+													endif
+												endif
+											endif
+										endif
 									endif
 								endif
 							endif
@@ -1166,6 +1342,22 @@ ObjectReference Function GetCollectedPowerableRefByIndex(Int aiIndex)
 		return CollectedPowerableRefs07[(aiIndex - 768)]
 	elseif(aiIndex < 1024)
 		return CollectedPowerableRefs08[(aiIndex - 896)]
+	elseif(aiIndex < 1152)
+		return CollectedPowerableRefs09[(aiIndex - 1024)]
+	elseif(aiIndex < 1280)
+		return CollectedPowerableRefs10[(aiIndex - 1152)]
+	elseif(aiIndex < 1408)
+		return CollectedPowerableRefs11[(aiIndex - 1280)]
+	elseif(aiIndex < 1536)
+		return CollectedPowerableRefs12[(aiIndex - 1408)]
+	elseif(aiIndex < 1664)
+		return CollectedPowerableRefs13[(aiIndex - 1536)]
+	elseif(aiIndex < 1792)
+		return CollectedPowerableRefs14[(aiIndex - 1664)]
+	elseif(aiIndex < 1920)
+		return CollectedPowerableRefs15[(aiIndex - 1792)]
+	elseif(aiIndex < 2048)
+		return CollectedPowerableRefs16[(aiIndex - 1920)]
 	else
 		return None
 	endif
@@ -1304,7 +1496,7 @@ Function FauxPowerSettlement(WorkshopScript akWorkshopRef = None)
 	
 	; Find all powerable objects
 	if(CollectPoweredItems(akWorkshopRef, abCollectWires = false, abWireableOnly = false, abExcludeGenerators = true))
-		iFauxPowerItemsFound = CollectedPowerableRefs01.Length + CollectedPowerableRefs02.Length + CollectedPowerableRefs03.Length + CollectedPowerableRefs04.Length + CollectedPowerableRefs05.Length + CollectedPowerableRefs06.Length + CollectedPowerableRefs07.Length + CollectedPowerableRefs08.Length
+		iFauxPowerItemsFound = CollectedPowerableRefs01.Length + CollectedPowerableRefs02.Length + CollectedPowerableRefs03.Length + CollectedPowerableRefs04.Length + CollectedPowerableRefs05.Length + CollectedPowerableRefs06.Length + CollectedPowerableRefs07.Length + CollectedPowerableRefs08.Length + CollectedPowerableRefs09.Length + CollectedPowerableRefs10.Length + CollectedPowerableRefs11.Length + CollectedPowerableRefs12.Length + CollectedPowerableRefs13.Length + CollectedPowerableRefs14.Length + CollectedPowerableRefs15.Length + CollectedPowerableRefs16.Length
 		
 		FauxPowerObjectArray(CollectedPowerableRefs01)
 		FauxPowerObjectArray(CollectedPowerableRefs02)
@@ -1314,6 +1506,14 @@ Function FauxPowerSettlement(WorkshopScript akWorkshopRef = None)
 		FauxPowerObjectArray(CollectedPowerableRefs06)
 		FauxPowerObjectArray(CollectedPowerableRefs07)
 		FauxPowerObjectArray(CollectedPowerableRefs08)
+		FauxPowerObjectArray(CollectedPowerableRefs09)
+		FauxPowerObjectArray(CollectedPowerableRefs10)
+		FauxPowerObjectArray(CollectedPowerableRefs11)
+		FauxPowerObjectArray(CollectedPowerableRefs12)
+		FauxPowerObjectArray(CollectedPowerableRefs13)
+		FauxPowerObjectArray(CollectedPowerableRefs14)
+		FauxPowerObjectArray(CollectedPowerableRefs15)
+		FauxPowerObjectArray(CollectedPowerableRefs16)
 	endif
 	
 	if(bUseHUDProgressModule)
@@ -1382,6 +1582,10 @@ Bool Function DestroyWires(WorkshopScript akWorkshopRef = None)
 		ScrapWireArray(CollectedWires02, akWorkshopRef)
 		ScrapWireArray(CollectedWires03, akWorkshopRef)
 		ScrapWireArray(CollectedWires04, akWorkshopRef)
+		ScrapWireArray(CollectedWires05, akWorkshopRef)
+		ScrapWireArray(CollectedWires06, akWorkshopRef)
+		ScrapWireArray(CollectedWires07, akWorkshopRef)
+		ScrapWireArray(CollectedWires08, akWorkshopRef)
 	endif
 		
 	Debug.MessageBox("All found wires have been scrapped.\n\nIt is now safe to exit Workshop Mode!")
@@ -1467,7 +1671,7 @@ Bool Function RewireSettlement(WorkshopScript akWorkshopRef = None)
 	if(CollectPoweredItems(akWorkshopRef, abWireableOnly = true))
 		if(CollectedWires01.Length > 0)
 			bRewireInProgress = true
-			iTotalWiresToRecreate = CollectedWires01.Length + CollectedWires02.Length + CollectedWires03.Length + CollectedWires04.Length
+			iTotalWiresToRecreate = CollectedWires01.Length + CollectedWires02.Length + CollectedWires03.Length + CollectedWires04.Length + CollectedWires05.Length + CollectedWires06.Length + CollectedWires07.Length + CollectedWires08.Length
 			
 			iRemainingWiresToRecreate = iTotalWiresToRecreate
 			
@@ -1482,6 +1686,26 @@ Bool Function RewireSettlement(WorkshopScript akWorkshopRef = None)
 					
 					if(CollectedWires04.Length > 0)
 						RecreateWireArray(CollectedWires04, akWorkshopRef)
+						
+						if(CollectedWires05.Length > 0)
+							RecreateWireArray(CollectedWires05, akWorkshopRef)
+							
+							if(CollectedWires05.Length > 0)
+								RecreateWireArray(CollectedWires05, akWorkshopRef)
+								
+								if(CollectedWires06.Length > 0)
+									RecreateWireArray(CollectedWires06, akWorkshopRef)
+									
+									if(CollectedWires07.Length > 0)
+										RecreateWireArray(CollectedWires07, akWorkshopRef)
+										
+										if(CollectedWires08.Length > 0)
+											RecreateWireArray(CollectedWires08, akWorkshopRef)
+										endif
+									endif
+								endif
+							endif
+						endif
 					endif
 				endif
 			endif

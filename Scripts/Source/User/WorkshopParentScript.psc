@@ -3218,7 +3218,7 @@ function AssignObjectToWorkshop(WorkshopObjectScript workObject, WorkshopScript 
 		endif
 
 		;if workshop is the current workshop, add all unowned beds to the UFO4P_UnassignedBeds array:
-		if(UFO4P_Owned == false && workshopRef.GetWorkshopID() == currentWorkshopID)
+		if(UFO4P_Owned == false && workshopID == currentWorkshopID)
 			UFO4P_AddUnassignedBedToArray(workObject)
 			
 			if( ! bResetMode && AutoAssignBeds)
