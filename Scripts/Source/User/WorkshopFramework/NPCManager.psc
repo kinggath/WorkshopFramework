@@ -704,7 +704,7 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 	endif	
 	
 	; Send WorkshopParent event for actor being added
-	Var[] kargs = new Var[2]
+	Var[] kargs = new Var[3]
 	kargs[0] = akActorRef
 	kargs[1] = iNewWorkshopID
 	kArgs[2] = -1
