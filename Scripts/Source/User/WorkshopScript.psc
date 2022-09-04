@@ -2895,6 +2895,10 @@ bool function RecalculateWorkshopResourcesV2(bool bOnlyIfLocationLoaded = true, 
 	Actor PlayerRef = Game.GetPlayer()
 	Bool bLocationLoaded = myLocation.IsLoaded()
 	if bOnlyIfLocationLoaded == false || bLocationLoaded || UFO4P_InWorkshopMode == true
+		
+		 ; this needs to be run every time the function is called
+		RecalculateResources()
+		
 		if(!bSkipTimer)
 			 ; Rather than running the rest of this immediately, start a timer so it is only run if it has not been called again in 3 seconds.
 			if(bOnlyIfLocationLoaded)
@@ -2906,8 +2910,6 @@ bool function RecalculateWorkshopResourcesV2(bool bOnlyIfLocationLoaded = true, 
 		endif
 		
 		Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
-		
-		RecalculateResources()
 		
 		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
 		if( ! OwnedByPlayer)
