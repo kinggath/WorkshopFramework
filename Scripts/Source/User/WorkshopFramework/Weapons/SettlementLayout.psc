@@ -868,8 +868,10 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 			akWorkshopRef.StartWorkshop(false)
 		endif
 		
+		Keyword WorkshopItemKeyword = GetWorkshopItemKeyword()
+		
 		if(PowerConnections != None)
-			ObjectReference[] kLinkedRefs = akWorkshopRef.GetLinkedRefChildren(GetWorkshopItemKeyword())
+			ObjectReference[] kLinkedRefs = akWorkshopRef.GetLinkedRefChildren( WorkshopItemKeyword )
 			ActorValue LayoutIndexAV = GetLayoutIndexAV()
 			ActorValue LayoutIndexTypeAV = GetLayoutIndexTypeAV()
 			ActorValue WorkshopPowerConnectionAV = GetWorkshopPowerConnectionAV()
@@ -1008,13 +1010,13 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 					ModTrace("[PowerUpAttempt] Creating Wire between: " + kObjectRefA + " and " + kObjectRefB)
 					
 					; Both found - create wire
-					ObjectReference kWireRef = F4SEManager.AttachWire(kObjectRefA, kObjectRefB)
+					ObjectReference kWireRef = F4SEManager.AttachWireV2(akWorkshopRef, kObjectRefA, kObjectRefB)
 					if(kWireRef != None)
 						kWireRef.Enable(false)
 						kWireRef.AddKeyword(TagKeyword)
 					else
 						; Try using CreateWire instead
-						kWireRef = F4SEManager.CreateWire(kObjectRefA, kObjectRefB)
+						kWireRef = F4SEManager.CreateWireV2(akWorkshopRef, kObjectRefA, kObjectRefB)
 						
 						if( ! kWireRef)
 							ModTrace("[PowerUpAttemptResult] Failed to create wire between " + kObjectRefA + " and " + kObjectRefB + ".")
