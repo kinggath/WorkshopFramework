@@ -539,3 +539,21 @@ Quest Function FindAssaultQuest(Int aiReserveID)
 	
 	return None
 EndFunction
+
+
+Bool Function IsSettlementInvolvedInAssault(WorkshopScript akWorkshopRef)
+	int i = 0
+	while(i < RunningQuests.Length)
+		WorkshopFramework:AssaultSettlement asAssaultQuest = RunningQuests[i].kQuestRef as WorkshopFramework:AssaultSettlement
+		
+		if(asAssaultQuest)
+			if(asAssaultQuest.WorkshopAlias.GetRef() == akWorkshopRef)
+				return true
+			endif
+		endif
+		
+		i += 1
+	endWhile
+	
+	return false
+EndFunction

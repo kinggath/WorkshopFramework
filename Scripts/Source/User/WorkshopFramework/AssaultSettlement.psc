@@ -490,10 +490,28 @@ Function SetupAssault()
 		
 	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
-	
+	int iWorkshopID = kWorkshopRef.GetWorkshopID()
 	; Add settlers to aliases
 	if(bSettlersAreDefenders)
 		RemoveInvalidSettlers() ; 1.1.3
+		
+		Actor[] PermanentSettlers = new Actor[0]
+		RefCollectionAlias PermanentActorAliases = WorkshopParent.PermanentActorAliases
+		int i = 0
+		while(i < PermanentActorAliases.GetCount())
+			Actor thisActor = PermanentActorAliases.GetAt(i) as Actor
+			if(thisActor != None && WorkshopFramework:WorkshopFunctions.GetWorkshopID(thisActor) == iWorkshopID)
+				PermanentSettlers.Add(thisActor)
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(PermanentSettlers.Length > 0)
+			Defenders.AddArray(PermanentSettlers as ObjectReference[])
+			DefenderFactionAlias.AddArray(PermanentSettlers as ObjectReference[])
+		endif
+		
 		Defenders.AddRefCollection(Settlers)
 		ClearCaravanNPCsFromDefenders() ; 1.1.3
 		DefenderFactionAlias.AddRefCollection(Settlers)

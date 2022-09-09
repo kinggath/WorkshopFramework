@@ -704,10 +704,10 @@ Function AddNewActorToWorkshop(WorkshopNPCScript akActorRef, WorkshopScript akWo
 	endif	
 	
 	; Send WorkshopParent event for actor being added
-	Var[] kargs = new Var[2]
-	kargs[0] = akActorRef
-	kargs[1] = iNewWorkshopID
-	kArgs[2] = -1
+	Var[] kargs = new Var[0]
+	kargs.Add(akActorRef)
+	kargs.Add(iNewWorkshopID)
+	kArgs.Add(-1)
 	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 endFunction
 
@@ -853,10 +853,10 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 	endif	
 	
 	; Send WorkshopParent event for actor being added
-	Var[] kargs = new Var[2]
-	kargs[0] = akActorRef
-	kargs[1] = iNewWorkshopID
-	kargs[2] = iOldWorkshopID
+	Var[] kargs = new Var[0]
+	kargs.Add(akActorRef)
+	kargs.Add(iNewWorkshopID)
+	kargs.Add(iOldWorkshopID)
 	WorkshopParent.SendCustomEvent("WorkshopAddActor", kargs)
 	
 	if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE )

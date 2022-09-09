@@ -329,6 +329,8 @@ Function HandleGameLoaded()
 	endif
 
 	StartQuests()
+	
+	ClearInWorkshopModeFlags()
 
 	Parent.HandleGameLoaded()
 EndFunction
@@ -393,6 +395,14 @@ EndFunction
 ; Functions
 ; ---------------------------------------------
 
+Function ClearInWorkshopModeFlags()
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		Workshops[i].UFO4P_InWorkshopMode = false
+		i += 1
+	endwhile
+EndFunction
 
 ; 1.2.0 - Adding a new manage pop-up menu to workbenches to avoid the player needing to use MCM or holotape for some things
 Function PresentManageSettlementMenu(WorkshopScript akWorkshopRef)
