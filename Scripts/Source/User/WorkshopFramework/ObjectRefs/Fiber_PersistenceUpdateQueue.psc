@@ -6,9 +6,8 @@ String Function __ScriptName() Global
     Return "WorkshopFramework:ObjectRefs:Fiber_PersistenceUpdateQueue"
 EndFunction
 Activator Function GetFiberBaseObject() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Activator
-    Return Game.GetFormFromFile( 0x00001740, "WorkshopFramework_PersistenceOverhaul.esp" ) As Activator
+    ; Get the base object form this script is on
+    Return Game.GetFormFromFile( 0x00006418, "WorkshopFramework.esm" ) As Activator
 EndFunction
 
 

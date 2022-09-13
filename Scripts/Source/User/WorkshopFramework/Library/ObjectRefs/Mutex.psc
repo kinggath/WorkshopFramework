@@ -10,9 +10,7 @@ ScriptName WorkshopFramework:Library:ObjectRefs:Mutex Extends ObjectReference
     lock is interrupted less and can process faster.
 }
 Activator Function GetMutexBaseObject() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Activator
-    Return Game.GetFormFromFile( 0x00000FA3, "WorkshopFramework_PersistenceOverhaul.esp" ) As Activator
+   Return Game.GetFormFromFile( 0x00000FA3, "WorkshopFramework.esm" ) As Activator
 EndFunction
 
 

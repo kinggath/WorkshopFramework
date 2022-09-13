@@ -2074,14 +2074,12 @@ endFunction
 
 ActorValue Property WorkshopBusy Auto Hidden
 ;; Set on the Workshop when DailyUpdate is running, other mods/code should check and respect this
-;;int iFormID_AV_WorkshopBusy = 0x00?????? Const
+
 int iFormID_AV_WorkshopBusy = 0x00001EDB Const
-string sPlugin_AV_WorkshopBusy = "WorkshopFramework_PersistenceOverhaul.esp" Const
-;; TODO:  REPLACE WITH PROPER FORMID AND sWSFW_Plugin ONCE INTEGRATED!
 
 Function SetBusy( Bool abBusy )
 	If( WorkshopBusy == None )
-		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sWSFW_Plugin ) As ActorValue
 	EndIf
 	Float lfValue = 0.0
 	If( abBusy )
@@ -2091,7 +2089,7 @@ Function SetBusy( Bool abBusy )
 EndFunction
 Bool Function GetBusy()
 	If( WorkshopBusy == None )
-		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sWSFW_Plugin ) As ActorValue
 	EndIf
 	Return ( GetBaseValue( WorkshopBusy ) As Int ) != 0
 EndFunction

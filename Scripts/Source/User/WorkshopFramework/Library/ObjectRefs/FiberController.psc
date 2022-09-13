@@ -6,9 +6,8 @@ String Function ____ScriptName() Global
     Return "WorkshopFramework:Library:ObjectRefs:FiberController"
 EndFunction
 Activator Function GetFiberControllerBaseObject() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Activator
-    Return Game.GetFormFromFile( 0x00001741, "WorkshopFramework_PersistenceOverhaul.esp" ) As Activator
+    ; Get base form this script is on
+    Return Game.GetFormFromFile( 0x00006419, "WorkshopFramework.esm" ) As Activator
 EndFunction
 
 
@@ -377,7 +376,7 @@ EndFunction
 
 ;; Percentage of those Threads that can be assigned to any given swarm of Fibers (maximally)
 Float Function GetMaxFibers() Global
-    GlobalVariable lkMaxFibers = Game.GetFormFromFile( 0x00002675, "WorkshopFramework_PersistenceOverhaul.esp" ) As GlobalVariable
+    GlobalVariable lkMaxFibers = Game.GetFormFromFile( 0x00002675, "WorkshopFramework.esm" ) As GlobalVariable
     ;; TODO:  REPLACE WITH PROPER FORMID AND sWSFW_Plugin ONCE INTEGRATED!
     Return lkMaxFibers.GetValue()
 EndFunction

@@ -6,9 +6,7 @@ ScriptName WorkshopFramework:PersistenceManager Extends WorkshopFramework:Librar
 ;;    Return "AnnexTheCommonwealth:Quest:Persistence:Manager"
 ;;EndFunction
 WorkshopFramework:PersistenceManager Function GetManager() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return ( Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Quest ) As WorkshopFramework:PersistenceManager
-    Return ( Game.GetFormFromFile( 0x00000F99, "WorkshopFramework_PersistenceOverhaul.esp" ) As Quest ) As WorkshopFramework:PersistenceManager
+	Return ( Game.GetFormFromFile( 0x00006415, "WorkshopFramework.esm" ) As Quest ) As WorkshopFramework:PersistenceManager
 EndFunction
 String Function LogFile() Global
     Return "WSFW_PersistenceManager"
