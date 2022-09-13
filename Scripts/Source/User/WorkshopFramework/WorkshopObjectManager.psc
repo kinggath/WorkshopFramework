@@ -923,7 +923,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 			int j = 0
 			while(j < InCubeObjects.Length - 1) ; -1 because each iteration we'll be linking to the next
 				iAutoWireItemsProcessed += 1
-				ObjectReference kWireRef = F4SEManager.AttachWire(InCubeObjects[j], InCubeObjects[(j + 1)])
+				ObjectReference kWireRef = F4SEManager.AttachWireV2(akWorkshopRef, InCubeObjects[j], InCubeObjects[(j + 1)])
 				
 				if(kWireRef)
 					kWireRef.Enable(false)
@@ -964,7 +964,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 				
 				if(XNeighborIndex >= 0)
 					; ModTrace("   Attempting to connect cubes " + i + " and " + XNeighborIndex + ". Cube[" + i + "] = " + thisCube + ", Neighbor = " + CubeHighCorners[XNeighborIndex])
-					if(ConnectCubes(i, XNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+					if(ConnectCubesV2(akWorkshopRef, i, XNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 						; Both cubes had items
 						bXNeighborFound = true
 					else
@@ -989,7 +989,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 				endWhile
 				
 				if(YNeighborIndex >= 0)
-					if(ConnectCubes(i, YNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+					if(ConnectCubesV2(akWorkshopRef, i, YNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 						; Both cubes had items
 						bYNeighborFound = true
 					else
@@ -1020,7 +1020,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 					
 					if(XYNeighborIndex >= 0)
 						; ModTrace("   Attempting to connect cubes " + i + " and " + XYNeighborIndex + ". Cube[" + i + "] = " + thisCube + ", Neighbor = " + CubeHighCorners[XYNeighborIndex])
-						if(ConnectCubes(i, XYNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+						if(ConnectCubesV2(akWorkshopRef, i, XYNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 							; Both cubes had items
 							bXYNeighborFound = true
 						else
@@ -1047,7 +1047,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 				endWhile
 				
 				if(ZNeighborIndex >= 0)
-					if(ConnectCubes(i, ZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+					if(ConnectCubesV2(akWorkshopRef, i, ZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 						; Both cubes had items
 						bZNeighborFound = true
 					else
@@ -1078,7 +1078,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 					
 					if(XZNeighborIndex >= 0)
 						; ModTrace("   Attempting to connect cubes " + i + " and " + XZNeighborIndex + ". Cube[" + i + "] = " + thisCube + ", Neighbor = " + CubeHighCorners[XZNeighborIndex])
-						if(ConnectCubes(i, XZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+						if(ConnectCubesV2(akWorkshopRef, i, XZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 							; Both cubes had items
 							bXZNeighbor = true
 						else
@@ -1111,7 +1111,7 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 					
 					if(YZNeighborIndex >= 0)
 						; ModTrace("   Attempting to connect cubes " + i + " and " + YZNeighborIndex + ". Cube[" + i + "] = " + thisCube + ", Neighbor = " + CubeHighCorners[YZNeighborIndex])
-						if(ConnectCubes(i, YZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
+						if(ConnectCubesV2(akWorkshopRef, i, YZNeighborIndex, Data01, Data02, Data03, Data04, Data05, Data06, Data07, Data08))
 							; Both cubes had items
 							bYZNeighbor = true
 						else
@@ -1177,6 +1177,14 @@ ObjectReference[] Function SortObjectsByDistanceToEachOther(ObjectReference[] ak
 EndFunction
 
 Bool Function ConnectCubes(Int aiCubeIndexA, Int aiCubeIndexB, AutoWireData[] aGroup01, AutoWireData[] aGroup02, AutoWireData[] aGroup03, AutoWireData[] aGroup04, AutoWireData[] aGroup05, AutoWireData[] aGroup06, AutoWireData[] aGroup07, AutoWireData[] aGroup08)
+	Debug.Trace( Self + " :: ConnectCubes() Obsolete, use ConnectCubesV2()" )
+	Return False
+EndFunction
+Bool Function ConnectCubesV2(ObjectReference akWorkshopRef, Int aiCubeIndexA, Int aiCubeIndexB, AutoWireData[] aGroup01, AutoWireData[] aGroup02, AutoWireData[] aGroup03, AutoWireData[] aGroup04, AutoWireData[] aGroup05, AutoWireData[] aGroup06, AutoWireData[] aGroup07, AutoWireData[] aGroup08)
+	If( akWorkshopRef == None )
+		Debug.Trace( Self + " :: ConnectCubesV2() :: Cannot create a PowerGrid without a WorkshopRef!" )
+		Return False
+	EndIf
 	ObjectReference[] CubeAObjects = GetInCubeObjects(aiCubeIndexA, aGroup01, aGroup02, aGroup03, aGroup04, aGroup05, aGroup06, aGroup07, aGroup08)
 	ObjectReference[] CubeBObjects = GetInCubeObjects(aiCubeIndexB, aGroup01, aGroup02, aGroup03, aGroup04, aGroup05, aGroup06, aGroup07, aGroup08)
 	
@@ -1201,7 +1209,7 @@ Bool Function ConnectCubes(Int aiCubeIndexA, Int aiCubeIndexB, AutoWireData[] aG
 	endWhile
 	
 	if(kRefA != None && kRefB != None)
-		ObjectReference kWireRef = F4SEManager.AttachWire(kRefA, kRefB)
+		ObjectReference kWireRef = F4SEManager.AttachWireV2(akWorkshopRef, kRefA, kRefB)
 		
 		if(kWireRef != None)
 			kWireRef.Enable(false)
@@ -1736,7 +1744,11 @@ Bool Function RewireSettlement(WorkshopScript akWorkshopRef = None)
 	return true
 EndFunction
 
-Function RecreateWireArray(ObjectReference[] aWireArray, WorkshopScript akWorkshopRef = None)
+Function RecreateWireArray(ObjectReference[] aWireArray, WorkshopScript akWorkshopRef)
+	If( akWorkshopRef == None )
+		Debug.Trace( Self + " :: RecreateWireArray() :: Cannot create a PowerGrid without a WorkshopRef!" )
+		Return
+	EndIf
 	int i = aWireArray.Length
 	while(i > 0)
 		i -= 1
@@ -1774,11 +1786,11 @@ Function RecreateWireArray(ObjectReference[] aWireArray, WorkshopScript akWorksh
 			aWireArray[i] = None
 		endif
 			
-		ObjectReference kWireRef = F4SEManager.AttachWire(kConnected[0], kConnected[1])
+		ObjectReference kWireRef = F4SEManager.AttachWireV2(akWorkshopRef, kConnected[0], kConnected[1])
 		
 		if(kWireRef == None)
 			; Try using CreateWire
-			kWireRef = F4SEManager.CreateWire(kConnected[0], kConnected[1])
+			kWireRef = F4SEManager.CreateWireV2(akWorkshopRef, kConnected[0], kConnected[1])
 			
 			if(kWireRef == None)
 				ModTrace("[WorkshopObjectManager] Failed to recreate wire between " + kConnected[0] + " and " + kConnected[1] + ".")

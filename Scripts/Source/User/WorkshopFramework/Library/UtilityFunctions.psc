@@ -1130,7 +1130,8 @@ EndFunction
 ; RandomizeArray 
 ; 
 ; Description: Randomizes an array's order
-; 			Warning - this is destructive to the array sent to this function, so be certain to catch ; 						the results. For example, SomeArray = RandomizeArray(SomeArray)
+; 			Warning - this is destructive to the array sent to this function, so be certain to catch
+; 						the results. For example, SomeArray = RandomizeArray(SomeArray)
 ;
 ; Parameters:
 ; Var[] myArray
@@ -1650,3 +1651,49 @@ Function ApplyScriptPropertyChange(ObjectReference akTargetRef, ScriptPropertyCh
 		akTargetRef.SetPropertyValue(aChange.sPropertyToChange, sValue)
 	endif
 EndFunction
+
+
+; ------------------------------
+; FormListToArray
+; 
+; Description: Straight copy of a FormList to an Array
+;
+; Parameters:
+; Formlist akFLST
+; ------------------------------
+Form[] Function FormListToArray( FormList akFLST ) Global
+    If( akFLST == None )
+        Return None
+    EndIf
+    
+    Int liIndex = akFLST.GetSize()
+    If( liIndex > 128 )
+        Return None
+    EndIf
+    
+    Form[] lkResult = New Form[ liIndex ]
+    While( liIndex > 0 )
+        liIndex -= 1
+        lkResult[ liIndex ] = akFLST.GetAt( liIndex )
+    EndWhile
+    
+    Return lkResult
+EndFunction
+
+
+; ------------------------------
+; WorkshopFromReferences
+; 
+; Determine which of the two references is a Workshop and return it
+;
+; Parameters:
+; ObjectReference akObj1, akObj2
+; ------------------------------
+WorkshopScript Function WorkshopFromReferences( ObjectReference akObj1, ObjectReference akObj2 ) Global
+	WorkshopScript lkWorkshop = akObj1 As WorkshopScript
+	If( lkWorkshop == None )
+		lkWorkshop = akObj2 As WorkshopScript
+	EndIf
+	Return lkWorkshop
+EndFunction
+

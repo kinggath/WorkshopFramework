@@ -2072,6 +2072,31 @@ int function GetMaxWorkshopNPCs()
 endFunction
 
 
+ActorValue Property WorkshopBusy Auto Hidden
+;; Set on the Workshop when DailyUpdate is running, other mods/code should check and respect this
+;;int iFormID_AV_WorkshopBusy = 0x00?????? Const
+int iFormID_AV_WorkshopBusy = 0x00001EDB Const
+string sPlugin_AV_WorkshopBusy = "WorkshopFramework_PersistenceOverhaul.esp" Const
+;; TODO:  REPLACE WITH PROPER FORMID AND sWSFW_Plugin ONCE INTEGRATED!
+
+Function SetBusy( Bool abBusy )
+	If( WorkshopBusy == None )
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+	EndIf
+	Float lfValue = 0.0
+	If( abBusy )
+		lfValue = 1.0
+	EndIf
+	SetValue( WorkshopBusy, lfValue )
+EndFunction
+Bool Function GetBusy()
+	If( WorkshopBusy == None )
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+	EndIf
+	Return ( GetBaseValue( WorkshopBusy ) As Int ) != 0
+EndFunction
+
+
 ; Data struct for passing data to/from DailyUpdate helper functions
 struct DailyUpdateData
 	int totalPopulation
@@ -2106,18 +2131,21 @@ bool bDailyUpdateInProgress = false
 function DailyUpdate(bool bRealUpdate = true)
 	; wait for update lock to be released
 		
-	if(WorkshopParent.DailyUpdateInProgress)
-		if(bRealUpdate || bResetHappiness)
-			while(WorkshopParent.DailyUpdateInProgress)
-				utility.wait(0.5)
-			endWhile
-		else
-			; just bail if not a real update - no need
-			return
-		endif
-	EndIf
-	
-	WorkshopParent.DailyUpdateInProgress = true
+	if( WorkshopParent.DailyUpdateInProgress )||( GetBusy() )
+        if(bRealUpdate || bResetHappiness)
+            Int liCounter = 0
+            while( WorkshopParent.DailyUpdateInProgress )||( ( GetBusy() )&&( liCounter < 100 ) )
+                utility.wait( Utility.RandomFloat( 0.125, 0.875 ) ) ; 1/8 - 7/8s variance to smooth things out
+                liCounter += 1
+            endWhile
+        else
+            ; just bail if not a real update - no need
+            return
+        endif
+    EndIf
+    
+    SetBusy( True )
+    WorkshopParent.DailyUpdateInProgress = true
 
 	; create local pointer to WorkshopRatings array to speed things up
 	WorkshopDataScript:WorkshopRatingKeyword[] ratings = WorkshopParent.WorkshopRatings
@@ -2171,6 +2199,7 @@ function DailyUpdate(bool bRealUpdate = true)
 
 	; clear update lock
 	WorkshopParent.DailyUpdateInProgress = false
+	SetBusy( False )
 	
 	if(bRealUpdate)
 		Debug.Trace("<<<<<<<<< DailyUpdate Finished for " + Self)

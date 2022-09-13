@@ -37,6 +37,11 @@ EndGroup
 Group Controllers
 	WorkshopParentScript Property WorkshopParent Auto Const Mandatory
 	;WorkshopFramework:MainQuest Property WSFW_Main Auto Const Mandatory
+	WorkshopFramework:PersistenceManager Property PersistenceManager Auto Const Mandatory
+EndGroup
+
+Group Keywords
+	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 EndGroup
 
 Group Messages	
@@ -151,13 +156,39 @@ Function TestAttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef
 	endif
 EndFunction
 
+
 ObjectReference Function AttachWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
-	return akOriginRef.AttachWire(akTargetRef, akSpline)
+	Return AttachWireV2( None, akOriginRef, akTargetRef, akSpline )
+EndFunction
+
+ObjectReference Function AttachWireV2(ObjectReference akWorkshopRef, ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
+	ObjectReference lkResult = akOriginRef.AttachWire(akTargetRef, akSpline)
+	If( lkResult != None )
+		If( akWorkshopRef != None )
+			;; Wires must be linked to the workshop too or holes in the PowerGrid may appear
+			lkResult.SetLinkedRef( akWorkshopRef, WorkshopItemKeyword )
+		EndIf
+		PersistenceManager.QueueObjectPersistence( lkResult )
+	EndIf
+	Return lkResult
 EndFunction
 
 ObjectReference Function CreateWire(ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
-	return akOriginRef.CreateWire(akTargetRef, akSpline)
+	Return CreateWireV2( None, akOriginRef, akTargetRef, akSpline )
 EndFunction
+
+ObjectReference Function CreateWireV2(ObjectReference akWorkshopRef, ObjectReference akOriginRef, ObjectReference akTargetRef, Form akSpline = None)
+	ObjectReference lkResult = akOriginRef.CreateWire(akTargetRef, akSpline)
+	If( lkResult != None )
+		If( akWorkshopRef != None )
+			;; Wires must be linked to the workshop too or holes in the PowerGrid may appear
+			lkResult.SetLinkedRef( akWorkshopRef, WorkshopItemKeyword )
+		EndIf
+		PersistenceManager.QueueObjectPersistence( lkResult )
+	EndIf
+	Return lkResult
+EndFunction
+
 
 Bool Function TransmitConnectedPower(ObjectReference akObjectRef)
 	return akObjectRef.TransmitConnectedPower()
