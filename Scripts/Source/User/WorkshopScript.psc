@@ -1457,6 +1457,9 @@ int UFO4P_DailyUpdateTimerID = 98
 int UFO4P_DailyUpdateResetHappinessTimerID = 99
 int WSFW_RetryRealDailyUpdateTimerID = 100
 
+int WSFW_RecalculateWorkshopResources_True_TimerID = 101
+int WSFW_RecalculateWorkshopResources_False_TimerID = 102
+
 ;-----------------------------------------------------------
 ;	Added by UFO4P 1.0.5. for Bug #21039:
 ;-----------------------------------------------------------
@@ -1845,6 +1848,10 @@ Event OnTimer(int aiTimerID)
 		DailyUpdate(bRealUpdate = false)
 	elseif(aiTimerID == WSFW_RetryRealDailyUpdateTimerID)
 		TryRealDailyUpdate()
+	elseif(aiTimerID == WSFW_RecalculateWorkshopResources_True_TimerID)
+		RecalculateWorkshopResourcesV2(True, True)
+	elseif(aiTimerID == WSFW_RecalculateWorkshopResources_False_TimerID)
+		RecalculateWorkshopResourcesV2(False, True)
 	endif
 EndEvent
 
@@ -2884,16 +2891,27 @@ function InitWorkshopID(int newWorkshopID)
 	endif
 endFunction
 
+; This can still be called normally if the timer does not need to be skipped.
+; If the timer must be skipped, RecalculateWorkshopResourcesV2 must be called directly
+bool Function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
+	return RecalculateWorkshopResourcesV2(bOnlyIfLocationLoaded)
+EndFunction
+
 ; helper function to recalc
 ; we don't normally want to do this when unloaded or everything will be 0
-; TRUE = we did recalc; FALSE = we didn't
-Bool Property bRecalcRunning = false Auto Hidden
-bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
-	if(bRecalcRunning) ; WSFW 2.0.21 - preventing this from being spammed
-		return false
-	endif
+; If bSkipTimer is false, returns TRUE = we did recalc; FALSE = we didn't
+; If bSkipTimer is true, returns TRUE = timer for recalc was started; FALSE = it wasn't
+
+;Bool Property bRecalcRunning = false Auto Hidden
+bool function RecalculateWorkshopResourcesV2(bool bOnlyIfLocationLoaded = true, bool bSkipTimer = false)
 	
-	bRecalcRunning = true
+	; cbrgamer : took out bRecalcRunning in favor of starting a 3 second timer each time this is called to stop it being called many times in a row on the same settlemement
+	
+	;if(bRecalcRunning) ; WSFW 2.0.21 - preventing this from being spammed
+	;	return false
+	;endif
+	
+	;bRecalcRunning = true
 	
 	;if bOnlyIfLocationLoaded == false || myLocation.IsLoaded()
 	
@@ -2901,12 +2919,26 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	;While in workshop mode, the player's current location is 'none' (entering/leaving workshop mode triggers a location change event). Thus,
 	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
 	;periods of time in workshop mode.
+	
+	
 	Actor PlayerRef = Game.GetPlayer()
 	Bool bLocationLoaded = myLocation.IsLoaded()
 	if bOnlyIfLocationLoaded == false || bLocationLoaded || UFO4P_InWorkshopMode == true
-		Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
 		
+		 ; this needs to be run every time the function is called
 		RecalculateResources()
+		
+		if(!bSkipTimer)
+			 ; Rather than running the rest of this immediately, start a timer so it is only run if it has not been called again in 3 seconds.
+			if(bOnlyIfLocationLoaded)
+				StartTimer(3.0, WSFW_RecalculateWorkshopResources_True_TimerID)
+			else
+				StartTimer(3.0, WSFW_RecalculateWorkshopResources_False_TimerID)
+			endif
+			return true
+		endif
+		
+		Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
 		
 		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
 		if( ! OwnedByPlayer)
@@ -2954,12 +2986,12 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 			fLastKnownPowerRequired = fPowerRequired
 		endif
 		
-		bRecalcRunning = false
+		;bRecalcRunning = false
 		
 		return true
 	endif
 	
-	bRecalcRunning = false
+	;bRecalcRunning = false
 		
 	return false
 endFunction 
