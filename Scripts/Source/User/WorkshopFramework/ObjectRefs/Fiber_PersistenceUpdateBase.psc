@@ -22,10 +22,17 @@ EndFunction
 /;
 
 
-Group PersistenceAlias
+Group ImportantStuff
 
     RefCollectionAlias  Property    kAlias_PersistentObjects                        Auto Const Mandatory
     { This holds and forces all the objects to persist }
+    
+    Keyword             Property    kKYWD_MustPersist                               Auto Const Mandatory
+    { Core keyword on the base object forcing engine level persistence }
+    
+    Keyword             Property    kKYWD_DoNotPersist                              Auto Const Mandatory
+    { Keyword on the base object to ignore persistence.
+NOTE: If the base object has the MustPersist keyword, this is ignored }
     
 EndGroup
 
@@ -94,6 +101,7 @@ WorkshopFramework:Library:ObjectRefs:FiberController Function _CreateFiberContro
     Activator           akFiberClass, \
     WorkshopScript      akWorkshop, \
     Int                 aiCount, \
+    Bool                abWorkBackwards = False, \
     ScriptObject        akOnFiberCompleteHandler = None, \
     Int                 aiCallbackID = 0 \
     ) Global
@@ -244,7 +252,7 @@ Bool Function TryPersist( ObjectReference akREFR )
     EndIf
     
     Bool lbIsPersisted = ( kAlias_PersistentObjects.Find( akREFR ) >= 0 )
-    Bool lbNeedsPersistence = __ObjectNeedsPersistence( akREFR )
+    Bool lbNeedsPersistence = _ObjectNeedsPersistence( akREFR )
     
     Bool lbResult
     
@@ -298,24 +306,35 @@ Bool Function __ObjectHasPersistenceActorValue( ObjectReference akREFR )
 EndFunction
 
 
-Bool Function __ObjectIsPersistenceBaseObject( ObjectReference akREFR )
-    Form lkBaseObject = akREFR.GetBaseObject()
-    Return( kBaseObjects.Find( lkBaseObject ) >= 0 )
-EndFunction
-
-
 Bool Function __ObjectHasPersistenceKeyword( ObjectReference akREFR )
     Return( akREFR.HasKeywordInFormList( kKeywords ) )
 EndFunction
 
 
+Bool Function __BaseObjectRequiresPersistence( Form akBaseObject )
+    Return( kBaseObjects.Find( akBaseObject ) >= 0 )
+EndFunction
 
 
-Bool Function __ObjectNeedsPersistence( ObjectReference akREFR )
+
+
+Bool Function _ObjectNeedsPersistence( ObjectReference akREFR )
     ;; Do fast fails...
     
     ;; Required slow test (native, latent) regardless of anything else
-    If( akREFR.IsDeleted() )
+    If  ( akREFR.IsDeleted() )
+        Return False
+    EndIf
+
+    Form lkBaseObject = akREFR.GetBaseObject()
+
+    ;; Engine level forced persistence
+    If( lkBaseObject.HasKeyword( kKYWD_MustPersist ) )
+        Return True
+    EndIf
+
+    ;; Our override to prevent non-engine forced persistence
+    If( lkBaseObject.HasKeyword( kKYWD_DoNotPersist ) )
         Return False
     EndIf
     
@@ -336,7 +355,7 @@ Bool Function __ObjectNeedsPersistence( ObjectReference akREFR )
     EndIf
     
     ;; Slow test (native, latent) for being one of the Base Forms
-    If( __ObjectIsPersistenceBaseObject( akREFR ) )
+    If( __BaseObjectRequiresPersistence( lkBaseObject ) )
         Return True
     EndIf
     
