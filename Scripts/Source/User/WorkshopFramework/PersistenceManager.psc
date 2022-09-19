@@ -248,6 +248,7 @@ ActorValue[] Function Get_PersistReference_ActorValues()
 EndFunction
 
 
+;; Mods should call this function to add their actor value that may be on an ObjectReference that should be persisted
 Function Add_PersistReference_ActorValue( ActorValue akAVIF )
     kFLST_PersistReference_ActorValues.AddForm( akAVIF )
     __kPersistReference_ActorValues = None
@@ -271,6 +272,7 @@ Form[] Function Get_PersistReference_BaseObjects()
 EndFunction
 
 
+;; Mods should call this function to add their base form to the type of ObjectReference that should be persisted
 Function Add_PersistReference_BaseObject( Form akForm )
     kFLST_PersistReference_BaseObjects.AddForm( akForm )
     __kPersistReference_BaseObjects = None
@@ -283,6 +285,7 @@ EndFunction
 
 
 
+;; Mods should call this function to add their keyword that may be attached to an ObjectReference that should be persisted
 Function Add_PersistReference_Keyword( Keyword akKYWD )
     kFLST_PersistReference_Keywords.AddForm( akKYWD )
 EndFunction
@@ -616,7 +619,7 @@ Float                               __fTimerHours_ScanQueue = 1.0               
 
 
 
-;; Scan an array of objects and persist the ones that need it
+;; Immediately scan an array of objects and persist the ones that need it
 Int Function PersistObjectArray(  \
     WorkshopScript      akWorkshop, \
     ObjectReference[]   akObjects, \
@@ -671,7 +674,36 @@ EndFunction
 
 
 
-;; Queue a single object to be scanned on the next cycle
+;; Queue an array of objects to be scanned in the next cycle
+Int Function QueueObjectArray( ObjectReference[] akObjects )
+    
+    Int liObjects = akObjects.Length
+
+    Debug.TraceUser( LogFile(), Self + " :: QueueObjectArray()" \
+    + "\n\takObjects  = " + liObjects \
+    )
+    
+    If( liObjects == 0 )
+        Return SCHEDULE_NO_WORK
+    EndIf
+    
+    Int liResult = SCHEDULE_SCHEDULED
+    
+    While( liObjects > 0 )
+        liObjects -= 1
+        Int liQueued = QueueObjectPersistence( akObjects[ liObjects ] )
+        If( liQueued != SCHEDULE_SCHEDULED )
+            liResult = liQueued
+        EndIf
+    EndWhile
+    
+    Return liResult
+EndFunction
+
+
+
+
+;; Queue a single object to be scanned in the next cycle
 Int Function QueueObjectPersistence( ObjectReference akObject )
     Debug.TraceUser( LogFile(), Self + " :: QueueObjectPersistence() :: akObject = " + akObject )
     
