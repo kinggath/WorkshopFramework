@@ -57,16 +57,6 @@ EndFunction
 
 Function __CommonInit()
     
-    ;; Register for WorkshopParent events
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectBuilt" )
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectMoved" )
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectDestroyed" )
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToBed" )
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToWork" )
-    RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorUnassigned" )
-    
-    kQUST_ThreadManager.RegisterForCallbackThreads( Self )
-    
     ;; Reset the FormLists and caches on load, mods should wait until the 
     kFLST_PersistReference_ActorValues.Revert()
     kFLST_PersistReference_BaseObjects.Revert()
@@ -74,34 +64,113 @@ Function __CommonInit()
     __kPersistReference_ActorValues = None
     __kPersistReference_BaseObjects = None
     
-    ;; Register for events with all the Workshops
-    WorkshopScript[] lkWorkshops = kQUST_WorkshopParent.Workshops
-    Int liIndex = lkWorkshops.Length
-    While( liIndex > 0 )
-        liIndex -= 1
-        
-        WorkshopScript lkWorkshop = lkWorkshops[ liIndex ]
-        If( lkWorkshop != None )
-            
-            __RegisterForWorkshopEvents( lkWorkshop )
-            
-        EndIf
-        
-    EndWhile
-    
-    ;; Start the cycle of cleaning deleted Objects from the Manager
-    __ScheduleCleanDeadPersistentObjects()
-    
+    ;; Take the appropriate action
+    __UpdatePersistenceState()
+
 EndFunction
 
 
-Function __RegisterForWorkshopEvents( WorkshopScript akWorkshop )
+Function __UpdatePersistenceState()
     
-    RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectPlaced" )
-    RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectMoved" )
-    RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectDestroyed" )
+    If( IsPersistenceManagementEnabled() )
+
+        ;; Register for WorkshopParent events
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectBuilt" )
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectMoved" )
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectDestroyed" )
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToBed" )
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToWork" )
+        RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorUnassigned" )
+        
+        kQUST_ThreadManager.RegisterForCallbackThreads( Self )
+        
+        ;; Register for events with all the Workshops
+        WorkshopScript[] lkWorkshops = kQUST_WorkshopParent.Workshops
+        Int liIndex = lkWorkshops.Length
+        While( liIndex > 0 )
+            liIndex -= 1
+            
+            WorkshopScript lkWorkshop = lkWorkshops[ liIndex ]
+            If( lkWorkshop != None )
+                
+                __UpdateWorkshopEventRegistration( lkWorkshop, True )
+                
+            EndIf
+            
+        EndWhile
+        
+        ;; Start the cycle of cleaning deleted Objects from the Manager
+        __ScheduleCleanDeadPersistentObjects()
+        
+    Else
+        
+        ;; Need to wait for any running scans to finish
+        __BlockQueue( aiWaitCount = 1000, abForceThrough = True )
+        While( __bQueueScanning )||( __bCleaning )
+            Utility.WaitMenuMode( 5.0 )
+        EndWhile
+
+        ;; Cancel any scheduled scans
+        CancelTimerGameTime( iFiberID_CleanDeadPersistentObjects )
+        
+        ;; Unregister for WorkshopParent events
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectBuilt" )
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectMoved" )
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectDestroyed" )
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToBed" )
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorAssignedToWork" )
+        UnregisterForCustomEvent( kQUST_WorkshopParent, "WorkshopActorUnassigned" )
+        
+        kQUST_ThreadManager.UnregisterForCallbackThreads( Self )
+        
+        ;; Unregister for events with all the Workshops
+        WorkshopScript[] lkWorkshops = kQUST_WorkshopParent.Workshops
+        Int liIndex = lkWorkshops.Length
+        While( liIndex > 0 )
+            liIndex -= 1
+            
+            WorkshopScript lkWorkshop = lkWorkshops[ liIndex ]
+            If( lkWorkshop != None )
+                
+                __UpdateWorkshopEventRegistration( lkWorkshop, False )
+                
+            EndIf
+            
+        EndWhile
+        
+        ;; Lastly, empty any and all RefCollectionAliases
+        kAlias_PersistentObjects.RemoveAll()
+        
+        liIndex = kAlias_PersistenceQueues.Length
+        While( liIndex > 0 )
+            liIndex -= 1
+            kAlias_PersistenceQueues[ liIndex ].RemoveAll()
+        EndWhile
+
+    EndIf
+
+EndFunction
+
+
+Function __UpdateWorkshopEventRegistration( WorkshopScript akWorkshop, Bool abRegister )
     
-    __SchedulePersistentScanOnApproach( akWorkshop, abScanIfCloseEnough = False )
+    If( abRegister )
+        
+        RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectPlaced" )
+        RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectMoved" )
+        RegisterForRemoteEvent( akWorkshop, "OnWorkshopObjectDestroyed" )
+        
+        __SchedulePersistentScanOnApproach( akWorkshop, abScanIfCloseEnough = False )
+        
+    Else
+        
+        UnregisterForRemoteEvent( akWorkshop, "OnWorkshopObjectPlaced" )
+        UnregisterForRemoteEvent( akWorkshop, "OnWorkshopObjectMoved" )
+        UnregisterForRemoteEvent( akWorkshop, "OnWorkshopObjectDestroyed" )
+        
+        UnregisterForDistanceEvents( PlayerRef, akWorkshop )
+
+    EndIf
     
 EndFunction
 
@@ -121,8 +190,9 @@ EndFunction
 /;
 
 
-Int                     Property    SCHEDULE_SCHEDULED = 1                          AutoReadOnly Hidden
+Int                     Property    SCHEDULE_DISABLED = 3                           AutoReadOnly Hidden
 Int                     Property    SCHEDULE_NO_WORK = 2                            AutoReadOnly Hidden
+Int                     Property    SCHEDULE_SCHEDULED = 1                          AutoReadOnly Hidden
 Int                     Property    SCHEDULE_TOO_BUSY = 0                           AutoReadOnly Hidden
 Int                     Property    SCHEDULE_GENERAL_ERROR = -1                     AutoReadOnly Hidden
 Int                     Property    SCHEDULE_QUEUE_ERROR = -2                       AutoReadOnly Hidden
@@ -156,7 +226,24 @@ Group Controllers
     ActorValue          Property    kAVIF_WorkshopBusy                              Auto Const Mandatory
     { The WSFW "Workshop Busy" AV }
     
+    GlobalVariable      Property    kGLOB_EnablePersistenceManagement               Auto Const Mandatory
+    { Depending on the platform, persistence management may need to be disabled to save memory }
+
 EndGroup
+
+Bool Function IsPersistenceManagementEnabled()
+    Return ( kGLOB_EnablePersistenceManagement.GetValueInt() != 0 )
+EndFunction
+
+;; MCM/Terminal/MessageBox should invoke this to fully change the internal state of the Manager
+Function EnablePersistenceManagement( Bool abEnable )
+    Float lfValue = 0.0
+    If( abEnable )
+        lfValue = 1.0
+    EndIf
+    kGLOB_EnablePersistenceManagement.SetValue( lfValue )
+    __UpdatePersistenceState()
+EndFunction
 
 
 Group PersistenceAlias
@@ -313,27 +400,21 @@ Event OnTimerGameTime( Int aiTimerID )
         
         Int liScheduling = __ScanPersistenceQueue()
         
-        If( liScheduling != SCHEDULE_SCHEDULED )
-            
-            ;; Wasn't scheduled for some reason, try again
-            __ScheduleQueuedPersistenceScanning()
+        If( liScheduling <= SCHEDULE_TOO_BUSY )
+            ;; Too busy means we are scanning, but new objects have been queued in the back buffer
+            ;; Otherwise some error occured, try again later
+            __ScheduleQueuedPersistenceScanning( abForceTimer = True )
             
         EndIf
         
-        
     ElseIf( aiTimerID == iFiberID_CleanDeadPersistentObjects )
         
-        Int liScheduling = CleanDeadPersistentObjects()
+        Int liScheduling = __CleanDeadPersistentObjects()
         
-        If( liScheduling == SCHEDULE_TOO_BUSY )
-            
-            ;; Couldn't do it now, reschedule for 1 hour
-            __ScheduleCleanDeadPersistentObjects( 1.0 )
-            
-        ElseIf( liScheduling != SCHEDULE_SCHEDULED )
-            
-            ;; Wasn't scheduled for some other reason, reschedule for it's normal interval
-            __ScheduleCleanDeadPersistentObjects()
+        If( liScheduling <  SCHEDULE_TOO_BUSY )
+            ;; Too busy means we are scanning, let it finish and reschedule when it's done
+            ;; That means some error occured, try again later
+            __ScheduleCleanDeadPersistentObjects( abForceTimer = True )
             
         EndIf
         
@@ -421,15 +502,16 @@ Event WorkshopFramework:Library:ObjectRefs:FiberController.OnFiberComplete( Work
         RefCollectionAlias lkScanBuffer = kAlias_PersistenceQueues[ liScanBuffer ]
         lkScanBuffer.RemoveAll()
         
-        ;; Let the cycle continue
-        __bQueueScanActived = False
+        ;; Allow the next queued scan to be started
+        __bQueueScanning = False
         
     ElseIf  ( liCallbackID == iFiberID_CleanDeadPersistentObjects )
         ;; Message to display
         lkMessage = kMESG_CleaningComplete
         lbRequiresWorkshop = False
         
-        ;; Schedule a new scan
+        ;; Schedule a new cleaning scan
+        __bCleaning = False
         __ScheduleCleanDeadPersistentObjects()
         
     EndIf
@@ -455,7 +537,9 @@ Event WorkshopFramework:Library:ObjectRefs:FiberController.OnFiberComplete( Work
         + "\n\tliTotal            = " + liTotal \
         + "\n\tlkWorkshop         = " + lkWorkshop \
         + "\n\tlkMessage          = " + lkMessage \
-        + "\n\tTotal Persisted Objects = " + kAlias_PersistentObjects.GetCount() )
+        + "\n\tTotal Persisted Objects = " + kAlias_PersistentObjects.GetCount() \
+        + "\n\tPast this line in the console to get a full list of persisted objects (written to the " + LogFile() + " log):" \
+        + "\n\t\tcqf WSFW_PersistenceManager DumpPersistedRefs")
     
 EndEvent
 
@@ -543,23 +627,38 @@ Float                               __fTimerHours_CleanDeadObjects = 24.0       
 
 
 
-Function __ScheduleCleanDeadPersistentObjects( Float afDelayHours = -1.0 )
-    ;;Debug.TraceUser( LogFile(), Self + " :: __ScheduleCleanDeadPersistentObjects()" )
-    If( afDelayHours <= 0.0 )
-        afDelayHours =  __fTimerHours_CleanDeadObjects
+Function __ScheduleCleanDeadPersistentObjects( Bool abForceTimer = False )
+    If( !IsPersistenceManagementEnabled() )
+        Return ;;SCHEDULE_DISABLED
     EndIf
-    StartTimerGameTime( afDelayHours, iFiberID_CleanDeadPersistentObjects )
+    
+    If( __bCleaning )\
+    &&( !abForceTimer )
+        Return ;; Don't restart the timer (unless forced)
+    EndIf
+
+    StartTimerGameTime( __fTimerHours_CleanDeadObjects, iFiberID_CleanDeadPersistentObjects )
 EndFunction
 
 
 
+Bool                                __bCleaning = False
+Int Function __CleanDeadPersistentObjects()
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
 
-Int Function CleanDeadPersistentObjects()
-    Debug.TraceUser( LogFile(), Self + " :: CleanDeadPersistentObjects()" )
-    
+    If( __bCleaning ) ;; Already cleaning
+        Return SCHEDULE_TOO_BUSY
+    EndIf
+    __bCleaning = True
+
+    Debug.TraceUser( LogFile(), Self + " :: __CleanDeadPersistentObjects()" )
+
     Int liObjects = kAlias_PersistentObjects.GetCount()
     If( liObjects == 0 )
-        ;;Debug.TraceUser( LogFile(), Self + " :: CleanDeadPersistentObjects() :: No Work" )
+        ;;Debug.TraceUser( LogFile(), Self + " :: __CleanDeadPersistentObjects() :: No Work" )
+        __bCleaning = False
         Return SCHEDULE_NO_WORK
     EndIf
     
@@ -570,14 +669,16 @@ Int Function CleanDeadPersistentObjects()
     
     If( lkController == None )
         ;; CreateFiberController will write exceptions to the log
-        ;;Debug.TraceUser( LogFile(), Self + " :: CleanDeadPersistentObjects() :: Cannot create FiberController" )
+        ;;Debug.TraceUser( LogFile(), Self + " :: __CleanDeadPersistentObjects() :: Cannot create FiberController" )
+        __bCleaning = False
         Return SCHEDULE_GENERAL_ERROR
     EndIf
     
     
     If( !lkController.QueueFibers( abSync = False ) )
-        Debug.TraceUser( LogFile(), Self + " :: CleanDeadPersistentObjects() :: Could not queue Fibers" )
+        Debug.TraceUser( LogFile(), Self + " :: __CleanDeadPersistentObjects() :: Could not queue Fibers" )
         lkController.Delete()
+        __bCleaning = False
         Return SCHEDULE_QUEUE_ERROR
     EndIf
     
@@ -588,7 +689,7 @@ Int Function CleanDeadPersistentObjects()
     EndIf
     
     
-    ;;Debug.TraceUser( LogFile(), Self + " :: CleanDeadPersistentObjects() :: Scheduled" )
+    ;;Debug.TraceUser( LogFile(), Self + " :: __CleanDeadPersistentObjects() :: Scheduled" )
     Return SCHEDULE_SCHEDULED
 EndFunction
 
@@ -627,11 +728,15 @@ Int Function PersistObjectArray(  \
     Bool                abRegisterManagerCallback = False \
     )
     
-    Debug.TraceUser( LogFile(), Self + " :: PersistObjectArray()" \
-    + "\n\takWorkshop = " + akWorkshop \
-    + "\n\takObjects  = " + akObjects.Length \
-    + "\n\tabSync     = " + abSync \
-    + "\n\tabRegisterManagerCallback = " + abRegisterManagerCallback )
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
+    
+    ;;Debug.TraceUser( LogFile(), Self + " :: PersistObjectArray()" \
+    ;;+ "\n\takWorkshop = " + akWorkshop \
+    ;;+ "\n\takObjects  = " + akObjects.Length \
+    ;;+ "\n\tabSync     = " + abSync \
+    ;;+ "\n\tabRegisterManagerCallback = " + abRegisterManagerCallback )
     
     Int liObjects = akObjects.Length
     If( liObjects == 0 )
@@ -676,13 +781,11 @@ EndFunction
 
 ;; Queue an array of objects to be scanned in the next cycle
 Int Function QueueObjectArray( ObjectReference[] akObjects )
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
     
     Int liObjects = akObjects.Length
-
-    Debug.TraceUser( LogFile(), Self + " :: QueueObjectArray()" \
-    + "\n\takObjects  = " + liObjects \
-    )
-    
     If( liObjects == 0 )
         Return SCHEDULE_NO_WORK
     EndIf
@@ -705,7 +808,11 @@ EndFunction
 
 ;; Queue a single object to be scanned in the next cycle
 Int Function QueueObjectPersistence( ObjectReference akObject )
-    Debug.TraceUser( LogFile(), Self + " :: QueueObjectPersistence() :: akObject = " + akObject )
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
+    
+    ;;Debug.TraceUser( LogFile(), Self + " :: QueueObjectPersistence() :: akObject = " + akObject )
     
     If( akObject == None )
         ;;Debug.TraceUser( LogFile(), Self + " :: QueueObjectPersistence() :: No Work" )
@@ -713,26 +820,17 @@ Int Function QueueObjectPersistence( ObjectReference akObject )
     EndIf
     
     ;; Block the queues from swapping while we add to it
-    Int liCounter = 0
-    While( __bQueueBlock )&&( liCounter < 100 )
-        Utility.WaitMenuMode( Utility.RandomFloat( 0.125, 0.875 ) ) ;; 1/8 - 7/8s delay to try and even out the calls
-        liCounter += 1
-    EndWhile
-    If( __bQueueBlock )
-        ;;Debug.TraceUser( LogFile(), Self + " :: QueueObjectPersistence() :: Too Busy" )
+    If( !__BlockQueue() )
         Return SCHEDULE_TOO_BUSY
     EndIf
-    __bQueueBlock = True
     
-    
+
     ;; Add it to the active queue
     kAlias_PersistenceQueues[ __iQueueBufferActive ].AddRef( akObject )
     
     
     ;; Start the timer for the queue scan
-    If( !__bQueueScanActived )
-        __ScheduleQueuedPersistenceScanning()
-    EndIf
+    __ScheduleQueuedPersistenceScanning()
     
     
     __bQueueBlock = False
@@ -744,6 +842,10 @@ EndFunction
 
 
 Int Function __TryScanPersistence( WorkshopScript akWorkshop )
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
+    
     ;; Try and wait for the local workshop change to finish
     If( !__WaitForAndSetWorkshopBusy( akWorkshop, 100 ) )
         ;; Nope, it's really, REALLY busy - just skip it for now
@@ -770,6 +872,10 @@ EndFunction
 
 
 Function __SchedulePersistentScanOnApproach( WorkshopScript akWorkshop, Bool abScanIfCloseEnough = True )
+    If( !IsPersistenceManagementEnabled() )
+        Return ;;SCHEDULE_DISABLED
+    EndIf
+    
     ;;Debug.TraceUser( LogFile(), Self + " :: __SchedulePersistentScanOnApproach()" )
     If( akWorkshop == None )
         Return
@@ -805,25 +911,59 @@ EndFunction
 
 
 
-Function __ScheduleQueuedPersistenceScanning()
+Bool                                __bQueueScheduled = False
+Function __ScheduleQueuedPersistenceScanning( Bool abForceTimer = False )
+    If( !IsPersistenceManagementEnabled() )
+        Return ;;SCHEDULE_DISABLED
+    EndIf
+    
+    If( __bQueueScheduled )\
+    &&( !abForceTimer )
+        Return ;; Don't restart the timer (unless forced), the double-buffering design is so we can queue to one buffer while scanning the other
+    EndIf
+
     ;;Debug.TraceUser( LogFile(), Self + " :: __ScheduleQueuedPersistenceScanning()" )
     StartTimerGameTime( __fTimerHours_ScanQueue, iFiberID_PersistenceScanQueue )
+    __bQueueScheduled = True
 EndFunction
 
 
 
 
 Bool                                __bQueueBlock = False
-Bool                                __bQueueScanActived = False
+Bool Function __BlockQueue( Int aiWaitCount = 100, Bool abForceThrough = False )
+    Int liCount = 0
+    While( __bQueueBlock )&&( liCount < aiWaitCount )
+        Utility.WaitMenuMode( Utility.RandomFloat( 0.125, 0.875 ) ) ;; 1/8 - 7/8s delay to try and even out the calls
+        liCount += 1
+    EndWhile
+    If( __bQueueBlock )&&( !abForceThrough )
+        Return False
+    EndIf
+    __bQueueBlock = True
+    Return True
+EndFunction
+
+
+Bool                                __bQueueScanning = False
 Int Function __ScanPersistenceQueue()
+    If( !IsPersistenceManagementEnabled() )
+        Return SCHEDULE_DISABLED
+    EndIf
+
     ;;Debug.TraceUser( LogFile(), Self + " :: __ScanPersistenceQueue()" )
     
-    While( __bQueueBlock )
-        Utility.WaitMenuMode( Utility.RandomFloat( 0.125, 0.875 ) ) ;; 1/8 - 7/8s delay to try and even out the calls
-    EndWhile
-    __bQueueBlock = True
+    If( !__BlockQueue() )
+        Return SCHEDULE_TOO_BUSY
+    EndIf
     
-    
+    If( __bQueueScanning )
+        ;; Scan buffer still being scanned
+        __bQueueBlock = False
+        Return SCHEDULE_TOO_BUSY
+    EndIf
+    __bQueueScanning = True
+
     ;; Scan buffer is active buffer
     Int liScanBuffer = __iQueueBufferActive
     RefCollectionAlias lkScanBuffer = kAlias_PersistenceQueues[ liScanBuffer ]
@@ -831,7 +971,8 @@ Int Function __ScanPersistenceQueue()
     If( liBufferedCount == 0 )
         ;; Nothing to do
         ;;Debug.TraceUser( LogFile(), Self + " :: __ScanPersistenceQueue() :: No Work" )
-        __bQueueScanActived = False
+        __bQueueScanning = False
+        __bQueueScheduled = False
         __bQueueBlock = False
         Return SCHEDULE_NO_WORK
     EndIf
@@ -854,7 +995,7 @@ Int Function __ScanPersistenceQueue()
     
     If( lkController == None )
         ;; CreateFiberController will write exceptions to the log
-        __bQueueScanActived = False
+        __bQueueScanning = False
         __bQueueBlock = False
         ;;Debug.TraceUser( LogFile(), Self + " :: __ScanPersistenceQueue() :: Unable to create FiberController" )
         Return SCHEDULE_GENERAL_ERROR
@@ -864,14 +1005,17 @@ Int Function __ScanPersistenceQueue()
     If( !lkController.QueueFibers( abSync = False ) )
         Debug.TraceUser( LogFile(), Self + " :: __ScanPersistenceQueue() :: Could not queue Fibers" )
         lkController.Delete()
-        __bQueueScanActived = False
+        __bQueueScanning = False
         __bQueueBlock = False
         Return SCHEDULE_QUEUE_ERROR
     EndIf
     
     
-    ;; Cycle the active buffer
+    ;; Swap the buffers
     __iQueueBufferActive = liNewActiveBuffer
+
+    ;; Allow the scan buffer to be queued
+    __bQueueScheduled = False
     
     __bQueueBlock = False
     ;;Debug.TraceUser( LogFile(), Self + " :: __ScanPersistenceQueue() :: Scheduled" )
@@ -1061,6 +1205,7 @@ EndEvent
 
 
 Function DumpPersistedRefs()
+    ;; This will work backwards to try and stay ahead of any cleaning that may be running at the same time
     Int liIndex = kAlias_PersistentObjects.GetCount()
     Debug.TraceUser( LogFile(), Self + " :: DumpPersistedRefs() :: Total Persisted = " + liIndex )
     While( liIndex > 0 )

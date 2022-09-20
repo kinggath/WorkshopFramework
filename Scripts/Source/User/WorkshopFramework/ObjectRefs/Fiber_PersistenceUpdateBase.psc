@@ -37,6 +37,9 @@ NOTE: MustPersist supercedes DoNotPersist }
     
     Keyword             Property    kKYWD_WorkshopItemKeyword                       Auto Const Mandatory
     { Fallout 4 keyword linking objects to workshops }
+    
+    GlobalVariable      Property    kGLOB_EnablePersistenceManagement               Auto Const Mandatory
+    { Depending on the platform, persistence management may need to be disabled to save memory }
 
 EndGroup
 
@@ -67,8 +70,6 @@ WorkshopScript          Property    kWorkshop = None                            
 ActorValue[]                        kActorValues = None
 Form[]                              kBaseObjects = None
 FormList                            kKeywords = None
-
-String                              sLogFile = ""
 
 
 
@@ -190,6 +191,12 @@ Function ReleaseObjectReferences()
     kKeywords           = None
     
     Parent.ReleaseObjectReferences()
+EndFunction
+
+
+Bool Function TerminateNow()
+    ;; Player has turned off Persistence Management, abort the Fibers
+    Return ( kGLOB_EnablePersistenceManagement.GetValueInt() == 0 )
 EndFunction
 
 
