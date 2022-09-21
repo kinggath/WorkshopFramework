@@ -237,12 +237,22 @@ EndFunction
 
 ;; MCM/Terminal/MessageBox should invoke this to fully change the internal state of the Manager
 Function EnablePersistenceManagement( Bool abEnable )
+    If( abEnable == IsPersistenceManagementEnabled() )
+        Return
+    EndIf
     Float lfValue = 0.0
+    String lsEndMsg
     If( abEnable )
+        Debug.TraceUser( LogFile(), "Enabling Persistence Management..." )
+        lsEndMsg = "...Enabled Persistence Management"
         lfValue = 1.0
+    Else
+        Debug.TraceUser( LogFile(), "Disabling Persistence Management..." )
+        lsEndMsg = "...Disabled Persistence Management"
     EndIf
     kGLOB_EnablePersistenceManagement.SetValue( lfValue )
     __UpdatePersistenceState()
+    Debug.TraceUser( LogFile(), lsEndMsg )
 EndFunction
 
 
@@ -538,7 +548,7 @@ Event WorkshopFramework:Library:ObjectRefs:FiberController.OnFiberComplete( Work
         + "\n\tlkWorkshop         = " + lkWorkshop \
         + "\n\tlkMessage          = " + lkMessage \
         + "\n\tTotal Persisted Objects = " + kAlias_PersistentObjects.GetCount() \
-        + "\n\tPast this line in the console to get a full list of persisted objects (written to the " + LogFile() + " log):" \
+        + "\n\tPaste this line in the console to get a full list of persisted objects (written to the " + LogFile() + " log):" \
         + "\n\t\tcqf WSFW_PersistenceManager DumpPersistedRefs")
     
 EndEvent
@@ -1205,15 +1215,39 @@ EndEvent
 
 
 Function DumpPersistedRefs()
-    ;; This will work backwards to try and stay ahead of any cleaning that may be running at the same time
+
+    String lsDump = Self + " :: DumpPersistedRefs() :: You asked for it..."
+    Int liScanBuffer = ( __iQueueBufferActive + 1 ) % 2
+    lsDump += "\n\t__iQueueBufferActive = " + __iQueueBufferActive
+    lsDump += "\n\tliScanBuffer = " + liScanBuffer
+    lsDump += "\n\tActive Buffer Count = " + kAlias_PersistenceQueues[ __iQueueBufferActive ].GetCount()
+    lsDump += "\n\tScan Buffer Count = " + kAlias_PersistenceQueues[ liScanBuffer ].GetCount()
+
     Int liIndex = kAlias_PersistentObjects.GetCount()
-    Debug.TraceUser( LogFile(), Self + " :: DumpPersistedRefs() :: Total Persisted = " + liIndex )
+    lsDump += "\n\tTotal Persisted = " + liIndex
+
+    ;; This will work backwards to try and stay ahead of any cleaning that may be running at the same time
     While( liIndex > 0 )
         liIndex -= 1
+        
         ObjectReference lkObject = kAlias_PersistentObjects.GetAt( liIndex )
-        ObjectReference lkWorkshop = lkObject.GetLinkedRef( kKYWD_WorkshopItemKeyword )
-        Debug.TraceUser( LogFile(), Self + " :: DumpPersistedRefs() ::    " + lkObject + " at " + lkWorkshop )
+        If( lkObject != None )
+            lsDump += "\n\tlkObject = " + lkObject
+            
+            Form lkBaseObject = lkObject.GetBaseObject()
+            If( lkBaseObject != None )
+                lsDump += "\n\t\tlkBaseObject = " + lkBaseObject
+            EndIf
+
+            ObjectReference lkWorkshop = lkObject.GetLinkedRef( kKYWD_WorkshopItemKeyword )
+            If( lkWorkshop != None )
+                lsDump += "\n\t\tlkWorkshop = " + lkWorkshop
+            EndIf
+        EndIf
     EndWhile
+
+    ;; Now you're gonna get it!
+    Debug.TraceUser( LogFile(), lsDump )
 EndFunction
 
 

@@ -415,8 +415,8 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     EndIf
     
     ;; Get global max threads
-    Int liMaxThreads = GetMaxThreads()  ;; Only for debugging, can comment if the Trace() is commented
-    Float lfMaxFibers  = GetMaxFibers() ;; Only for debugging, can comment if the Trace() is commented
+    ;;Int liMaxThreads = GetMaxThreads()  ;; Only for debugging, can comment if the Trace() is commented
+    ;;Float lfMaxFibers  = GetMaxFibers() ;; Only for debugging, can comment if the Trace() is commented
     Int liMaxSwarm = GetMaxSwarm()
     
     Float lfRatio = 2.0 ;; Default 2:1 ratio if inputs are not provided
@@ -472,13 +472,13 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     EndIf
     
     ;; TODO:  Comment this out at some point
-    Debug.Trace( Self + " :: __CalculateFiberCount()" \
-    + "\n\tliMaxThreads    = " + liMaxThreads \
-    + "\n\tlfMaxFibers     = " + lfMaxFibers \
-    + "\n\tliMaxSwarm      = " + liMaxSwarm \
-    + "\n\tliFiberCount    = " + liFiberCount \
-    + "\n\tliMeanChunkSize = " + liMeanChunkSize \
-    )
+    ;;Debug.Trace( Self + " :: __CalculateFiberCount()" \
+    ;;+ "\n\tliMaxThreads    = " + liMaxThreads \
+    ;;+ "\n\tlfMaxFibers     = " + lfMaxFibers \
+    ;;+ "\n\tliMaxSwarm      = " + liMaxSwarm \
+    ;;+ "\n\tliFiberCount    = " + liFiberCount \
+    ;;+ "\n\tliMeanChunkSize = " + liMeanChunkSize \
+    ;;)
     
     Return liFiberCount
 EndFunction
