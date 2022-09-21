@@ -2011,7 +2011,7 @@ function AssignActorToObjectV2(WorkshopNPCScript assignedActor, WorkshopObjectSc
 		float maxProduction = 0.0 ; Placing here so we can use this same calculated value later in the function
 		float fResetMultiProductionTo = 0.0 ; WSFW 2.0.7 - The production amount is never being updated on NPCs during a workshopReset call, so we're going to record the would be value here and update the NPC if necessary
 		
-		if(multiResourceValue)
+		if(multiResourceValue && assignedObject.IsJob()) ; 2.3.0 - confirm this is meant to act as a job
 			; Debug.TraceUser(sLog, assignedActor + " was assigned to multiResourceValue " + multiResourceValue)
 			if(assignedObject.HasResourceValue(multiResourceValue))
 				; Debug.TraceUser(sLog, assignedObject + " has multiResourceValue " + multiResourceValue)

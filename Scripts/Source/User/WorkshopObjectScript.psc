@@ -276,6 +276,11 @@ bool function IsBed()
 	return ( val > 0 )
 endFunction
 
+; WSFW 2.3.0
+Bool Function IsJob()
+	return RequiresActor() && ! IsBed()
+EndFunction
+
 ; is an actor assigned to this?
 bool function IsActorAssigned()
 	bool val = GetAssignedNPC() != NONE
