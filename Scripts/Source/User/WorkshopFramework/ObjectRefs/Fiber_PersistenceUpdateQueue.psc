@@ -146,7 +146,7 @@ EndFunction
 /;
 
 
-ObjectReference Function GetObject( Int aiIndex )
+ObjectReference Function _GetObject( Int aiIndex )
     Return kQueue.GetAt( aiIndex )
 EndFunction
 

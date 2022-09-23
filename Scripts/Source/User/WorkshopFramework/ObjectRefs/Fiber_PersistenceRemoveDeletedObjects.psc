@@ -97,7 +97,7 @@ Function ProcessIndex( Int aiIndex )
     If( !_ObjectNeedsPersistence( lkREFR ) )
         
         ;; Remove the Object from the Alias
-        kAlias_PersistentObjects.RemoveRef( lkREFR )
+        _UnpersistObject( lkREFR )
         
         ;; Record the change
         Increment()

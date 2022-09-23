@@ -1,9 +1,9 @@
 ScriptName WorkshopFramework:Library:ObjectRefs:Fiber Extends WorkshopFramework:Library:ObjectRefs:Thread
 {
-    Fiber or "swarm thread" - These are not "true" Fibers; they are, indeed, Threads
-    Extend this, implement the "Abstract" section at the bottom
+    Fiber or "swarm thread" - These are not "true" Fibers; they are, indeed, Threads.
+    Extend this, implement the "Abstract" section at the bottom.
     
-    Note:  Fibers can be used as a separate thread on it's own as a "one-off" but will
+    Note:  Fibers can be used as a separate Thread on it's own as a "one-off" but will
     be less efficient than when used for batch processing.  RunCode() will call
     ProcessFiber() or ProcessIndex() depending on whether SetFiberController() was
     called with a valid FiberController.  Regardless, the Fibers parameters must be
@@ -48,7 +48,8 @@ EndFunction
 
 
 Int Function __NextIndex()
-    If( __kController == None )
+    If( __kController == None )\
+    ||( TerminateNow() )
         Return -1
     EndIf
     Return __kController._NextIndex()
@@ -158,17 +159,23 @@ EndFunction
 ;/
     ===========================================================
     
-    Abstract and Override Functions
+    Abstract (required) and Override (some required) Functions
     
+    Override and implement these as needed and directed.
+
     ===========================================================
 /;
 
 
 
 
-;; Optional OVERRIDE - Object function
-;; If you override this function be sure to call Parent.ReleaseObjectReferences()
-;; to release the __kController reference
+;; >>>>>>>> Fiber Management <<<<<<<<
+
+
+
+
+;; OVERRIDE - Object function
+;; If you override this function be sure to call Parent.ReleaseObjectReferences() to release the __kController reference.
 Function ReleaseObjectReferences()
     __kController       = None
     Parent.ReleaseObjectReferences()
@@ -178,8 +185,33 @@ EndFunction
 
 
 ;; OVERRIDE - Object function
-;; Process this index item in the working data set
-;; This is the Fibers workhorse, RunCode() calls this in it's inner loop
+;; __NextIndex() will call this and if it returns True, all Thread loops will be terminated and no further calls to ProcessIndex() will be made.
+;; While similar, it is different from cancelling the Fibers which has to be done via the FiberController or setting an error in a Fiber.
+;; This is typically used as an external control check for a global setting (such as an MCM setting).
+Bool Function TerminateNow()
+    Return False
+EndFunction
+
+
+
+
+;; OVERRIDE - Object function
+;; See: FiberController OnFiberComplete custom event definition at top of file.
+;; This will be called on the last Fiber to complete before SelfDestruct() is called on it.
+Function AddParamsToOnFiberCompleteArgs( Var[] akParams )
+EndFunction
+
+
+
+
+;; >>>>>>>> Fiber Processing <<<<<<<<
+
+
+
+
+;; OVERRIDE - Object function
+;; Process this index item in the working data set.
+;; This is the Fibers workhorse, RunCode() calls this in it's inner loop.
 ;;
 ;; Notes:
 ;;  aiIndex will never be invalid unless aiWorkingSetSize did not match
@@ -193,10 +225,15 @@ EndFunction
 
 
 ;; OVERRIDE - Object function
-;; Process this Fiber, Parameters still must be set even though the FiberController is not
+;; Process this Fiber, the Fibers parameters still must be set even though the FiberController is not.
 Function ProcessFiber()
     Debug.Trace( Self + " :: ProcessFiber() :: NOT IMPLEMENTED!" )
 EndFunction
+
+
+
+
+;; >>>>>>>> Fiber Creation <<<<<<<<
 
 
 
@@ -318,18 +355,6 @@ myFiberClass Function CreateFiber( ??? ) Global
     Return lkFiber
 EndFunction
 /;
-
-
-
-
-
-
-;; Optional OVERRIDE - Object function
-;; See: FiberController OnFiberComplete custom event definition at top of file
-;; This will be called on the last Fiber to complete before
-;; SelfDestruct() is called on it
-Function AddParamsToOnFiberCompleteArgs( Var[] akParams )
-EndFunction
 
 
 
