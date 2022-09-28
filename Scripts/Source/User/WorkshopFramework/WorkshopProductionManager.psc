@@ -148,8 +148,10 @@ Group Formlists
 	FormList Property ScavengeList_Rare Auto Const Mandatory
 	{ Point to active list used by injection manager }
 	
-	FormList Property VanillaBuildableCropList Auto Const Mandatory
+	FormList Property BasicConsumptionCropList Auto Const Mandatory
 	{ 1.0.7 - Supporting option to only consume basic crops }
+	FormList Property BasicConsumptionWaterList Auto Const Mandatory
+	{ 2.3.0 - Changing basic water consumption to use a formlist which will make it easy for other mod authors to inject to. }
 EndGroup
 
 
@@ -893,7 +895,7 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 	if(iRequiredFood > 0)
 		; 1.0.7 - Adding option to change consumption to only use easily produced crops
 		if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
-			iRequiredFood -= ConsumeFromWorkshopV2(VanillaBuildableCropList, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
+			iRequiredFood -= ConsumeFromWorkshopV2(BasicConsumptionCropList, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
 		else
 			; 1.0.4a - Changed from = to -=
 			iRequiredFood -= ConsumeFromWorkshopV2(ObjectTypeFood, iRequiredFood, akWorkshopRef, FoodContainerKeyword)
@@ -903,7 +905,7 @@ Function ConsumeWorkshopResources(WorkshopScript akWorkshopRef)
 	if(iRequiredWater > 0)
 		; 1.0.7 - Adding option to change consumption to only use easily produced PurifiedWater
 		if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
-			iRequiredWater -= ConsumeFromWorkshopV2(PurifiedWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
+			iRequiredWater -= ConsumeFromWorkshopV2(BasicConsumptionWaterList, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
 		else
 			; 1.0.4a - Changed from = to -=
 			iRequiredWater -= ConsumeFromWorkshopV2(ObjectTypeWater, iRequiredWater, akWorkshopRef, WaterContainerKeyword)
@@ -1060,7 +1062,7 @@ Function ProcessSurplusResources()
 				if(iFoodMissing > 0)
 					; 1.0.7 - New option to only consume easy to acquire crops
 					if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
-						iFoodMissing = ConsumeResourceV2(kRecord.TemporaryContainer, VanillaBuildableCropList, iFoodMissing)
+						iFoodMissing = ConsumeResourceV2(kRecord.TemporaryContainer, BasicConsumptionCropList, iFoodMissing)
 					else
 						iFoodMissing = ConsumeResourceV2(kRecord.TemporaryContainer, ObjectTypeFood, iFoodMissing)
 					endif
