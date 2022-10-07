@@ -177,6 +177,22 @@ WSFW_Setting_AutoResetCorruptPowerGrid.SetValueInt(1)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_23
+Function Fragment_Terminal_23(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_PersistWorkshopResourceObjects.SetValueInt(0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_24
+Function Fragment_Terminal_24(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_PersistWorkshopResourceObjects.SetValueInt(1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property WSFW_AlternateActivation_Workshop Auto Const Mandatory
@@ -202,3 +218,4 @@ GlobalVariable Property WSFW_Setting_AutomaticallyUnhideInvisibleWorkshopObjects
 GlobalVariable Property WSFW_Setting_AutoRepairPowerGrids Auto Const Mandatory
 
 GlobalVariable Property WSFW_Setting_AutoResetCorruptPowerGrid Auto Const Mandatory
+GlobalVariable Property WSFW_Setting_PersistWorkshopResourceObjects Auto Const Mandatory

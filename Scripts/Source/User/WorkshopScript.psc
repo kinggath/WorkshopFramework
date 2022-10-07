@@ -1456,6 +1456,7 @@ Float UFO4P_TimeOfLastWorkshopExitUpdateStarted = 0.0
 int UFO4P_DailyUpdateTimerID = 98
 int UFO4P_DailyUpdateResetHappinessTimerID = 99
 int WSFW_RetryRealDailyUpdateTimerID = 100
+int WSFW_SpecialRecalculationsTimerID = 101
 
 ;-----------------------------------------------------------
 ;	Added by UFO4P 1.0.5. for Bug #21039:
@@ -1845,6 +1846,8 @@ Event OnTimer(int aiTimerID)
 		DailyUpdate(bRealUpdate = false)
 	elseif(aiTimerID == WSFW_RetryRealDailyUpdateTimerID)
 		TryRealDailyUpdate()
+	elseif(aiTimerID == WSFW_SpecialRecalculationsTimerID)
+		SpecialRecalculations()
 	endif
 EndEvent
 
@@ -2074,14 +2077,12 @@ endFunction
 
 ActorValue Property WorkshopBusy Auto Hidden
 ;; Set on the Workshop when DailyUpdate is running, other mods/code should check and respect this
-;;int iFormID_AV_WorkshopBusy = 0x00?????? Const
+
 int iFormID_AV_WorkshopBusy = 0x00001EDB Const
-string sPlugin_AV_WorkshopBusy = "WorkshopFramework_PersistenceOverhaul.esp" Const
-;; TODO:  REPLACE WITH PROPER FORMID AND sWSFW_Plugin ONCE INTEGRATED!
 
 Function SetBusy( Bool abBusy )
 	If( WorkshopBusy == None )
-		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sWSFW_Plugin ) As ActorValue
 	EndIf
 	Float lfValue = 0.0
 	If( abBusy )
@@ -2091,7 +2092,7 @@ Function SetBusy( Bool abBusy )
 EndFunction
 Bool Function GetBusy()
 	If( WorkshopBusy == None )
-		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sPlugin_AV_WorkshopBusy ) As ActorValue
+		WorkshopBusy = Game.GetFormFromFile( iFormID_AV_WorkshopBusy, sWSFW_Plugin ) As ActorValue
 	EndIf
 	Return ( GetBaseValue( WorkshopBusy ) As Int ) != 0
 EndFunction
@@ -2131,7 +2132,7 @@ bool bDailyUpdateInProgress = false
 function DailyUpdate(bool bRealUpdate = true)
 	; wait for update lock to be released
 		
-	if( WorkshopParent.DailyUpdateInProgress )||( GetBusy() )
+	if(WorkshopParent.DailyUpdateInProgress || GetBusy())
         if(bRealUpdate || bResetHappiness)
             Int liCounter = 0
             while( WorkshopParent.DailyUpdateInProgress )||( ( GetBusy() )&&( liCounter < 100 ) )
@@ -2904,55 +2905,15 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	Actor PlayerRef = Game.GetPlayer()
 	Bool bLocationLoaded = myLocation.IsLoaded()
 	if bOnlyIfLocationLoaded == false || bLocationLoaded || UFO4P_InWorkshopMode == true
-		Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
-		
 		RecalculateResources()
 		
-		;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
-		if( ! OwnedByPlayer)
-			ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
-			Float fSafetyValue = 0.0
-			
-			int i = 0
-			while(i < SafetyObjects.Length)
-				if( ! SafetyObjects[i].IsDisabled())
-					Float fValue = SafetyObjects[i].GetBaseValue(Safety)
-					fSafetyValue += fValue
-				endif
-
-				i += 1
-			endWhile
-
-			SetValue(WSFW_Safety, fSafetyValue)
+		; 2.3.0 - Using a timer to prevent it from slowing down the tons of calls to RecalculateWorkshopResources
+		Float fSpecialTimerLength = 2.0
+		if(fLastSpecialRecalculations + 10.0 < Utility.GetCurrentRealTime())
+			; Let's make sure an extended period of calls doesn't prevent it from being run for too long. By using an extremely short timer here we'll be more likely for a run to be able to sneak in
+			fSpecialTimerLength = 0.1
 		endif
-		
-		; WSFW 1.1.8 - Add up PowerRequired and store on workshop
-		ObjectReference[] PowerReqObjects = new ObjectReference[0]
-		
-		if(Is3dLoaded())
-			PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
-		else
-			PowerReqObjects = GetWorkshopResourceObjects()
-		endif
-		
-		Float fPowerRequired = 0.0
-		
-		int i = 0
-		while(i < PowerReqObjects.Length)
-			if( ! PowerReqObjects[i].IsDisabled() && PowerReqObjects[i].GetLinkedRef(WorkshopItemKeyword) == Self)
-				Float fValue = PowerReqObjects[i].GetBaseValue(PowerRequired)
-				fPowerRequired += fValue
-			endif
-
-			i += 1
-		endWhile
-
-		SetValue(WSFW_PowerRequired, fPowerRequired)
-		
-		if(fPowerRequired > fLastKnownPowerRequired || bLocationLoaded)
-			; Only update this field if it increases, or if the location is loaded. This way we can be certain the power number will at least be pseudo accurate
-			fLastKnownPowerRequired = fPowerRequired
-		endif
+		StartTimer(fSpecialTimerLength, WSFW_SpecialRecalculationsTimerID)
 		
 		bRecalcRunning = false
 		
@@ -2962,8 +2923,69 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	bRecalcRunning = false
 		
 	return false
-endFunction 
+endFunction
 
+
+Float fLastSpecialRecalculations = 0.0 ; WSFW 2.3.0 - The code we added in 117 and 118 is too slow to run every cycle, we're going to switch to a timer, but need to also make sure we don't miss too many runs
+Bool Property bSpecialRecalcRunning = false Auto Hidden
+Function SpecialRecalculations()
+	if(bSpecialRecalcRunning)
+		return
+	endif
+	
+	bSpecialRecalcRunning = true
+	fLastSpecialRecalculations = Utility.GetCurrentRealTime()
+	
+	Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
+	
+	;  WSFW - 1.1.7 | Unowned workshops do not appear to correctly calculate Safety objects - this is a problem for Nukaworld Vassal settlements
+	if( ! OwnedByPlayer)
+		ObjectReference[] SafetyObjects = GetWorkshopResourceObjects(Safety)
+		Float fSafetyValue = 0.0
+		
+		int i = 0
+		while(i < SafetyObjects.Length)
+			if( ! SafetyObjects[i].IsDisabled())
+				Float fValue = SafetyObjects[i].GetBaseValue(Safety)
+				fSafetyValue += fValue
+			endif
+
+			i += 1
+		endWhile
+
+		SetValue(WSFW_Safety, fSafetyValue)
+	endif
+	
+	; WSFW 1.1.8 - Add up PowerRequired and store on workshop
+	ObjectReference[] PowerReqObjects = new ObjectReference[0]
+	
+	if(Is3dLoaded())
+		PowerReqObjects = FindAllReferencesWithKeyword(WorkshopCanBePowered, 20000.0)
+	else
+		PowerReqObjects = GetWorkshopResourceObjects()
+	endif
+	
+	Float fPowerRequired = 0.0
+	
+	int i = 0
+	while(i < PowerReqObjects.Length)
+		if( ! PowerReqObjects[i].IsDisabled() && PowerReqObjects[i].GetLinkedRef(WorkshopItemKeyword) == Self)
+			Float fValue = PowerReqObjects[i].GetBaseValue(PowerRequired)
+			fPowerRequired += fValue
+		endif
+
+		i += 1
+	endWhile
+
+	SetValue(WSFW_PowerRequired, fPowerRequired)
+	
+	if(fPowerRequired > fLastKnownPowerRequired || myLocation.IsLoaded())
+		; Only update this field if it increases, or if the location is loaded. This way we can be certain the power number will at least be pseudo accurate
+		fLastKnownPowerRequired = fPowerRequired
+	endif
+	
+	bSpecialRecalcRunning = false
+EndFunction
 
 
 Function RelinkWorkshopActors()
@@ -3697,6 +3719,28 @@ Function RestoreValue(ActorValue akAV, float afAmount)
 		if(WSFW_Safety != None)
 			Parent.RestoreValue(WSFW_Safety, afAmount)
 		endif
+	endif
+EndFunction
+
+
+; 2.3.0 - Low level override to fix a corner-case issue where the game returns all workshop objects if the actor is being commanded by the player
+ObjectReference[] Function GetWorkshopOwnedObjects(Actor akActor)
+	if(akActor.IsDoingFavor() && UFO4P_InWorkshopMode)
+		ObjectReference[] kAssignedRefs = Parent.GetWorkshopOwnedObjects(akActor)
+		
+		ObjectReference[] kActualAssigned = new ObjectReference[0]
+		int i = 0
+		while(i < kAssignedRefs.Length && kActualAssigned.Length < 128)
+			if(kAssignedRefs[i].GetActorRefOwner() == akActor)
+				kActualAssigned.Add(kAssignedRefs[i])
+			endif
+			
+			i += 1
+		endWhile
+		
+		return kActualAssigned
+	else
+		return Parent.GetWorkshopOwnedObjects(akActor)
 	endif
 EndFunction
 

@@ -22,11 +22,25 @@ EndFunction
 /;
 
 
-Group PersistenceAlias
+Group ImportantStuff
 
     RefCollectionAlias  Property    kAlias_PersistentObjects                        Auto Const Mandatory
     { This holds and forces all the objects to persist }
     
+    Keyword             Property    kKYWD_MustPersist                               Auto Const Mandatory
+    { Core keyword on the base object forcing engine level persistence.
+NOTE: MustPersist supercedes DoNotPersist }
+    
+    Keyword             Property    kKYWD_DoNotPersist                              Auto Const Mandatory
+    { Keyword on the base object to ignore persistence.
+NOTE: MustPersist supercedes DoNotPersist }
+    
+    Keyword             Property    kKYWD_WorkshopItemKeyword                       Auto Const Mandatory
+    { Fallout 4 keyword linking objects to workshops }
+    
+    GlobalVariable      Property    kGLOB_EnablePersistenceManagement               Auto Const Mandatory
+    { Depending on the platform, persistence management may need to be disabled to save memory }
+
 EndGroup
 
 
@@ -46,6 +60,9 @@ EndGroup
 
 
 ;; Working parameters
+WorkshopFramework:PersistenceManager \
+                        Property    kManager = None                                 Auto Hidden
+
 WorkshopScript          Property    kWorkshop = None                                Auto Hidden
 
 
@@ -53,8 +70,6 @@ WorkshopScript          Property    kWorkshop = None                            
 ActorValue[]                        kActorValues = None
 Form[]                              kBaseObjects = None
 FormList                            kKeywords = None
-
-String                              sLogFile = ""
 
 
 
@@ -65,6 +80,7 @@ Function SetParameters( \
     WorkshopScript                  akWorkshop )
     
     ;; Working parameters
+    kManager                        = akManager
     kWorkshop                       = akWorkshop
     
     ;; Global paramaters
@@ -94,6 +110,7 @@ WorkshopFramework:Library:ObjectRefs:FiberController Function _CreateFiberContro
     Activator           akFiberClass, \
     WorkshopScript      akWorkshop, \
     Int                 aiCount, \
+    Bool                abWorkBackwards = False, \
     ScriptObject        akOnFiberCompleteHandler = None, \
     Int                 aiCallbackID = 0 \
     ) Global
@@ -166,6 +183,7 @@ EndFunction
 
 Function ReleaseObjectReferences()
     
+    kManager            = None
     kWorkshop           = None
     
     kActorValues        = None
@@ -173,6 +191,12 @@ Function ReleaseObjectReferences()
     kKeywords           = None
     
     Parent.ReleaseObjectReferences()
+EndFunction
+
+
+Bool Function TerminateNow()
+    ;; Player has turned off Persistence Management, abort the Fibers
+    Return ( kGLOB_EnablePersistenceManagement.GetValueInt() == 0 )
 EndFunction
 
 
@@ -184,9 +208,9 @@ EndFunction
 ;; Batch processing
 Function ProcessIndex( Int aiIndex )
     
-    ObjectReference lkREFR = GetObject( aiIndex )
+    ObjectReference lkREFR = _GetObject( aiIndex )
     
-    If( TryPersist( lkREFR ) )
+    If( _TryPersist( lkREFR ) )
         ;; Record the update
         Increment()
     EndIf
@@ -196,7 +220,7 @@ EndFunction
 
 ;; One-offs
 Function ProcessFiber()
-    TryPersist( GetObject( 0 ) )
+    _TryPersist( _GetObject( 0 ) )
 EndFunction
 
 
@@ -215,8 +239,8 @@ EndFunction
 /;
 
 
-ObjectReference Function GetObject( Int aiIndex )
-    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: GetObject() :: NOT IMPLEMENTED!" )
+ObjectReference Function _GetObject( Int aiIndex )
+    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _GetObject() :: NOT IMPLEMENTED!" )
     Return None
 EndFunction
 
@@ -236,35 +260,55 @@ EndFunction
 /;
 
 
-Bool Function TryPersist( ObjectReference akREFR )
+Bool Function _TryPersist( ObjectReference akREFR )
     
     If( akREFR == None )
         ;; Don't set an error, just ignore it
         Return False
     EndIf
     
+    ;; Current state
     Bool lbIsPersisted = ( kAlias_PersistentObjects.Find( akREFR ) >= 0 )
-    Bool lbNeedsPersistence = __ObjectNeedsPersistence( akREFR )
     
-    Bool lbResult
+    ;; Desired state
+    Bool lbNeedsPersistence = _ObjectNeedsPersistence( akREFR )
+    
+    ;; No change made
+    Bool lbResult = False
     
     If( lbIsPersisted )&&( !lbNeedsPersistence )
         ;; Record change
         lbResult = True
         
         ;; Remove the Object from the Alias
-        kAlias_PersistentObjects.RemoveRef( akREFR )
+        _UnpersistObject( akREFR, kWorkshop )
         
     ElseIf( !lbIsPersisted )&&( lbNeedsPersistence )
         ;; Record change
         lbResult = True
         
         ;; Add the Object to the Alias
-        kAlias_PersistentObjects.AddRef( akREFR )
+        _PersistObject( akREFR, kWorkshop )
         
     EndIf
     
     Return lbResult
+EndFunction
+
+
+Function _PersistObject( ObjectReference akREFR, WorkshopScript akWorkshop = None )
+    ;;If( akWorkshop == None )
+    ;;    akWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword ) As WorkshopScript
+    ;;EndIf
+    kAlias_PersistentObjects.AddRef( akREFR )
+EndFunction
+
+
+Function _UnpersistObject( ObjectReference akREFR, WorkshopScript akWorkshop = None )
+    ;;If( akWorkshop == None )
+    ;;    akWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword ) As WorkshopScript
+    ;;EndIf
+    kAlias_PersistentObjects.RemoveRef( akREFR )
 EndFunction
 
 
@@ -283,7 +327,7 @@ EndFunction
 /;
 
 
-Bool Function __ObjectHasPersistenceActorValue( ObjectReference akREFR )
+Bool Function _ObjectHasPersistenceActorValue( ObjectReference akREFR )
     
     Int liIndex = kActorValues.Length
     While( liIndex > 0 )
@@ -298,24 +342,39 @@ Bool Function __ObjectHasPersistenceActorValue( ObjectReference akREFR )
 EndFunction
 
 
-Bool Function __ObjectIsPersistenceBaseObject( ObjectReference akREFR )
-    Form lkBaseObject = akREFR.GetBaseObject()
-    Return( kBaseObjects.Find( lkBaseObject ) >= 0 )
-EndFunction
-
-
-Bool Function __ObjectHasPersistenceKeyword( ObjectReference akREFR )
+Bool Function _ObjectHasPersistenceKeyword( ObjectReference akREFR )
     Return( akREFR.HasKeywordInFormList( kKeywords ) )
 EndFunction
 
 
+Bool Function _BaseObjectRequiresPersistence( Form akBaseObject )
+    Return( kBaseObjects.Find( akBaseObject ) >= 0 )
+EndFunction
 
 
-Bool Function __ObjectNeedsPersistence( ObjectReference akREFR )
+
+
+;; He's not heavy, he's really heavy
+Bool Function _ObjectNeedsPersistence( ObjectReference akREFR )
     ;; Do fast fails...
     
-    ;; Required slow test (native, latent) regardless of anything else
-    If( akREFR.IsDeleted() )
+    ;; Required test (native remote call) regardless of anything else
+    If  ( akREFR.IsDeleted() )
+        Return False
+    EndIf
+
+    ;; Some check are against the base object
+    Form lkBaseObject = akREFR.GetBaseObject()
+
+    ;; Engine level forced persistence
+    If( lkBaseObject.HasKeyword( kKYWD_MustPersist ) )\
+    ||( akREFR.HasKeyword( kKYWD_MustPersist ) )
+        Return True
+    EndIf
+
+    ;; Our override to prevent non-engine forced persistence
+    If( lkBaseObject.HasKeyword( kKYWD_DoNotPersist ) )\
+    ||( akREFR.HasKeyword( kKYWD_DoNotPersist ) )
         Return False
     EndIf
     
@@ -325,21 +384,22 @@ Bool Function __ObjectNeedsPersistence( ObjectReference akREFR )
         Return True
     EndIf
     
-    ;; "Quick" test (native) for having one of the Actor Values
-    If( __ObjectHasPersistenceActorValue( akREFR ) )
+    ;; Fast test the base object being in the array
+    If( _BaseObjectRequiresPersistence( lkBaseObject ) )
         Return True
     EndIf
     
-    ;; Slow test (native, latent) for having one of the keywords
-    If( __ObjectHasPersistenceKeyword( akREFR ) )
+    ;; Quick test (one native remote call) for having one of the keywords
+    If( _ObjectHasPersistenceKeyword( akREFR ) )
         Return True
     EndIf
     
-    ;; Slow test (native, latent) for being one of the Base Forms
-    If( __ObjectIsPersistenceBaseObject( akREFR ) )
+    ;; Slow test (multiple native remote calls) for having any of the Actor Values
+    If( _ObjectHasPersistenceActorValue( akREFR ) )
         Return True
     EndIf
     
+    ;; After all that, we don't need to be persisted
     Return False
 EndFunction
 

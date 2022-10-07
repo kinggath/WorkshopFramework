@@ -6,9 +6,8 @@ String Function ____ScriptName() Global
     Return "WorkshopFramework:Library:ObjectRefs:FiberController"
 EndFunction
 Activator Function GetFiberControllerBaseObject() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Activator
-    Return Game.GetFormFromFile( 0x00001741, "WorkshopFramework_PersistenceOverhaul.esp" ) As Activator
+    ; Get base form this script is on
+    Return Game.GetFormFromFile( 0x00006419, "WorkshopFramework.esm" ) As Activator
 EndFunction
 
 
@@ -47,7 +46,7 @@ CustomEvent OnFiberComplete
 ;; After the above - Use GetUserParams() to get the first index of user code results
 ;; ...      = Fiber dependant results
 Int Function GetUserParams( Var[] akParams ) Global
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: GetUserParams()" )
+    ;;Debug.Trace( ____ScriptName() + " :: GetUserParams()" )
     ;; A return value of -1 means no user params
     Int liLength = akParams.Length
     If( liLength < 5 )
@@ -124,7 +123,7 @@ EndFunction
 
 
 Function Delete()
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: Delete()" )
+    ;;Debug.Trace( Self + " :: Delete()" )
     
     
     ;; Unregister the OnFiberComplete handler
@@ -156,7 +155,7 @@ Function Delete()
     
     
     ;; And, of course, let the engine handle the rest
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: Parent.Delete()" )
+    ;;Debug.Trace( Self + " :: Parent.Delete()" )
     Parent.Delete()
 EndFunction
 
@@ -183,9 +182,9 @@ EndFunction
 
 
 Bool Function QueueFibers( Bool abSync = False )
-    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: QueueFibers()" )
+    ;;Debug.Trace( Self + " :: QueueFibers()" )
     If( __bFibersQueued )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: QueueFibers() :: Already Queued" )
+        Debug.Trace( Self + " :: QueueFibers() :: Already Queued" )
         Return False
     EndIf
     __bFibersQueued = True
@@ -203,7 +202,7 @@ Bool Function QueueFibers( Bool abSync = False )
     While( liIndex < liFiberCount )
         
         If( lkThreadManager.QueueThread( __kFibers[ liIndex ] ) < 0 )
-            Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: QueueFibers() :: Fiber " + liIndex + " of " + liFiberCount + " could not Thread Manager could not queue the Fiber!" )
+            Debug.Trace( Self + " :: QueueFibers() :: Fiber " + liIndex + " of " + liFiberCount + " :: WSFW Main Thread Manager could not queue the Fiber!" )
             __bSync = False
             __bBlocked = False
             Return False
@@ -217,6 +216,10 @@ Bool Function QueueFibers( Bool abSync = False )
     Bool lbResult = True
     
     
+    ;; Unblock before potentially waiting, otherwise this thread will be in a zombie state until the lock wait timeout is reached
+    __bBlocked = False
+    
+
     If( __bSync )
         ;; This should return synchronously with the fibers terminating
         
@@ -226,7 +229,7 @@ Bool Function QueueFibers( Bool abSync = False )
         ;; Return the results of fibers
         lbResult = __bResult
         If( !lbResult )
-            Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + ":: QueueFibers() :: Sync: One or more Fibers encountered an error" )
+            Debug.Trace( Self + ":: QueueFibers() :: Sync: One or more Fibers encountered an error" )
         EndIf
         
         ;; Delete the Controller
@@ -235,10 +238,8 @@ Bool Function QueueFibers( Bool abSync = False )
     EndIf
     
     
-    __bBlocked = False
-    
     ;; Return that the fibers are queued or their results
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: QueueFibers() :: lbResult = " + lbResult )
+    ;;Debug.Trace( Self + " :: QueueFibers() :: lbResult = " + lbResult )
     Return lbResult
 EndFunction
 
@@ -290,7 +291,7 @@ EndFunction
 
 
 Function __WaitForFibersToComplete( Int aiWaitCount = 100 )
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __WaitForFibersToComplete() :: ..." )
+    ;;Debug.Trace( Self + " :: __WaitForFibersToComplete() :: ..." )
     If( aiWaitCount < 1 )
         aiWaitCount = 100
     EndIf
@@ -302,7 +303,7 @@ Function __WaitForFibersToComplete( Int aiWaitCount = 100 )
         Utility.WaitMenuMode( __GetSyncWaitTime() )
         liWaitCount += 1
     EndWhile
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __WaitForFibersToComplete() :: Waited" )
+    ;;Debug.Trace( Self + " :: __WaitForFibersToComplete() :: Waited" )
 EndFunction
 
 
@@ -348,8 +349,9 @@ EndFunction
 ;; Used in Create()
 ;; May also be used in Fiber classes in it's CreateFiberController() function if an error occurs
 Function _EmergencyDeleteFibers()
-   ;; Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _EmergencyDeleteFibers()" )
-    Int liIndex = __kFibers.Length
+    ;; Debug.Trace( Self + " :: _EmergencyDeleteFibers()" )
+    Int liCount = __kFibers.Length
+    Int liIndex = liCount
     While( liIndex > 0 )
         liIndex -= 1
         Fiber lkFiber = __kFibers[ liIndex ]
@@ -358,7 +360,10 @@ Function _EmergencyDeleteFibers()
             lkFiber.SelfDestruct()
         EndIf
     EndWhile
-    __kFibers.Clear()
+    If( liCount > 0 )
+        ;; The VM complains about clearing empty arrays
+        __kFibers.Clear()
+    EndIf
     __kFibers = None
 EndFunction
 
@@ -377,8 +382,7 @@ EndFunction
 
 ;; Percentage of those Threads that can be assigned to any given swarm of Fibers (maximally)
 Float Function GetMaxFibers() Global
-    GlobalVariable lkMaxFibers = Game.GetFormFromFile( 0x00002675, "WorkshopFramework_PersistenceOverhaul.esp" ) As GlobalVariable
-    ;; TODO:  REPLACE WITH PROPER FORMID AND sWSFW_Plugin ONCE INTEGRATED!
+    GlobalVariable lkMaxFibers = Game.GetFormFromFile( 0x00002675, "WorkshopFramework.esm" ) As GlobalVariable
     Return lkMaxFibers.GetValue()
 EndFunction
 
@@ -391,7 +395,7 @@ Int Function GetMaxSwarm() Global
         liMaxSwarm = liMaxThreads
     EndIf
     If( liMaxSwarm <= 1 )
-        ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: GetMaxSwarm() :: liMaxSwarm <= 1" )
+        ;;Debug.Trace( Self + " :: GetMaxSwarm() :: liMaxSwarm <= 1" )
         liMaxSwarm = 1
     EndIf
     Return liMaxSwarm
@@ -402,67 +406,32 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     
     ;; Default
     __iWorkingSetSize = aiWorkingSetSize
-    Int liFiberCount = 1
-    Int liChunkSize = __iWorkingSetSize
-    Int liRemainder = 0
-    
     If( __iWorkingSetSize <= 0 )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CalculateFiberCount() :: __iWorkingSetSize <= 0" )
+        Debug.Trace( Self + " :: __CalculateFiberCount() :: __iWorkingSetSize <= 0" )
         Return 0
     EndIf
     
     If( aiMinChunkSize > __iWorkingSetSize )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CalculateFiberCount() :: aiMinChunkSize > __iWorkingSetSize" )
+        Debug.Trace( Self + " :: __CalculateFiberCount() :: aiMinChunkSize > __iWorkingSetSize" )
         Return 1
     EndIf
     
     ;; Get global max threads
-    Int liMaxThreads = GetMaxThreads()  ;; Only for debugging, can comment if the Trace() is commented
-    Float lfMaxFibers  = GetMaxFibers() ;; Only for debugging, can comment if the Trace() is commented
+    ;;Int liMaxThreads = GetMaxThreads()  ;; Only for debugging, can comment if the Trace() is commented
+    ;;Float lfMaxFibers  = GetMaxFibers() ;; Only for debugging, can comment if the Trace() is commented
     Int liMaxSwarm = GetMaxSwarm()
     
-    Float lfRatio = 2.0 ;; Default 2:1 ratio if inputs are not provided
-    If( aiMinChunkSize > 0 )&&( aiMaxChunkSize >= aiMinChunkSize )
-        lfRatio = ( aiMaxChunkSize As Float ) / ( aiMinChunkSize As Float )
-    EndIf
-    
-    If( aiMinChunkSize < 1 )
-        ;; Min chunk size to use all fibers
-        aiMinChunkSize = __iWorkingSetSize / liMaxSwarm
-    EndIf
-    
-    While( aiMinChunkSize * liMaxSwarm < __iWorkingSetSize )
-        ;; Enlarge the min chunkSize so it fits into max fibers instead of
+    ;; Try to use max number of Fibers
+    Int liChunkSize = __iWorkingSetSize / liMaxSwarm
+
+    While( liChunkSize * liMaxSwarm < __iWorkingSetSize )
+        ;; Enlarge the chunkSize so it fits into max fibers instead of
         ;; being max fibers +1
-        aiMinChunkSize += 1
+        liChunkSize += 1
     EndWhile
     
-    If( aiMaxChunkSize < 1 )
-        ;; Default max chunk size to be the whole data set
-        aiMaxChunkSize = __iWorkingSetSize
-    EndIf
-    
-    If( aiMaxChunkSize < aiMinChunkSize )
-        ;; Move the max up to the min
-        aiMaxChunkSize = aiMinChunkSize
-    EndIf
-    
-    Int aiCeilingChunkSize = ( ( aiMinChunkSize As Float ) * lfRatio ) As Int
-    If( aiCeilingChunkSize > __iWorkingSetSize )
-        ;; Ceiling can't be higher than the total working set
-        aiCeilingChunkSize = __iWorkingSetSize
-    EndIf
-    
-    If( aiMaxChunkSize > aiCeilingChunkSize )
-        ;; Scale down max size if it would be larger than the ratio
-        aiMaxChunkSize = aiCeilingChunkSize
-    EndIf
-    
-    ;; Calculate the mean chunk size
-    Int liMeanChunkSize = aiMinChunkSize + ( aiMaxChunkSize - aiMinChunkSize ) / 2
-    
-    ;; Calculate number of fibers required for mean chunk size
-    liFiberCount = __iWorkingSetSize / liMeanChunkSize
+    ;; Calculate number of fibers required for chunk size
+    Int liFiberCount = __iWorkingSetSize / liChunkSize
     
     ;; At least one Fiber
     If( liFiberCount < 1 )
@@ -473,12 +442,14 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
         liFiberCount = liMaxSwarm
     EndIf
     
-    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CalculateFiberCount()" \
-    + "\n\tliMaxThreads = " + liMaxThreads \
-    + "\n\tlfMaxFibers  = " + lfMaxFibers \
-    + "\n\tliMaxSwarm   = " + liMaxSwarm \
-    + "\n\tliFiberCount = " + liFiberCount \
-    )
+    ;; TODO:  Comment this out at some point
+    ;;Debug.Trace( Self + " :: __CalculateFiberCount()" \
+    ;;+ "\n\tliMaxThreads = " + liMaxThreads \
+    ;;+ "\n\tlfMaxFibers  = " + lfMaxFibers \
+    ;;+ "\n\tliMaxSwarm   = " + liMaxSwarm \
+    ;;+ "\n\tliFiberCount = " + liFiberCount \
+    ;;+ "\n\tliChunkSize   = " + liChunkSize \
+    ;;)
     
     Return liFiberCount
 EndFunction
@@ -518,7 +489,7 @@ FiberController Function Create( \
     Bool            abWorkBackwards = False, \
     Activator       akFiberControllerClass = None \
     ) Global
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: Create()" \
+    ;;Debug.Trace( ____ScriptName() + " :: Create()" \
     ;;+ "\n\takFiberClass             = " + akFiberClass \
     ;;+ "\n\taiWorkingSetSize         = " + aiWorkingSetSize \
     ;;+ "\n\takOnFiberCompleteHandler = " + akOnFiberCompleteHandler \
@@ -535,12 +506,12 @@ FiberController Function Create( \
     
     
     If( aiWorkingSetSize < 1 )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: Create() :: aiWorkingSetSize is invalid: " + aiWorkingSetSize )
+        Debug.Trace( ____ScriptName() + " :: Create() :: aiWorkingSetSize is invalid: " + aiWorkingSetSize )
         Return None
     EndIf
     
     If( akFiberClass == None )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: Create() :: akFiberClass is invalid: " + akFiberClass )
+        Debug.Trace( ____ScriptName() + " :: Create() :: akFiberClass is invalid: " + akFiberClass )
         Return None
     EndIf
     
@@ -558,7 +529,7 @@ FiberController Function Create( \
     ;; Persistent, Disabled, Do not delete when able (it will delete itself as well as all the associated Fibers)
     ObjectReference lkControllerRef = lkSpawnMarker.PlaceAtMe( akFiberControllerClass, 1, True, True, False )
     If( lkControllerRef == None )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: Create() :: Could not spawn the FiberController!" )
+        Debug.Trace( ____ScriptName() + " :: Create() :: Could not spawn the FiberController!" )
         Return None
     EndIf
     
@@ -566,7 +537,7 @@ FiberController Function Create( \
     FiberController lkController = lkControllerRef As FiberController
     If( lkController == None )
         ;; This should never happen, but just in case...
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: Create() :: akFiberControllerClass does not have the FiberController (or extended script) attached to it!\n\t" + akFiberControllerClass )
+        Debug.Trace( ____ScriptName() + " :: Create() :: akFiberControllerClass does not have the FiberController (or extended script) attached to it!\n\t" + akFiberControllerClass )
         lkControllerRef.Delete()
         Return None
     EndIf
@@ -589,7 +560,7 @@ FiberController Function Create( \
     
     
     ;; If we made it this far, then all is good!
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: CreateFiberController() :: Complete" )
+    ;;Debug.Trace( ____ScriptName() + " :: CreateFiberController() :: Complete" )
     Return lkController
 EndFunction
 
@@ -602,13 +573,13 @@ Fiber Function CreateFiber( \
     Activator       akFiberClass, \
     ScriptObject    akThreadRunCompleteHandler = None \
     ) Global
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: CreateFiber()" \
+    ;;Debug.Trace( ____ScriptName() + " :: CreateFiber()" \
     ;;+ "\n\takFiberClass = " + akFiberClass \
     ;;+ "\n\takThreadRunCompleteHandler = " + akThreadRunCompleteHandler )
     
     ;; Make sure we're not insane...
     If( akFiberClass == None )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: CreateFiber() :: akFiberClass is None" )
+        Debug.Trace( ____ScriptName() + " :: CreateFiber() :: akFiberClass is None" )
         Return None
     EndIf
     
@@ -634,7 +605,7 @@ Bool Function __CreateFibers( \
     Int             aiMaxChunkSize, \
     Bool            abWorkBackwards \
     )
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CreateFibers()" \
+    ;;Debug.Trace( Self + " :: __CreateFibers()" \
     ;;+ "\n\taiWorkingSetSize         = " + aiWorkingSetSize \
     ;;+ "\n\takSpawnMarker            = " + akSpawnMarker \
     ;;+ "\n\takFiberClass             = " + akFiberClass \
@@ -644,7 +615,7 @@ Bool Function __CreateFibers( \
     ;;+ "\n\taiMinChunkSize           = " + aiMinChunkSize \
     ;;+ "\n\taiMaxChunkSize           = " + aiMaxChunkSize \
     ;;+ "\n\tabWorkBackwards          = " + abWorkBackwards \
-   ;; )
+    ;;)
     
     
     ;; Calculate the "optimal" fiber count for the parameters given
@@ -666,7 +637,7 @@ Bool Function __CreateFibers( \
         lkFiber = __CreateFiber( akFiberClass, Self, Self, akSpawnMarker )
         If( lkFiber == None )
             ;; Like, zoinks!
-            Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CreateFibers() :: Could not create Fiber!" )
+            Debug.Trace( Self + " :: __CreateFibers() :: Could not create Fiber!" )
             _EmergencyDeleteFibers()
             Return False
         EndIf
@@ -690,7 +661,7 @@ Bool Function __CreateFibers( \
     EndIf
     
     
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __CreateFibers() :: Complete" )
+    ;;Debug.Trace( Self + " :: __CreateFibers() :: Complete" )
     Return True
 EndFunction
 
@@ -703,12 +674,12 @@ Fiber Function __CreateFiber( \
     ScriptObject    akThreadRunCompleteHandler, \
     ObjectReference akSpawnMarker \
     ) Global
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: __CreateFiber()" )
+    ;;Debug.Trace( ____ScriptName() + " :: __CreateFiber()" )
     
     ;; Persistent, Disabled, Do not delete when able (it will delete itself as well as all the associated Fibers)
     ObjectReference lkFiberRef = akSpawnMarker.PlaceAtMe( akFiberClass, 1, True, True, False )
     If( lkFiberRef == None )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: __CreateFiber() :: Could not spawn the Fiber!" )
+        Debug.Trace( ____ScriptName() + " :: __CreateFiber() :: Could not spawn the Fiber!" )
         Return None
     EndIf
     
@@ -716,7 +687,7 @@ Fiber Function __CreateFiber( \
     Fiber lkFiber = lkFiberRef As Fiber
     If( lkFiber == None )
         ;; This should never happen, but just in case...
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), ____ScriptName() + " :: __CreateFiber() :: akFiberClass does not have the a Fiber extension script attached to it!\n\t" + akFiberClass )
+        Debug.Trace( ____ScriptName() + " :: __CreateFiber() :: akFiberClass does not have the a Fiber extension script attached to it!\n\t" + akFiberClass )
         lkFiberRef.Delete()
         Return None
     EndIf
@@ -837,13 +808,13 @@ EndFunction
 
 
 Event WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete( WorkshopFramework:Library:ObjectRefs:Thread akSender, Var[] akArgs )
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete()" )
+    ;;Debug.Trace( Self + " :: WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete()" )
     
     Self.UnregisterForCustomEvent( akSender, "ThreadRunComplete" )
     
     Fiber lkFiber = akSender As Fiber
     If( lkFiber == None )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete() :: akSender did not cast as a Fiber!\n\t" + akSender )
+        Debug.Trace( Self + " :: WorkshopFramework:Library:ObjectRefs:Thread.ThreadRunComplete() :: akSender did not cast as a Fiber!\n\t" + akSender )
         Return
     EndIf
     
@@ -868,17 +839,19 @@ EndEvent
 
 
 Function __TryFinalize( Fiber akFiber )
-    ;;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __TryFinalize()" )
-    
     
     ;; Must synchronize as we may leave this object
     __BlockController()
     
     
+    ;; Wait for the block before starting to log, otherwise things may appear to be desync'd in the log
+    ;;Debug.Trace( Self + " :: __TryFinalize()\n\t" + akFiber )
+    
+    
     ;; Remove this Fiber from the FiberController
     Int liIndex = __kFibers.Find( akFiber )
     If( liIndex < 0 )
-        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __TryFinalize() :: akFiber is not in this Controller!\n\t" + akFiber )
+        Debug.Trace( Self + " :: __TryFinalize() :: akFiber is not in this Controller!\n\t" + akFiber )
     Else
         __kFibers.Remove( liIndex, 1 )
     EndIf
@@ -886,6 +859,7 @@ Function __TryFinalize( Fiber akFiber )
     
     ;; Not all Fibers complete, keep yer knickers on
     If( __kFibers.Length > 0 )
+        ;;Debug.Trace( Self + " :: __TryFinalize() :: More Fibers to come...\n\t" + akFiber )
         ;; Destroy the Fiber
         akFiber.SelfDestruct()
         __bBlocked = False
@@ -897,6 +871,9 @@ Function __TryFinalize( Fiber akFiber )
     __SendOnFiberComplete( akFiber )
     
     
+    ;;Debug.Trace( Self + " :: __TryFinalize() :: Finalized\n\t" + akFiber )
+    
+
     ;; Destroy the Fiber
     akFiber.SelfDestruct()
     
@@ -913,7 +890,7 @@ EndFunction
 
 
 Function __SendOnFiberComplete( Fiber akFiber )
-    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: __SendOnFiberComplete()" )
+    ;;Debug.Trace( Self + " :: __SendOnFiberComplete()" )
     
     
     ;; Setup the OnFiberComplete event
@@ -932,6 +909,10 @@ Function __SendOnFiberComplete( Fiber akFiber )
     
     
     ;; Get the additional arguments from the Fiber
+    ;; Remember listeners, you should use GetUserParams() to get the first index of the UserData parameters.
+    ;; This function will do all the sanity checks for you;
+    ;; A return value of -1 means no valid UserData;
+    ;; A >= 0 value is the first index of the UserData (will actually be a 5 or a 7 at the time of writing this)
     akFiber.AddParamsToOnFiberCompleteArgs( lkParams )
     
     
@@ -959,24 +940,16 @@ EndFunction
 Bool                                __bFirstIndexReturned = False
 Int                                 __iDataIndex = -1
 Bool                                __bWorkBackwards = False
-;Bool                                __bIndexing = False
 
 
-;; Get the next index to process, any result <0 means we're done (for whatever reason)
+;; Get the next index to process, any result < 0 means we're done (for whatever reason)
+;; This function is atomic - which means that it never leaves this object and thus is automatically threadsafe
 Int Function _NextIndex()
-    ;While( __bIndexing )
-    ;    Utility.WaitMenuMode( Utility.RandomFloat( 0.01, 0.05 ) ) ;; Super thin slices
-    ;EndWhile
-    ;__bIndexing = True
     
     If( __bCancel )
-    ;    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _NextIndex() :: __bCancel" )
-    ;    __bIndexing = False
         Return -1
     EndIf
     If( __iWorkingSetSize < 1 )
-    ;    Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _NextIndex() :: __iWorkingSetSize < 1" )
-    ;    __bIndexing = False
         Return -1
     EndIf
     
@@ -992,26 +965,19 @@ Int Function _NextIndex()
     ElseIf( __bWorkBackwards )
         __iDataIndex -= 1
         If( __iDataIndex < 0 )
-    ;        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _NextIndex() :: Reached Begining" )
-    ;        __bIndexing = False
             Return -1
         EndIf
         
     Else
         __iDataIndex += 1
         If( __iDataIndex >= __iWorkingSetSize )
-    ;        Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _NextIndex() :: Reached End" )
-    ;        __bIndexing = False
             Return -1
         EndIf
         
     EndIf
     
-    ;Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), Self + " :: _NextIndex() :: " + __iDataIndex + " of " + __iWorkingSetSize )
-    ;__bIndexing = False
     Return __iDataIndex
 EndFunction
-
 
 
 

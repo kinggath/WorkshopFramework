@@ -50,6 +50,7 @@ EndGroup
 
 Group Factions
 	Faction Property PlayerFaction Auto Const Mandatory
+	Faction Property FriendlyToCaptiveFaction Auto Const Mandatory
 	Faction Property WorkshopNPCFaction Auto Const Mandatory
 EndGroup
 
@@ -403,10 +404,11 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 	endif
 	
 	akTurretRef.RemoveFromAllFactions()
+	akTurretRef.AddToFaction(FriendlyToCaptiveFaction)
 	akTurretRef.StopCombat()
 	
 	if(abForPlayer)
-		akTurretRef.AddToFaction(PlayerFaction)
+		akTurretRef.AddToFaction(PlayerFaction)		
 	endif
 	
 	if(thisFaction)

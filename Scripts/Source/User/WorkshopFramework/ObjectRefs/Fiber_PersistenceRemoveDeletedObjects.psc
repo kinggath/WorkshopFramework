@@ -1,4 +1,4 @@
-ScriptName WorkshopFramework:ObjectRefs:Fiber_PersistenceRemoveDeletedObjects Extends WorkshopFramework:Library:ObjectRefs:Fiber
+ScriptName WorkshopFramework:ObjectRefs:Fiber_PersistenceRemoveDeletedObjects Extends WorkshopFramework:ObjectRefs:Fiber_PersistenceUpdateBase
 {
     Clean deleted objects from the Persistence Manager
 }
@@ -6,9 +6,8 @@ String Function __ScriptName() Global
     Return "WorkshopFramework:ObjectRefs:Fiber_PersistenceRemoveDeletedObjects"
 EndFunction
 Activator Function GetFiberBaseObject() Global
-    ;; TODO:  REPLACE WITH PROPER FORMID ONCE INTEGRATED!
-    ;;Return Game.GetFormFromFile( 0x00??????, "WorkshopFramework.esm" ) As Activator
-    Return Game.GetFormFromFile( 0x0000173D, "WorkshopFramework_PersistenceOverhaul.esp" ) As Activator
+    ; Get the base object form this script is on
+    Return Game.GetFormFromFile( 0x00006416, "WorkshopFramework.esm" ) As Activator
 EndFunction
 
 
@@ -21,35 +20,7 @@ EndFunction
 ;/
     ===========================================================
     
-    Editor set properties
-    
-    ===========================================================
-/;
-
-
-Group PersistenceAlias
-
-    RefCollectionAlias  Property    kAlias_PersistentObjects                        Auto Const Mandatory
-    { This holds and forces all the objects to persist }
-    
-EndGroup
-
-
-
-
-
-
-
-
-;/
-    ===========================================================
-    
-    Abstract Functions
-    
-    These MUST be implemented by child classes.
-    
-    Change 'Datum' to the specific struct for the child class in
-    the parameter lists.
+    Implemented Overrides and Abstracts
     
     ===========================================================
 /;
@@ -79,13 +50,14 @@ WorkshopFramework:Library:ObjectRefs:FiberController Function CreateFiberControl
     EndIf
     
     
-    WorkshopFramework:Library:ObjectRefs:FiberController lkController = \
-        WorkshopFramework:Library:ObjectRefs:FiberController.Create( \
-            GetFiberBaseObject(), \
-            liCount, \
-            akOnFiberCompleteHandler = lkCallbackHandler, \
-            aiCallbackID = liCallbackID, \
-            abWorkBackwards = True )    ;; Work backwards through the RefCollectionAlias as we may be removing Objects
+    ;; Work backwards through the RefCollectionAlias as we may be removing Objects
+    WorkshopFramework:Library:ObjectRefs:FiberController lkController = WorkshopFramework:ObjectRefs:Fiber_PersistenceUpdateBase._CreateFiberController( \
+        GetFiberBaseObject(), \
+        None, \
+        liCount, \
+        abWorkBackwards = True, \
+        akOnFiberCompleteHandler = lkCallbackHandler, \
+        aiCallbackID = liCallbackID )
     If( lkController == None )
         Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), __ScriptName() + " :: CreateFiberController() :: An error occured in FiberController.Create()" )
         Return None
@@ -121,14 +93,15 @@ Function ProcessIndex( Int aiIndex )
         ;; Just exit, no error
         Return
     EndIf
+    
+    If( !_ObjectNeedsPersistence( lkREFR ) )
         
-    If( lkREFR.IsDeleted() )
+        ;; Remove the Object from the Alias
+        _UnpersistObject( lkREFR )
         
-        ;; Remove the Object to the Alias
-        kAlias_PersistentObjects.RemoveRef( lkREFR )
-        
-        ;; Record number of changes
+        ;; Record the change
         Increment()
+
     EndIf
     
 EndFunction
