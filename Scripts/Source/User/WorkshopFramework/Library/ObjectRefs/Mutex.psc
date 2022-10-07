@@ -68,14 +68,14 @@ Mutex Function Create() Global
     
     ObjectReference lkSpawnMarker = Game.GetFormFromFile( 0x00004CEA, "WorkshopFramework.esm" ) As ObjectReference
     If( lkSpawnMarker == None )
-        Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Could not get the spawn marker for the Mutex!" )
+        Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Could not get the spawn marker for the Mutex!" )
         Return None
     EndIf
     
     ;; Persistent, Disabled, Do not delete when able
     ObjectReference lkLockRef = lkSpawnMarker.PlaceAtMe( GetMutexBaseObject(), 1, True, True, False )
     If( lkLockRef == None )
-        Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Could not spawn a Mutex Activator!" )
+        Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Could not spawn a Mutex Activator!" )
         Return None
     EndIf
     
@@ -83,7 +83,7 @@ Mutex Function Create() Global
     
     If( lkLock == None )
         ;; This should never happen, but just in case...
-        Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Spawned object did not cast as WorkshopFramework:Library:ObjectRefs:Mutex!" )
+        Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: Create() :: Spawned object did not cast as WorkshopFramework:Library:ObjectRefs:Mutex!" )
         lkLockRef.Delete()
         Return None
     EndIf
@@ -122,7 +122,7 @@ EndFunction
 
 Bool Function GetLock()
     If( __bDeleted )
-        Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been deleted!" )
+        Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been deleted!" )
         Return False
     EndIf
     
@@ -142,14 +142,14 @@ Bool Function GetLock()
         EndWhile
         
         If( __bDeleted )
-            Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been deleted!" )
+            Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been deleted!" )
             Return False
         EndIf
         
         ;; Lock is still held, that means we spun out
         If( __bHeld )
             __iLockCount -= 1
-            Debug.Trace( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been spinning for too long!" )
+            Debug.TraceStack( "WorkshopFramework:Library:ObjectRefs:Mutex :: GetLock() :: Cannot get lock!  Mutex has been spinning for too long!" )
             Return False
         EndIf
         
@@ -170,7 +170,6 @@ Function ReleaseLock()
     __iLockCount -= 1
     __bHeld = False
 EndFunction
-
 
 
 

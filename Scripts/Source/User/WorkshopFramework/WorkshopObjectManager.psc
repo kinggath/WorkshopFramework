@@ -1841,3 +1841,35 @@ Function ForcePowerTransmission(WorkshopScript akWorkshopRef = None)
 	
 	PowerTransmissionResults.Show(iTransmittedTo as Float)
 EndFunction
+
+
+
+Function DumpWorkshopResourceObjects(WorkshopScript akWorkshopRef = None, ActorValue aSpecificAV = None, Bool abFetchAll = false)
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+	endif
+	
+	ObjectReference[] ResourceObjects = new ObjectReference[0]
+	
+	if(abFetchAll)
+		ResourceObjects = akWorkshopRef.GetWorkshopResourceObjects()
+	else
+		ResourceObjects = akWorkshopRef.GetWorkshopResourceObjects(aSpecificAV)
+	endif
+	
+	ModTrace("[WorkshopObjectManager] DumpWorkshopItems(" + akWorkshopRef + ", " + aSpecificAV + ")")
+	if(aSpecificAV != None)
+		int i = 0
+		while(i < ResourceObjects.Length)
+			ModTrace("                      " + ResourceObjects[i] + ": " + ResourceObjects[i].GetValue(aSpecificAV) + "/" + ResourceObjects[i].GetBaseValue(aSpecificAV))
+			i += 1
+		endWhile
+	else
+		int i = 0
+		while(i < ResourceObjects.Length)
+			ModTrace("                      " + ResourceObjects[i])
+			i += 1
+		endWhile
+	endif
+	ModTrace("[WorkshopObjectManager] Finished DumpWorkshopItems(" + akWorkshopRef + ", " + aSpecificAV + ")")
+EndFunction

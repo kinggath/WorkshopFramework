@@ -216,6 +216,10 @@ Bool Function QueueFibers( Bool abSync = False )
     Bool lbResult = True
     
     
+    ;; Unblock before potentially waiting, otherwise this thread will be in a zombie state until the lock wait timeout is reached
+    __bBlocked = False
+    
+
     If( __bSync )
         ;; This should return synchronously with the fibers terminating
         
@@ -233,8 +237,6 @@ Bool Function QueueFibers( Bool abSync = False )
         
     EndIf
     
-    
-    __bBlocked = False
     
     ;; Return that the fibers are queued or their results
     ;;Debug.Trace( Self + " :: QueueFibers() :: lbResult = " + lbResult )
@@ -347,8 +349,9 @@ EndFunction
 ;; Used in Create()
 ;; May also be used in Fiber classes in it's CreateFiberController() function if an error occurs
 Function _EmergencyDeleteFibers()
-   ;; Debug.Trace( Self + " :: _EmergencyDeleteFibers()" )
-    Int liIndex = __kFibers.Length
+    ;; Debug.Trace( Self + " :: _EmergencyDeleteFibers()" )
+    Int liCount = __kFibers.Length
+    Int liIndex = liCount
     While( liIndex > 0 )
         liIndex -= 1
         Fiber lkFiber = __kFibers[ liIndex ]
@@ -357,7 +360,10 @@ Function _EmergencyDeleteFibers()
             lkFiber.SelfDestruct()
         EndIf
     EndWhile
-    __kFibers.Clear()
+    If( liCount > 0 )
+        ;; The VM complains about clearing empty arrays
+        __kFibers.Clear()
+    EndIf
     __kFibers = None
 EndFunction
 
@@ -400,10 +406,6 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     
     ;; Default
     __iWorkingSetSize = aiWorkingSetSize
-    Int liFiberCount = 1
-    Int liChunkSize = __iWorkingSetSize
-    Int liRemainder = 0
-    
     If( __iWorkingSetSize <= 0 )
         Debug.Trace( Self + " :: __CalculateFiberCount() :: __iWorkingSetSize <= 0" )
         Return 0
@@ -419,48 +421,17 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     ;;Float lfMaxFibers  = GetMaxFibers() ;; Only for debugging, can comment if the Trace() is commented
     Int liMaxSwarm = GetMaxSwarm()
     
-    Float lfRatio = 2.0 ;; Default 2:1 ratio if inputs are not provided
-    If( aiMinChunkSize > 0 )&&( aiMaxChunkSize >= aiMinChunkSize )
-        lfRatio = ( aiMaxChunkSize As Float ) / ( aiMinChunkSize As Float )
-    EndIf
-    
-    If( aiMinChunkSize < 1 )
-        ;; Min chunk size to use all fibers
-        aiMinChunkSize = __iWorkingSetSize / liMaxSwarm
-    EndIf
-    
-    While( aiMinChunkSize * liMaxSwarm < __iWorkingSetSize )
-        ;; Enlarge the min chunkSize so it fits into max fibers instead of
+    ;; Try to use max number of Fibers
+    Int liChunkSize = __iWorkingSetSize / liMaxSwarm
+
+    While( liChunkSize * liMaxSwarm < __iWorkingSetSize )
+        ;; Enlarge the chunkSize so it fits into max fibers instead of
         ;; being max fibers +1
-        aiMinChunkSize += 1
+        liChunkSize += 1
     EndWhile
     
-    If( aiMaxChunkSize < 1 )
-        ;; Default max chunk size to be the whole data set
-        aiMaxChunkSize = __iWorkingSetSize
-    EndIf
-    
-    If( aiMaxChunkSize < aiMinChunkSize )
-        ;; Move the max up to the min
-        aiMaxChunkSize = aiMinChunkSize
-    EndIf
-    
-    Int aiCeilingChunkSize = ( ( aiMinChunkSize As Float ) * lfRatio ) As Int
-    If( aiCeilingChunkSize > __iWorkingSetSize )
-        ;; Ceiling can't be higher than the total working set
-        aiCeilingChunkSize = __iWorkingSetSize
-    EndIf
-    
-    If( aiMaxChunkSize > aiCeilingChunkSize )
-        ;; Scale down max size if it would be larger than the ratio
-        aiMaxChunkSize = aiCeilingChunkSize
-    EndIf
-    
-    ;; Calculate the mean chunk size
-    Int liMeanChunkSize = aiMinChunkSize + ( aiMaxChunkSize - aiMinChunkSize ) / 2
-    
-    ;; Calculate number of fibers required for mean chunk size
-    liFiberCount = __iWorkingSetSize / liMeanChunkSize
+    ;; Calculate number of fibers required for chunk size
+    Int liFiberCount = __iWorkingSetSize / liChunkSize
     
     ;; At least one Fiber
     If( liFiberCount < 1 )
@@ -473,11 +444,11 @@ Int Function __CalculateFiberCount( Int aiWorkingSetSize, Int aiMinChunkSize = -
     
     ;; TODO:  Comment this out at some point
     ;;Debug.Trace( Self + " :: __CalculateFiberCount()" \
-    ;;+ "\n\tliMaxThreads    = " + liMaxThreads \
-    ;;+ "\n\tlfMaxFibers     = " + lfMaxFibers \
-    ;;+ "\n\tliMaxSwarm      = " + liMaxSwarm \
-    ;;+ "\n\tliFiberCount    = " + liFiberCount \
-    ;;+ "\n\tliMeanChunkSize = " + liMeanChunkSize \
+    ;;+ "\n\tliMaxThreads = " + liMaxThreads \
+    ;;+ "\n\tlfMaxFibers  = " + lfMaxFibers \
+    ;;+ "\n\tliMaxSwarm   = " + liMaxSwarm \
+    ;;+ "\n\tliFiberCount = " + liFiberCount \
+    ;;+ "\n\tliChunkSize   = " + liChunkSize \
     ;;)
     
     Return liFiberCount
@@ -644,7 +615,7 @@ Bool Function __CreateFibers( \
     ;;+ "\n\taiMinChunkSize           = " + aiMinChunkSize \
     ;;+ "\n\taiMaxChunkSize           = " + aiMaxChunkSize \
     ;;+ "\n\tabWorkBackwards          = " + abWorkBackwards \
-   ;; )
+    ;;)
     
     
     ;; Calculate the "optimal" fiber count for the parameters given
@@ -868,11 +839,13 @@ EndEvent
 
 
 Function __TryFinalize( Fiber akFiber )
-    ;;Debug.Trace( Self + " :: __TryFinalize()" )
-    
     
     ;; Must synchronize as we may leave this object
     __BlockController()
+    
+    
+    ;; Wait for the block before starting to log, otherwise things may appear to be desync'd in the log
+    ;;Debug.Trace( Self + " :: __TryFinalize()\n\t" + akFiber )
     
     
     ;; Remove this Fiber from the FiberController
@@ -886,6 +859,7 @@ Function __TryFinalize( Fiber akFiber )
     
     ;; Not all Fibers complete, keep yer knickers on
     If( __kFibers.Length > 0 )
+        ;;Debug.Trace( Self + " :: __TryFinalize() :: More Fibers to come...\n\t" + akFiber )
         ;; Destroy the Fiber
         akFiber.SelfDestruct()
         __bBlocked = False
@@ -897,6 +871,9 @@ Function __TryFinalize( Fiber akFiber )
     __SendOnFiberComplete( akFiber )
     
     
+    ;;Debug.Trace( Self + " :: __TryFinalize() :: Finalized\n\t" + akFiber )
+    
+
     ;; Destroy the Fiber
     akFiber.SelfDestruct()
     
@@ -1001,7 +978,6 @@ Int Function _NextIndex()
     
     Return __iDataIndex
 EndFunction
-
 
 
 

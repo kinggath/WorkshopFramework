@@ -3723,6 +3723,28 @@ Function RestoreValue(ActorValue akAV, float afAmount)
 EndFunction
 
 
+; 2.3.0 - Low level override to fix a corner-case issue where the game returns all workshop objects if the actor is being commanded by the player
+ObjectReference[] Function GetWorkshopOwnedObjects(Actor akActor)
+	if(akActor.IsDoingFavor() && UFO4P_InWorkshopMode)
+		ObjectReference[] kAssignedRefs = Parent.GetWorkshopOwnedObjects(akActor)
+		
+		ObjectReference[] kActualAssigned = new ObjectReference[0]
+		int i = 0
+		while(i < kAssignedRefs.Length && kActualAssigned.Length < 128)
+			if(kAssignedRefs[i].GetActorRefOwner() == akActor)
+				kActualAssigned.Add(kAssignedRefs[i])
+			endif
+			
+			i += 1
+		endWhile
+		
+		return kActualAssigned
+	else
+		return Parent.GetWorkshopOwnedObjects(akActor)
+	endif
+EndFunction
+
+
 
 Function _SetMapMarker(ObjectReference akMapMarkerRef)
 	myMapMarker = akMapMarkerRef
