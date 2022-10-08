@@ -1071,7 +1071,7 @@ Function ProcessSurplusResources()
 				if(iWaterMissing > 0)
 					; 1.0.7 - New option to only consume purified water
 					if(Setting_BasicConsumptionOnly.GetValue() == 1.0)
-						iWaterMissing = ConsumeResourceV2(kRecord.TemporaryContainer, PurifiedWater, iWaterMissing)
+						iWaterMissing = ConsumeResourceV2(kRecord.TemporaryContainer, BasicConsumptionWaterList, iWaterMissing) 
 					else
 						iWaterMissing = ConsumeResourceV2(kRecord.TemporaryContainer, ObjectTypeWater, iWaterMissing)
 					endif
