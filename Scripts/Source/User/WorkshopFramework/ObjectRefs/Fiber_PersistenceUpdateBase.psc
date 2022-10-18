@@ -27,6 +27,12 @@ Group ImportantStuff
     RefCollectionAlias  Property    kAlias_PersistentObjects                        Auto Const Mandatory
     { This holds and forces all the objects to persist }
     
+    ObjectReference     Property    kREFR_PersistentObjects                         Auto Hidden
+    { This shadows the above alias, it is used for rapid access as an array using GetLinkedRefChildren }
+    
+    Keyword             Property    kKYWD_PersistentObject                          Auto Hidden
+    { This is used to link the persisted objects to the linked ref holder }
+    
     Keyword             Property    kKYWD_MustPersist                               Auto Const Mandatory
     { Core keyword on the base object forcing engine level persistence.
 NOTE: MustPersist supercedes DoNotPersist }
@@ -87,6 +93,9 @@ Function SetParameters( \
     kActorValues                    = akManager.Get_PersistReference_ActorValues()
     kBaseObjects                    = akManager.Get_PersistReference_BaseObjects()
     kKeywords                       = akManager.kFLST_PersistReference_Keywords
+    
+    kREFR_PersistentObjects         = akManager.kREFR_PersistentObjects
+    kKYWD_PersistentObject          = akManager.kKYWD_PersistentObject
     
 EndFunction
 
@@ -183,12 +192,15 @@ EndFunction
 
 Function ReleaseObjectReferences()
     
-    kManager            = None
-    kWorkshop           = None
+    kManager                        = None
+    kWorkshop                       = None
     
-    kActorValues        = None
-    kBaseObjects        = None
-    kKeywords           = None
+    kActorValues                    = None
+    kBaseObjects                    = None
+    kKeywords                       = None
+    
+    kREFR_PersistentObjects         = None
+    kKYWD_PersistentObject          = None
     
     Parent.ReleaseObjectReferences()
 EndFunction
@@ -301,6 +313,7 @@ Function _PersistObject( ObjectReference akREFR, WorkshopScript akWorkshop = Non
     ;;    akWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword ) As WorkshopScript
     ;;EndIf
     kAlias_PersistentObjects.AddRef( akREFR )
+    akREFR.SetLinkedRef( kREFR_PersistentObjects, kKYWD_PersistentObject )
 EndFunction
 
 
@@ -309,6 +322,7 @@ Function _UnpersistObject( ObjectReference akREFR, WorkshopScript akWorkshop = N
     ;;    akWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword ) As WorkshopScript
     ;;EndIf
     kAlias_PersistentObjects.RemoveRef( akREFR )
+    akREFR.SetLinkedRef( None, kKYWD_PersistentObject )
 EndFunction
 
 
