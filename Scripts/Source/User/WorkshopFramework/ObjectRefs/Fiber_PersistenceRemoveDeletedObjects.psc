@@ -20,6 +20,25 @@ EndFunction
 ;/
     ===========================================================
     
+    Fiber Parameters
+    
+    ===========================================================
+/;
+
+
+;; Working parameters
+ObjectReference[]       Property    kObjects = None                                 Auto Hidden
+
+
+
+
+
+
+
+
+;/
+    ===========================================================
+    
     Implemented Overrides and Abstracts
     
     ===========================================================
@@ -34,7 +53,8 @@ WorkshopFramework:Library:ObjectRefs:FiberController Function CreateFiberControl
     WorkshopFramework:PersistenceManager lkManager = WorkshopFramework:PersistenceManager.GetManager()
     
     
-    Int liCount = lkManager.kAlias_PersistentObjects.GetCount()
+    ObjectReference[] lkObjects = lkManager.GetPersistedObjects()
+    Int liCount = lkObjects.Length
     If( liCount == 0 )
         Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), __ScriptName() + " :: CreateFiberController() :: No Work" )
         Return None
@@ -58,9 +78,31 @@ WorkshopFramework:Library:ObjectRefs:FiberController Function CreateFiberControl
         abWorkBackwards = True, \
         akOnFiberCompleteHandler = lkCallbackHandler, \
         aiCallbackID = liCallbackID )
+    
     If( lkController == None )
         Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), __ScriptName() + " :: CreateFiberController() :: An error occured in FiberController.Create()" )
-        Return None
+        
+    Else
+        
+        WorkshopFramework:ObjectRefs:Fiber_PersistenceRemoveDeletedObjects lkFiber
+        Int liFiberCount = lkController.iTotalFibers
+        Int liIndex = 0
+        While( liIndex < liFiberCount )
+            
+            lkFiber = lkController.GetFiber( liIndex ) As WorkshopFramework:ObjectRefs:Fiber_PersistenceRemoveDeletedObjects
+            If( lkFiber != None )
+                
+                lkFiber.kObjects = lkObjects
+                
+            Else
+                Debug.TraceUser( WorkshopFramework:PersistenceManager.LogFile(), __ScriptName() + " :: CreateFiberController() :: Fibers created did not cast as the proper Fiber class!" )
+                lkController.Delete() ;; <--- This will also delete the Fibers
+                Return None
+            EndIf
+            
+            liIndex += 1
+        EndWhile
+        
     EndIf
     
     
@@ -84,10 +126,18 @@ EndFunction
 /;
 
 
+Function ReleaseObjectReferences()
+    
+    kObjects            = None
+    
+    Parent.ReleaseObjectReferences()
+EndFunction
+
+
 ;; Batch processing
 Function ProcessIndex( Int aiIndex )
     
-    ObjectReference lkREFR = kAlias_PersistentObjects.GetAt( aiIndex )
+    ObjectReference lkREFR = _GetObject( aiIndex )
     
     If( lkREFR == None )
         ;; Just exit, no error
@@ -104,6 +154,26 @@ Function ProcessIndex( Int aiIndex )
 
     EndIf
     
+EndFunction
+
+
+
+
+
+
+
+
+;/
+    ===========================================================
+    
+    Get the next object
+    
+    ===========================================================
+/;
+
+
+ObjectReference Function _GetObject( Int aiIndex )
+    Return kObjects[ aiIndex ]
 EndFunction
 
 

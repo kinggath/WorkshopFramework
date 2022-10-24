@@ -72,7 +72,27 @@ EndFunction
 
 Function __UpdatePersistenceState()
     
+    Int liIndex
+
     If( IsPersistenceManagementEnabled() )
+
+        ;; Create the shadow link holder
+        If( kREFR_PersistentObjects == None )
+            Static lkXMarker = Game.GetFormFromFile( 0x0000003B, "Fallout4.esm" ) As Static
+            ObjectReference lkSpawnMarker = Game.GetFormFromFile( 0x00004CEA, "WorkshopFramework.esm" ) As ObjectReference
+            kREFR_PersistentObjects = lkSpawnMarker.PlaceAtMe( lkXMarker, aiCount = 1, abForcePersist = True, abInitiallyDisabled = True, abDeleteWhenAble = False )
+            
+            ;; On an existing game, this will grab all the references in the alias and link them to the holder
+            liIndex = kAlias_PersistentObjects.GetCount()
+            While( liIndex > 0 )
+                liIndex -= 1
+                ObjectReference lkObject = kAlias_PersistentObjects.GetAt( liIndex )
+                If( lkObject != None )
+                    lkObject.SetLinkedRef( kREFR_PersistentObjects, kKYWD_PersistentObject )
+                EndIf
+            EndWhile
+
+        EndIf
 
         ;; Register for WorkshopParent events
         RegisterForCustomEvent( kQUST_WorkshopParent, "WorkshopObjectBuilt" )
@@ -86,7 +106,7 @@ Function __UpdatePersistenceState()
         
         ;; Register for events with all the Workshops
         WorkshopScript[] lkWorkshops = kQUST_WorkshopParent.Workshops
-        Int liIndex = lkWorkshops.Length
+        liIndex = lkWorkshops.Length
         While( liIndex > 0 )
             liIndex -= 1
             
@@ -125,7 +145,7 @@ Function __UpdatePersistenceState()
         
         ;; Unregister for events with all the Workshops
         WorkshopScript[] lkWorkshops = kQUST_WorkshopParent.Workshops
-        Int liIndex = lkWorkshops.Length
+        liIndex = lkWorkshops.Length
         While( liIndex > 0 )
             liIndex -= 1
             
@@ -137,6 +157,12 @@ Function __UpdatePersistenceState()
             EndIf
             
         EndWhile
+        
+        ;; Delete the shadow link holder
+        If( kREFR_PersistentObjects != None )
+            kREFR_PersistentObjects.Delete()
+            kREFR_PersistentObjects = None
+        EndIf
         
         ;; Lastly, empty any and all RefCollectionAliases
         kAlias_PersistentObjects.RemoveAll()
@@ -261,7 +287,21 @@ Group PersistenceAlias
     RefCollectionAlias  Property    kAlias_PersistentObjects                        Auto Const Mandatory
     { This holds and forces all the objects to persist }
     
+    ObjectReference     Property    kREFR_PersistentObjects                         Auto Hidden
+    { This shadows the above alias, it is used for rapid access as an array using GetLinkedRefChildren }
+    
+    Keyword             Property    kKYWD_PersistentObject                          Auto Const Mandatory
+    { This is used to link the persisted objects to the linked ref holder }
+    
 EndGroup
+
+
+ObjectReference[] Function GetPersistedObjects()
+    If( kREFR_PersistentObjects == None )
+        Return None
+    EndIf
+    Return kREFR_PersistentObjects.GetLinkedRefChildren( kKYWD_PersistentObject )
+EndFunction
 
 
 Group ActiveScanning
