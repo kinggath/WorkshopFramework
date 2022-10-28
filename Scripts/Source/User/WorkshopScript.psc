@@ -1671,6 +1671,11 @@ State Initialized
 	EndEvent
 EndState
 
+Event OnCellLoad()
+	; WSFW 2.2.4 - The resources are frequenly out of whack due to location load state, let's be sure to update as soon as the player arrives
+	RecalculateWorkshopResources()
+EndEvent
+
 Event OnLoad()
 	if( ! bWSFWVarsFilled)
 		FillWSFWVars()
@@ -2240,15 +2245,12 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	Int iSafety = GetValue(Safety) as int
 	Int iSafetyDamage = GetValue(DamageSafety) as int
 
-	; To be calculated ahead
-	Int iSafetyPerNPC = 0
-	
-	
 	; ----------------------------
 	; Update Safety
 	; ----------------------------
 	
 	; safety check: WSFW - Adding additional needs AV here
+	Bool bSafetyNeedsMet = true
 	Float fSafetyNeeded = iTotalPopulation + GetValue(WSFW_AV_ExtraNeeds_Safety)
 	int iMissingSafety = Math.Max(0, fSafetyNeeded - iSafety) as int
 	SetAndRestoreActorValue(self, MissingSafety, iMissingSafety)
@@ -2257,7 +2259,10 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	iSafety = Math.Max(iSafety - iSafetyDamage, 0) as int
 	
 	if(iTotalPopulation > 0)
-		iSafetyPerNPC = Math.Ceiling(iSafety/iTotalPopulation)
+		; 2.3.1 - Previously we were ignoring the additional need in the calculation
+		if(iSafety < fSafetyNeeded)
+			bSafetyNeedsMet = false
+		endif
 	endif
 	
 	; ----------------------------
@@ -2423,7 +2428,7 @@ Function WSFW_DailyUpdate_AdjustResourceValues(WorkshopDataScript:WorkshopRating
 	;boni will be subtracted from this value:
 	fActorHappiness = happinessBonusWater + happinessBonusFood + happinessBonusBed + happinessBonusShelter
 	;The safety bonus applies either to all actors or to none:
-	If(iSafetyPerNPC > 0)
+	If(bSafetyNeedsMet)
 		fActorHappiness += happinessBonusSafety
 		
 		if(bRealUpdate)
@@ -2903,7 +2908,9 @@ bool function RecalculateWorkshopResources(bool bOnlyIfLocationLoaded = true)
 	;the location check alone is not reliable and may result in the resource calculation never running at all if the player spends extended
 	;periods of time in workshop mode.
 	Actor PlayerRef = Game.GetPlayer()
-	Bool bLocationLoaded = myLocation.IsLoaded()
+	;Bool bLocationLoaded = myLocation.IsLoaded()
+	Cell thisParentCell = GetParentCell()
+	Bool bLocationLoaded = (thisParentCell != None && thisParentCell.IsLoaded()) ; 2.3.1 - Switching to checking the parent cell loaded state which seems to be a more accurate reflection if the actual area is loaded
 	if bOnlyIfLocationLoaded == false || bLocationLoaded || UFO4P_InWorkshopMode == true
 		RecalculateResources()
 		
@@ -2979,7 +2986,7 @@ Function SpecialRecalculations()
 
 	SetValue(WSFW_PowerRequired, fPowerRequired)
 	
-	if(fPowerRequired > fLastKnownPowerRequired || myLocation.IsLoaded())
+	if(fPowerRequired > fLastKnownPowerRequired || (GetParentCell() != None && GetParentCell().IsLoaded()))
 		; Only update this field if it increases, or if the location is loaded. This way we can be certain the power number will at least be pseudo accurate
 		fLastKnownPowerRequired = fPowerRequired
 	endif

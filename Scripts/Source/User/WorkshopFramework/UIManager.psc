@@ -193,7 +193,9 @@ Event ObjectReference.OnItemAdded(ObjectReference akAddedTo, Form akBaseItem, in
 		endif
 		
 		if(SortItem(SortMe))
-			ModTraceCustom(sUILog, " " + SortMe + " sorted. Determining which container to deposit. StartBarterSelectedFormList: " + StartBarterSelectedFormList + ". In start selected list?: " + StartBarterSelectedFormList.HasForm(akItemReference) + ", is base in list?: " + StartBarterSelectedFormList.HasForm(akBaseItem))
+			if(StartBarterSelectedFormList != None)
+				ModTraceCustom(sUILog, " " + SortMe + " sorted. Determining which container to deposit. StartBarterSelectedFormList: " + StartBarterSelectedFormList + ". In start selected list?: " + StartBarterSelectedFormList.HasForm(akItemReference) + ", is base in list?: " + StartBarterSelectedFormList.HasForm(akBaseItem))
+			endif
 			
 			if(StartBarterSelectedFormList != None && (StartBarterSelectedFormList.HasForm(akItemReference) || ( ! bStartBarterSelectedFormlistAreReferences && StartBarterSelectedFormList.HasForm(akBaseItem))))
 				if(bVendorSideEqualsChoice)

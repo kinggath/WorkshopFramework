@@ -419,16 +419,6 @@ Function CaptureTurret(Actor akTurretRef, WorkshopScript akWorkshopRef = None, F
 		
 		akTurretRef.AddToFaction(thisFaction)
 		akTurretRef.SetCrimeFaction(thisFaction)
-		;/
-		; Remove from enemy factions
-		if(aFactionData && aFactionData.EnemyFactions)
-			int i = 0
-			while(i < aFactionData.EnemyFactions.GetSize())
-				akTurretRef.RemoveFromFaction(aFactionData.EnemyFactions.GetAt(i) as Faction)
-				
-				i += 1
-			endWhile
-		endif	/;	
 	else
 		akTurretRef.AddToFaction(WorkshopNPCFaction)
 		akTurretRef.AddToFaction(PlayerFaction)

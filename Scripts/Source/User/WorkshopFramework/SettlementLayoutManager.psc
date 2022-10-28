@@ -1160,9 +1160,7 @@ Function PowerUpSettlement(WorkshopScript akWorkshopRef, WorkshopFramework:Weapo
 	
 	
 	if(aSpecificLayout != None)		
-		aSpecificLayout.PowerUp(akWorkshopRef)
-		
-		
+		aSpecificLayout.PowerUp(akWorkshopRef)		
 	else
 		int i = 0
 		while(i < Layouts.Length)

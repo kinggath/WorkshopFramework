@@ -851,6 +851,21 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 		Float fCurrentX = fAutoWireHighs[0]
 		Float fCurrentY = fAutoWireHighs[1]
 		Float fCurrentZ = fAutoWireHighs[2]
+			; Add the first corner
+		Coordinates startingCorner = new Coordinates
+		startingCorner.fX = fCurrentX
+		startingCorner.fY = fCurrentY
+		startingCorner.fZ = fCurrentZ
+		
+		CubeHighCorners.Add(startingCorner)
+		
+		LastCubeCorner.fX = fCurrentX
+		LastCubeCorner.fY = fCurrentY
+		LastCubeCorner.fZ = fCurrentZ
+		
+		; Decrement X so we don't try and add the first cube again immediately
+		fCurrentX -= fDefaultMaxPowerWireLength
+					
 		while(fCurrentZ > fAutoWireLows[2])
 			while(fCurrentY > fAutoWireLows[1])
 				while(fCurrentX > fAutoWireLows[0])
@@ -905,6 +920,22 @@ Function AutoWireSettlement(WorkshopScript akWorkshopRef = None)
 		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 07.")
 		AddCubeIndexes(Data08, CubeHighCorners)
 		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 08.")
+		AddCubeIndexes(Data09, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 09.")
+		AddCubeIndexes(Data10, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 10.")
+		AddCubeIndexes(Data11, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 11.")
+		AddCubeIndexes(Data12, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 12.")
+		AddCubeIndexes(Data13, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 13.")
+		AddCubeIndexes(Data14, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 14.")
+		AddCubeIndexes(Data15, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 15.")
+		AddCubeIndexes(Data16, CubeHighCorners)
+		;ModTrace("[AutoWire Details] Finished AddCubeIndexes for array 16.")
 		
 		; Wire everything together in the same cube
 		iAutoWireItemsProcessed = 0
@@ -1575,6 +1606,7 @@ Bool Function DestroyWires(WorkshopScript akWorkshopRef = None)
 	
 	DestroyWiresWorkshopModeWarning.Show()
 	
+	Utility.Wait(0.1)
 	Game.RequestAutoSave() ; Just in case it does crash this will bring the player back to the confirmation message so they can decline
 	
 	int iConfirm = DestroyWiresWorkshopModeConfirm.Show()
@@ -1660,6 +1692,7 @@ Bool Function RewireSettlement(WorkshopScript akWorkshopRef = None)
 	
 	RewireWorkshopModeWarning.Show()
 	
+	Utility.Wait(0.1)
 	Game.RequestAutoSave() ; Just in case it does crash this will bring the player back to the confirmation message so they can decline
 	
 	int iConfirm = RewireWorkshopModeConfirm.Show()

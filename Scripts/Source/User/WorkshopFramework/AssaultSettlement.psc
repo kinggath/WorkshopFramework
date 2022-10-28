@@ -87,6 +87,7 @@ Group Aliases
 	RefCollectionAlias Property PlayerEnemies Auto Const Mandatory
 	
 	RefCollectionAlias Property Defenders Auto Const Mandatory
+	{ Actually points to RemainingDefenders, which are removed as they are killed (Defenders is a bad name, but don't want to risk breaking other mods). If you need access to all defenders, including dead ones, check the PlayerEnemies or PlayerAllies aliases, depending on bPlayerIsEnemy setting. }
 	RefCollectionAlias Property Attackers Auto Const Mandatory
 	
 	RefCollectionAlias Property SpawnedAttackersAlias Auto Const Mandatory
