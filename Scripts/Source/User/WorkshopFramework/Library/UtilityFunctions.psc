@@ -1586,6 +1586,23 @@ EndFunction
 
 
 ; ------------------------------
+; GetWorkshopLocation
+; 
+; Description: Return the location record the settlement workshop is in
+;
+; Parameters:
+; WorkshopScript akWorkshopRef
+; ------------------------------
+Location Function GetWorkshopLocation(WorkshopScript akWorkshopRef) global
+	Location thisLocation = akWorkshopRef.myLocation
+	if(thisLocation == None)
+		thisLocation = akWorkshopRef.GetCurrentLocation()
+	endif
+	
+	return thisLocation
+EndFunction
+
+; ------------------------------
 ; GetWorkshopWorldspace
 ; 
 ; Description: Return the worldspace record the settlement workshop is in

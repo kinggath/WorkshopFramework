@@ -299,6 +299,13 @@ Int Function ShowCachedBarterSelectMenuV4(Form afBarterDisplayNameForm, ObjectRe
 	SelectedResultsFormlist = aStoreResultsIn 
 	StartBarterSelectedFormList = aStartBarterSelectedFormlist
 	
+	
+	if(kCurrentPhantomVendorContainer == None)
+		bPhantomVendorInUse = false
+		Debug.MessageBox("Workshop Framework Error\n\nUnable to start barter menu system.")
+		return -1
+	endif
+	
 	; Add items to inventory and start barter
 	
 	; Store cache ref so we can return the cache items
@@ -498,6 +505,125 @@ int Function ShowFormlistBarterSelectMenuV5(Form afBarterDisplayNameForm, Formli
 	return iBarterSelectCallbackID
 EndFunction
 
+
+int Function ShowRefCollectionBarterSelectMenu(Form afBarterDisplayNameForm, RefCollectionAlias aAvailableOptionsCollection, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Float afMaxWaitForBarterSelect = 0.0)
+	if(bPhantomVendorInUse) 
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
+	endif
+	
+	bPhantomVendorInUse = true
+	
+	ResetPhantomVendors()
+	PreparePhantomVendor(afBarterDisplayNameForm, aFilterKeywords, aiAcceptStolen)
+	
+	SelectedResultsFormlist = aStoreResultsIn 
+	bVendorSideEqualsChoice = abVendorSideEqualsChoice
+	bAvailableOptionItemsAreReferences = true	
+	bStartBarterSelectedFormlistAreReferences = true
+	bStoreResultsAsReferences = true
+	bDestroyNonCachedBarterSelectReferences = false
+	StartBarterSelectedFormList = aStartBarterSelectedFormlist
+	
+	if(kCurrentPhantomVendorContainer == None)
+		bPhantomVendorInUse = false
+		Debug.MessageBox("Workshop Framework Error\n\nUnable to start barter menu system.")
+		return -1
+	endif
+	
+	; Register for event so items get sorted
+	RegisterForRemoteEvent(kCurrentPhantomVendorContainer, "OnItemAdded")
+	
+	; Add items to vendor container and start barter
+	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
+	
+	Int iCount = aAvailableOptionsCollection.GetCount()
+	iAwaitingSorting = iCount
+	int iExpectedAwaitingValue = iAwaitingSorting
+	int i = 0
+	while(i < iCount)
+		iExpectedAwaitingValue -= 1
+		ObjectReference thisRef = aAvailableOptionsCollection.GetAt(i)
+		if(thisRef)
+			ModTraceCustom(sUILog, "Adding " + thisRef + " to phantom vendor container " + kCurrentPhantomVendorContainer)
+			
+			kCurrentPhantomVendorContainer.AddItem(thisRef)
+			
+			if(iAwaitingSorting > 0)
+				ModTraceCustom(sUILog, "Waiting for item to sort (when iAwaitingSorting [" + iAwaitingSorting + "] = iExpectedAwaitingValue [" + iExpectedAwaitingValue + "])")
+				int iWaitCount = 0
+				while(iExpectedAwaitingValue != iAwaitingSorting && iAwaitingSorting != iSortingComplete && iWaitCount < 500)
+					Utility.Wait(0.01) ; Need to ensure iAwaitingSorting decrements
+					iWaitCount += 1
+				endWhile
+				
+				if(iAwaitingSorting > iExpectedAwaitingValue)
+					iAwaitingSorting = iExpectedAwaitingValue
+				endif
+			endif
+		else
+			if(iAwaitingSorting > iExpectedAwaitingValue)
+				iAwaitingSorting = iExpectedAwaitingValue
+			endif
+		endif
+		
+		i += 1
+	endWhile	
+	
+	Utility.Wait(1.0) ; Give it a moment to handle the last OnItemAdded event
+	
+	iBarterSelectCallbackID = Utility.RandomInt(1, 999999)
+	kCurrentPhantomVendor.ShowBarterMenu()
+	
+	return iBarterSelectCallbackID
+EndFunction
+
+
+
+Int Function ShowRefCollectionBarterSelectMenuAndWait(Form afBarterDisplayNameForm, RefCollectionAlias aAvailableOptionsCollection, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
+	ModTraceCustom(sUILog, "ShowRefCollectionBarterSelectMenuAndWait called.")
+	if(bPhantomVendorInUse)
+		if(afMaxWaitForBarterSelect != 0.0)
+			Float fWaitedTime = 0.0
+			if(afMaxWaitForBarterSelect < 0)
+				afMaxWaitForBarterSelect = 99999999
+			endif
+			
+			while(bPhantomVendorInUse && fWaitedTime < afMaxWaitForBarterSelect)
+				Utility.WaitMenuMode(fWaitForMenuAvailableLoopIncrement)
+				fWaitedTime += fWaitForMenuAvailableLoopIncrement
+			endWhile
+		else
+			return -1
+		endif
+	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
+	
+	Int iResult = ShowRefCollectionBarterSelectMenu(afBarterDisplayNameForm, aAvailableOptionsCollection, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, afMaxWaitForBarterSelect)
+	
+	if(iResult > -1)
+		; Callback ID received, let's begin our waiting loop
+		Float fWaitedTime = 0.0
+		while(bPhantomVendorInUse && fWaitedTime < afMaxWaitTime)
+			Utility.WaitMenuMode(fBarterWaitLoopIncrement)
+			fWaitedTime += fBarterWaitLoopIncrement
+		endWhile
+	endif
+	
+	return iResult
+EndFunction
+
+
 ; ------------------------------------
 ; ShowFormlistBarterSelectMenuAndWait
 ;
@@ -600,6 +726,12 @@ int Function ShowBarterSelectMenuV5(Form afBarterDisplayNameForm, Form[] aAvaila
 	bStartBarterSelectedFormlistAreReferences = abStartBarterSelectedFormlistAreReferences
 	bStoreResultsAsReferences = abStoreResultsAsReferences
 	bDestroyNonCachedBarterSelectReferences = abDestroyNonCachedBarterSelectReferences
+	
+	if(kCurrentPhantomVendorContainer == None)
+		bPhantomVendorInUse = false
+		Debug.MessageBox("Workshop Framework Error\n\nUnable to start barter menu system.")
+		return -1
+	endif
 	
 	; Register for event so items get sorted
 	RegisterForRemoteEvent(kCurrentPhantomVendorContainer, "OnItemAdded")
@@ -707,14 +839,21 @@ EndFunction
 
 Function ProcessBarterSelection()
 	;Debug.MessageBox("ProcessBarterSelection called, dumping selection pool")
-	ModTraceCustom(sUILog, "SelectionPool01: " + SelectionPool01)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool01: " + SelectionPool01)
 	ProcessItemPool(SelectionPool01)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool02: " + SelectionPool02)
 	ProcessItemPool(SelectionPool02)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool03: " + SelectionPool03)
 	ProcessItemPool(SelectionPool03)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool04: " + SelectionPool04)
 	ProcessItemPool(SelectionPool04)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool05: " + SelectionPool05)
 	ProcessItemPool(SelectionPool05)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool06: " + SelectionPool06)
 	ProcessItemPool(SelectionPool06)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool07: " + SelectionPool07)
 	ProcessItemPool(SelectionPool07)
+	ModTraceCustom(sUILog, "ProcessBarterSelection on SelectionPool08: " + SelectionPool08)
 	ProcessItemPool(SelectionPool08)
 	
 	; Return any remaining items to player as they were not part of our pool, player likely dropped them in to see what would happen
@@ -831,6 +970,7 @@ EndFunction
 
 Function ProcessItemPool(Form[] aItemPool)
 	ModTraceCustom(sUILog, "ProcessItemPool called. ItemPool size = " + aItemPool.Length + ", bVendorSideEqualsChoice = " + bVendorSideEqualsChoice)
+	ObjectReference kSafeSpawnPoint = SafeSpawnPoint.GetRef()
     While(aItemPool.Length > 0)
         Form thisForm = aItemPool[0]
         
@@ -843,7 +983,7 @@ Function ProcessItemPool(Form[] aItemPool)
 				bSelected = (kCurrentPhantomVendorContainer.GetItemCount(thisForm) > 0)
 			endif
 			
-			ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kCurrentPhantomVendorContainer + " which currently has " + kCurrentPhantomVendorContainer.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
+			; ModTrace("[ProcessItemPool] Checking for " + thisForm + " in " + kCurrentPhantomVendorContainer + " which currently has " + kCurrentPhantomVendorContainer.GetItemCount() + " items, found? :" + bSelected + " also checking phantom vendor " + PhantomVendorAlias.GetRef() + ", found there? : " + PhantomVendorAlias.GetRef().GetItemCount(thisForm))
 		else
 			int iPlayerItemCount = 0
 			if(bAvailableOptionItemsAreReferences && (thisForm as ObjectReference) != None)
@@ -872,6 +1012,7 @@ Function ProcessItemPool(Form[] aItemPool)
 			endif
 			
 			if(iSettlementIndex >= 0)
+				ModTraceCustom(sUILog, "    Selected form is part of Selectables_Settlements system.")
 				if( ! kLastSelectedSettlements)
 					kLastSelectedSettlements = new WorkshopScript[0]
 				endif
@@ -882,26 +1023,34 @@ Function ProcessItemPool(Form[] aItemPool)
 					kLastSelectedSettlements.Add(WorkshopParent.GetWorkshopFromLocation(settlementLocation))
 				endif
 			else
+				ModTraceCustom(sUILog, "    Selected form is not part of Selectables_Settlements system.")
 				if(bAvailableOptionItemsAreReferences && thisForm as ObjectReference)
+					ModTraceCustom(sUILog, "    Selected form is a reference, handling accordingly.")
+					
 					; Since using references, we need to put these items somewhere or they will be destroyed when removed from inventory
 					ObjectReference kDroppedRef = (thisForm as ObjectReference)
-					
 					kDroppedRef.Drop(true)
-				
-					kDroppedRef.MoveTo(SafeSpawnPoint.GetRef())
 					
-					if(bStoreResultsAsReferences)
-						SelectedResultsFormlist.AddForm(kDroppedRef)
+					if(kDroppedRef == None)
+						ModTraceCustom(sUILog, "    Selected form failed to resolve to a reference after drop.")
 					else
-						SelectedResultsFormlist.AddForm(kDroppedRef.GetBaseObject())
+						ModTraceCustom(sUILog, "    Form dropped from select container, moving to safe spawn point " + kSafeSpawnPoint)
+						kDroppedRef.MoveTo(kSafeSpawnPoint)
+						
+						if(bStoreResultsAsReferences)
+							SelectedResultsFormlist.AddForm(kDroppedRef)
+						else
+							SelectedResultsFormlist.AddForm(kDroppedRef.GetBaseObject())
+						endif
+						
+						if(kCurrentCacheRef != None)
+							kCurrentCacheRef.AddItem(kDroppedRef)
+						endif
+						
+						bItemRemoved = true
 					endif
-					
-					if(kCurrentCacheRef != None)
-						kCurrentCacheRef.AddItem(kDroppedRef)
-					endif
-					
-					bItemRemoved = true
 				else
+					ModTraceCustom(sUILog, "    Selected form is not a reference, adding form to SelectedResultsFormlist " + SelectedResultsFormlist)
 					SelectedResultsFormlist.AddForm(thisForm)	
 				endif
 			endif
@@ -917,20 +1066,34 @@ Function ProcessItemPool(Form[] aItemPool)
 		else
 			;ModTraceCustom(sUILog, " Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 			
-			; Item was left in select container, don't count as selected, but return to cache
+			; Item was left in select container, don't count as selected, but return to cache, destroy, or drop
+			
 			if(kCurrentCacheRef != None || ! bAvailableOptionItemsAreReferences || bDestroyNonCachedBarterSelectReferences)
 				; If bAvailableOptionItemsAreReferences == true and not using a cache, moving the items to a None container would be destroying them, so only do so if explicitly requested. Otherwise, we'll just let them get returned to the player by ProcessBarterSelection
-				if(bVendorSideEqualsChoice)				
+				if(bVendorSideEqualsChoice)
 					PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 				else
 					; ModTraceCustom(sUILog, " Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
-					
 					kCurrentPhantomVendorContainer.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+				endif
+			elseif(bAvailableOptionItemsAreReferences && ! bDestroyNonCachedBarterSelectReferences)
+				; Added 2.3.2
+				; If these were items the player accidentally deposited, they wouldn't be refs, since the caller doesn't want these destroyed, let's just drop them and they will be persisted by whatever system needs them and that way won't be confusingly returned to the player
+				if(thisForm as ObjectReference)
+					(thisForm as ObjectReference).Drop(true)
+				else
+					if(bVendorSideEqualsChoice)
+						PlayerRef.DropObject(thisForm, 1)
+					else
+						kCurrentPhantomVendorContainer.DropObject(thisForm, 1)
+					endif
 				endif
 			endif
         endif
         
+		ModTraceCustom(sUILog, " Calling Remove(0) on pool we are processing, expecting to remove " + aItemPool[0])
         aItemPool.Remove(0)
+		ModTraceCustom(sUILog, "     After remove call entry 0 of pool = " + aItemPool[0])
     EndWhile
 EndFunction
 

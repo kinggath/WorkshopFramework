@@ -1429,17 +1429,19 @@ WorkshopScript Function GetNearestWorkshop(ObjectReference akToRef) global
 		WorkshopParentScript WorkshopParent = GetWorkshopParent()
 		Location thisLocation = akToRef.GetCurrentLocation()
 		nearestWorkshop = WorkshopParent.GetWorkshopFromLocation(thisLocation)
-		
+		LocationRefType WorkshopRefType = Game.GetFormFromFile(0x000234E9, "Fallout4.esm") as LocationRefType
 		if( ! nearestWorkshop)
 			ObjectReference[] WorkshopsNearby = akToRef.FindAllReferencesWithKeyword(GetWorkshopKeyword(), 20000.0)
 			int i = 0
 			while(i < WorkshopsNearby.Length)
-				if(nearestWorkshop)
-					if(WorkshopsNearby[i].GetDistance(akToRef) < nearestWorkshop.GetDistance(akToRef))
+				if(WorkshopsNearby[i].HasRefType(WorkshopRefType)) ; Filter out non-reftype workshops as they won't be registered as part of the settlement system
+					if(nearestWorkshop)
+						if(WorkshopsNearby[i].GetDistance(akToRef) < nearestWorkshop.GetDistance(akToRef))
+							nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
+						endIf
+					else
 						nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
-					endIf
-				else
-					nearestWorkshop = WorkshopsNearby[i] as WorkshopScript
+					endif
 				endif
 				
 				i += 1

@@ -17,38 +17,38 @@ import WorkshopFramework:Library:UtilityFunctions
 ; Consts
 ; -------------------------------------------
 
-int iStage_Setup = 10 Const
-int iStage_Ready = 20 Const
-int iStage_PlayerArrived = 25 Const
-int iStage_AttackStartedByCombat = 26 Const
-int iStage_Started = 30 Const
-int iStage_TriggerAI = 40 Const
-int iStage_FirstDown = 50 Const
-int iStage_MostEnemiesDown = 60 Const
-int iStage_AllEnemiesSubdued = 61 Const
-int iStage_AllEnemiesDead = 62 Const
-int iStage_MostAlliesDown = 65 Const
-int iStage_AllAlliesDown = 70 Const
-int iStage_EnemiesDown = 75 Const
+int Property iStage_Setup = 10 autoReadOnly
+int Property iStage_Ready = 20 autoReadOnly
+int Property iStage_PlayerArrived = 25 autoReadOnly
+int Property iStage_AttackStartedByCombat = 26 autoReadOnly
+int Property iStage_Started = 30 autoReadOnly
+int Property iStage_TriggerAI = 40 autoReadOnly
+int Property iStage_FirstDown = 50 autoReadOnly
+int Property iStage_MostEnemiesDown = 60 autoReadOnly
+int Property iStage_AllEnemiesSubdued = 61 autoReadOnly
+int Property iStage_AllEnemiesDead = 62 autoReadOnly
+int Property iStage_MostAlliesDown = 65 autoReadOnly
+int Property iStage_AllAlliesDown = 70 autoReadOnly
+int Property iStage_EnemiesDown = 75 autoReadOnly
 
-int iStage_AutoComplete = 80 Const
-int iStage_NoVictor = 85 Const
+int Property iStage_AutoComplete = 80 autoReadOnly
+int Property iStage_NoVictor = 85 autoReadOnly
 
-int iStage_Failed = 90 Const
-int iStage_Success = 100 Const
+int Property iStage_Failed = 90 autoReadOnly
+int Property iStage_Success = 100 autoReadOnly
 
-int iStage_Shutdown = 1000 Const
+int Property iStage_Shutdown = 1000 autoReadOnly
 
-int iTimerID_AutoRunSetup = 100 Const
-int iTimerID_Shutdown = 101 Const
-int iTimerID_AutoComplete = 102 Const
-int iTimerID_FailsafeNoSetup = 103 Const
-int iTimerID_EnemyMonitor = 104 Const ; Added in 1.1.10 to periodically double-check if all enemies are dealt with in case an alias death script fails to register
+int Property iTimerID_AutoRunSetup = 100 autoReadOnly
+int Property iTimerID_Shutdown = 101 autoReadOnly
+int Property iTimerID_AutoComplete = 102 autoReadOnly
+int Property iTimerID_FailsafeNoSetup = 103 autoReadOnly
+int Property iTimerID_EnemyMonitor = 104 autoReadOnly ; Added in 1.1.10 to periodically double-check if all enemies are dealt with in case an alias death script fails to register
 
-float fTimerLength_AutoRunSetup = 30.0 Const ; If it takes longer than this, the requesting script can cancel the timer and call SetupAssault manually
-float fTimerLength_Shutdown = 10.0 Const ; This is just designed to give other scripts a chance to react to the results before the aliases are cleared
-float fTimerLength_FailsafeNoSetup = 300.0 Const ; After 5 minutes, quests are considered abandoned and shut down
-float fTimerLength_EnemyMonitor = 30.0 Const
+float Property fTimerLength_AutoRunSetup = 30.0 autoReadOnly ; If it takes longer than this, the requesting script can cancel the timer and call SetupAssault manually
+float Property fTimerLength_Shutdown = 10.0 autoReadOnly ; This is just designed to give other scripts a chance to react to the results before the aliases are cleared
+float Property fTimerLength_FailsafeNoSetup = 300.0 autoReadOnly ; After 5 minutes, quests are considered abandoned and shut down
+float Property fTimerLength_EnemyMonitor = 30.0 autoReadOnly
 
 ; -------------------------------------------
 ; Editor Properties
@@ -136,9 +136,9 @@ Float Property fPlayerArriveDistance = 500.0 Auto Hidden
 ; Vars
 ; -------------------------------------------
 
-Bool bDisabledMapMarker = false
-Int iReserveID = -1
-Int iCurrentAssaultType = -1
+Bool Property bDisabledMapMarker = false Auto Hidden
+Int Property iReserveID = -1 Auto Hidden
+Int Property iCurrentAssaultType = -1 Auto Hidden
 
 ; Prep variables
 Bool Property bAutoShutdownQuest = true Auto Hidden

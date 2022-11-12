@@ -1,6 +1,7 @@
 Scriptname WorkshopScript extends ObjectReference Conditional
 {script for Workshop reference}
 
+
 ; WSFW
 import WorkshopFramework:Library:UtilityFunctions
 import WorkshopFramework:Library:DataStructures ; WSFW - 1.0.8
