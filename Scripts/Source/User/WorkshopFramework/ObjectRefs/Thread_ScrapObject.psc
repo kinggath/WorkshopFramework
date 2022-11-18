@@ -47,7 +47,7 @@ ObjectReference Property kScrapMe Auto Hidden
 Bool Property bWithinBuildableAreaCheck = false Auto Hidden ; 1.1.11
 WorkshopScript Property kWorkshopRef Auto Hidden ; 1.1.11
 Bool Property bStoreContainerItemsInWorkshop = true Auto Hidden
-
+Bool Property bAllowPowerArmorScrapping = false Auto Hidden
 ; -
 ; Events
 ; -
@@ -290,7 +290,7 @@ Bool Function ScrapSafetyCheck(ObjectReference akScrapMe)
 		((akScrapMe as Actor) && ! akScrapMe.HasKeyword(TurretKeyword)) || \
 		(akScrapMe as WorkshopScript) || \
 		akScrapMe.HasKeyword(WorkshopKeyword) || \
-		akScrapMe.HasKeyword(PowerArmorKeyword))
+		( ! bAllowPowerArmorScrapping && akScrapMe.HasKeyword(PowerArmorKeyword)))
 		
 		return false
 	else
