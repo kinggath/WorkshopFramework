@@ -284,6 +284,10 @@ String Function WSFWID_GetReferenceName(ObjectReference akObjectRef)
 	return sName
 EndFunction
 
+int iPowerGridFix_CheckOnly = 0 Const
+int iPowerGridFix_RemoveBadGrids = 1 Const
+int iPowerGridFix_RemoveBadNodes = 2 Const ; Added in 2.3.3
+
 Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, Bool abFixAndScan = true, Bool abResetIfFixFails = false)
 	if(akWorkshopRef == None)
 		;akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
@@ -294,7 +298,10 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 		endif
 	endif
 	
-	Int iFix = abFixAndScan as Int
+	Int iFix = iPowerGridFix_CheckOnly
+	if(abFixAndScan)
+		iFix = iPowerGridFix_RemoveBadNodes
+	endif
 	
 	PowerGridStatistics Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, iFix)
 	
@@ -376,6 +383,26 @@ EndFunction
 
 Function MCM_ScanPowerGrid()
 	Bool bSuccess = WSFWID_ScanPowerGrid(akWorkshopRef = None)
+EndFunction
+
+
+Function WSFWID_RemoveNodesFromPowerGrid(WorkshopScript akWorkshopRef = None, Int[] aiNodesToRemove = None)
+	if(akWorkshopRef == None)
+		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(Game.GetPlayer())
+		
+		if(akWorkshopRef == None)
+			ModTrace("WSFWID_RemoveNodesFromPowerGrid could not find a valid settlement to check.")
+			return
+		endif
+	endif
+	
+	if(aiNodesToRemove == None)
+		return
+	endif
+	
+	if(aiNodesToRemove != None && aiNodesToRemove.Length > 0)
+		Int[] iResults = WSFWIdentifier.RemoveNodesFromPowerGrid(akWorkshopRef, aiNodesToRemove)
+	endif
 EndFunction
 
 

@@ -50,6 +50,7 @@ float Property fTimerLength_Shutdown = 10.0 autoReadOnly ; This is just designed
 float Property fTimerLength_FailsafeNoSetup = 300.0 autoReadOnly ; After 5 minutes, quests are considered abandoned and shut down
 float Property fTimerLength_EnemyMonitor = 30.0 autoReadOnly
 
+String sLogName = "WSFWAssault" Const
 ; -------------------------------------------
 ; Editor Properties
 ; -------------------------------------------
@@ -85,6 +86,9 @@ Group Aliases
 	RefCollectionAlias Property SubdueToComplete Auto Const Mandatory
 	RefCollectionAlias Property PlayerAllies Auto Const Mandatory
 	RefCollectionAlias Property PlayerEnemies Auto Const Mandatory
+	
+	RefCollectionAlias Property StartingAttackers Auto Const Mandatory
+	RefCollectionAlias Property StartingDefenders Auto Const Mandatory
 	
 	RefCollectionAlias Property Defenders Auto Const Mandatory
 	{ Actually points to RemainingDefenders, which are removed as they are killed (Defenders is a bad name, but don't want to risk breaking other mods). If you need access to all defenders, including dead ones, check the PlayerEnemies or PlayerAllies aliases, depending on bPlayerIsEnemy setting. }
@@ -213,6 +217,8 @@ Event OnStoryScript(Keyword akKeyword, Location akLocation, ObjectReference akRe
 	; akRef1 = Verb
 	; aiValue1 = Type 
 	; aiValue2 = ReserveID
+	Debug.OpenUserLog(sLogName)
+	
 	if(akRef1 != None)
 		VerbAlias.ForceRefTo(akRef1)
 	endif
@@ -256,6 +262,7 @@ EndEvent
 
 
 Event OnStageSet(Int aiStageID, Int aiItemID)
+	ModTraceCustom(sLogName, Self + ".OnStageSet(" + aiStageID + ", " + aiItemID + ")")
 	if(aiStageID == iStage_Ready)
 		if(fAutoEndTime > 0)
 			StartTimerGameTime(fAutoEndTime, iTimerID_AutoComplete)
@@ -576,8 +583,10 @@ Function SetupAssault()
 		SpawnDefenderForm = kWorkshopRef.FactionControlData.Guards
 	endif
 	
+	; 2.3.3 Enable any spawned defenders from external sources (they will have been already fed in to our aliases)
+	SpawnedDefendersAlias.EnableAll()	
 	
-	; Spawn extra defenders
+	; Spawn extra defenders requested during setup
 	if(iSpawnDefenders > 0 && SpawnDefenderForm != None)
 		SpawnDefenders(SpawnDefenderForm, iSpawnDefenders, kDefendFromRef)
 	endif
@@ -594,13 +603,26 @@ Function SetupAssault()
 	; Setup attackers outside of the settlement somewhere
 	ObjectReference kAttackFrom = AttackFromAlias.GetRef()
 	
-	; Spawn extra attackers	
+	; 2.3.3 Move and enable any spawned attackers from external sources (they will have been already fed in to our aliases
+	int i = 0
+	while(i < SpawnedAttackersAlias.GetCount())
+		Actor thisActor = SpawnedAttackersAlias.GetAt(i) as Actor
+		if(thisActor)
+			thisActor.MoveTo(kAttackFrom)
+		endif
+		
+		i += 1
+	endWhile
+	
+	SpawnedAttackersAlias.EnableAll()
+	
+	; Spawn extra attackers	requested during setup
 	if(iSpawnAttackers > 0 && SpawnAttackerForm != None)
 		SpawnAttackers(SpawnAttackerForm, iSpawnAttackers, kAttackFrom)
 	endif
 	
 	if(SpawnAttackerCounts != None)
-		int i = 0
+		i = 0
 		while(i < SpawnAttackerCounts.Length)
 			SpawnAttackers(SpawnAttackerCounts[i].SpawnActor, SpawnAttackerCounts[i].iCount, kAttackFrom)
 			
@@ -623,7 +645,7 @@ Function SetupAssault()
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			AddCollectionToCompleteAliases(OtherAttackers)
 		else
-			int i = 0
+			i = 0
 			int iCount = OtherAttackers.GetCount()
 			
 			while(i < iCount)
@@ -641,8 +663,12 @@ Function SetupAssault()
 		endif
 	endif
 	
+	
+	; 2.3.3 - Storing original attacker/defender sets in unique collections. This is to maintain a copy of the original sets of attackers and defenders without having to check PlayerAllies and PlayerEnemies since we want to eventually support NPC vs NPC assaults
+	StartingAttackers.AddRefCollection(Attackers)
+	StartingDefenders.AddRefCollection(Defenders)
 		
-	if(bPlayerInvolved)
+	if(bPlayerInvolved)		
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			PlayerAllies.AddRefCollection(Defenders)
 			PlayerEnemies.AddRefCollection(Attackers)
@@ -654,7 +680,7 @@ Function SetupAssault()
 		endif
 		
 		; Clear the player enemy application from any allies in case they switched for some reason
-		int i = 0
+		i = 0
 		while(i < PlayerAllies.GetCount())
 			Actor thisActor = PlayerAllies.GetAt(i) as Actor
 			
@@ -685,6 +711,7 @@ Function SetupAssault()
 				RegisterForRemoteEvent(thisLocation, "OnLocationLoaded")
 			endif
 		else
+			ModTrace("AssaultSettlement could not find target location. Shutting down...")
 			SetStage(iStage_Shutdown)
 		endif		
 	endif
@@ -698,19 +725,7 @@ Function SpawnDefenders(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference ak
 		Actor kDefenderRef = akSpawnAt.PlaceActorAtMe(aSpawnMe)
 		
 		if(kDefenderRef)
-			SpawnedDefendersAlias.AddRef(kDefenderRef)
-			Defenders.AddRef(kDefenderRef)
-			DefenderFactionAlias.AddRef(kDefenderRef)
-			
-			if(iCurrentAssaultType != AssaultManager.iType_Defend)
-				; Spawned NPCs should just be killed unless unique/essential already
-				if(ShouldForceSubdue(kDefenderRef))
-					SubdueToComplete.AddRef(kDefenderRef)
-				else
-					ClearProtectedStatus(kDefenderRef)
-					KillToComplete.AddRef(kDefenderRef)					
-				endif
-			endif
+			SetupSpawnedDefender(kDefenderRef)
 		endif
 		
 		i += 1
@@ -724,26 +739,49 @@ Function SpawnAttackers(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference ak
 		Actor kAttackerRef = akSpawnAt.PlaceActorAtMe(aSpawnMe)
 		
 		if(kAttackerRef)
-			SpawnedAttackersAlias.AddRef(kAttackerRef)
-			Attackers.AddRef(kAttackerRef)
-			AttackerFactionAlias.AddRef(kAttackerRef)
-			
-			if(iCurrentAssaultType == AssaultManager.iType_Defend)
-				; Spawned NPCs should just be killed unless unique/essential already
-				if(ShouldForceSubdue(kAttackerRef))
-					SubdueToComplete.AddRef(kAttackerRef)
-				else
-					if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
-						ClearProtectedStatus(kAttackerRef)
-					endif
-					
-					KillToComplete.AddRef(kAttackerRef)
-				endif
-			endif
+			SetupSpawnedAttacker(kAttackerRef)
 		endif
 		
 		i += 1
 	endWhile
+EndFunction
+
+; 2.3.3 - Refactoring to separate alias handling from spawning - this will allow callers to handle their own spawning externally
+Function SetupSpawnedAttacker(Actor akSpawnedActor)
+	ModTraceCustom(sLogName, "SetupSpawnedAttacker(" + akSpawnedActor + ")")
+	SpawnedAttackersAlias.AddRef(akSpawnedActor)
+	Attackers.AddRef(akSpawnedActor)
+	AttackerFactionAlias.AddRef(akSpawnedActor)
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		ModTraceCustom(sLogName, "    Defend assault type, adding attacker to victory condition alias.")
+		; Spawned NPCs should just be killed unless unique/essential already
+		if(ShouldForceSubdue(akSpawnedActor))
+			SubdueToComplete.AddRef(akSpawnedActor)
+		else
+			if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
+				ClearProtectedStatus(akSpawnedActor)
+			endif
+			
+			KillToComplete.AddRef(akSpawnedActor)
+		endif
+	endif
+EndFunction
+
+Function SetupSpawnedDefender(Actor akSpawnedActor)
+	SpawnedDefendersAlias.AddRef(akSpawnedActor)
+	Defenders.AddRef(akSpawnedActor)
+	DefenderFactionAlias.AddRef(akSpawnedActor)
+	
+	if(iCurrentAssaultType != AssaultManager.iType_Defend)
+		; Spawned NPCs should just be killed unless unique/essential already
+		if(ShouldForceSubdue(akSpawnedActor))
+			SubdueToComplete.AddRef(akSpawnedActor)
+		else
+			ClearProtectedStatus(akSpawnedActor)
+			KillToComplete.AddRef(akSpawnedActor)					
+		endif
+	endif
 EndFunction
 
  ; 1.1.3

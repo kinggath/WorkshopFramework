@@ -273,6 +273,19 @@ Bool Function SetupComplete(Int aiReserveID)
 EndFunction
 
 
+Function StopAssault(Int aiReserveID)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if(kQuestRef)
+		WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+		if(asAssaultQuest)
+			asAssaultQuest.SetStage(asAssaultQuest.iStage_Shutdown)
+		endif
+	endif
+EndFunction
+
+
 Bool Function SetupOptions(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true)
 	return SetupOptionsV2(aiReserveID, abDisableFastTravel, abSettlersAreDefenders, abRobotsAreDefenders, abAutoStartAssaultOnLoad, abAutoStartAssaultWhenPlayerReachesAttackFrom, abMoveAttackersToStartPoint, abMoveDefendersToCenterPoint, abAttackersDeadFailsAssault, abAutoHandleObjectives, abGuardsKillableEvenOnSubdue, abAttackersKillableEvenOnSubdue, abAlwaysSubdueUniques, abChildrenFleeDuringAttack)
 EndFunction
