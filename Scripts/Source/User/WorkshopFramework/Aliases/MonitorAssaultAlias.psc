@@ -49,7 +49,8 @@ Function CheckForStageUpdate()
 	int iTriggeredPercent = ((iTriggeredCount as Float/iTotalCount as Float) as Float * 100) as Int
 	
 	while(i < StageTriggers.Length)
-		if((StageTriggers[i].iStageRequired == -1 || thisQuest.GetStageDone(StageTriggers[i].iStageRequired)) && ! thisQuest.GetStageDone(StageTriggers[i].iStageToSet) && iTriggeredPercent >= StageTriggers[i].iPercent)
+		; if((StageTriggers[i].iStageRequired == -1 || thisQuest.GetStageDone(StageTriggers[i].iStageRequired)) && ! thisQuest.GetStageDone(StageTriggers[i].iStageToSet) && iTriggeredPercent >= StageTriggers[i].iPercent)
+		if((StageTriggers[i].iStageRequired == -1 || thisQuest.GetStageDone(StageTriggers[i].iStageRequired)) && iTriggeredPercent >= StageTriggers[i].iPercent)
 			thisQuest.SetStage(StageTriggers[i].iStageToSet)
 		endif
 		

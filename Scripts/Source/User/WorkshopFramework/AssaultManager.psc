@@ -46,6 +46,18 @@ kArgs[0] = Quest
 kArgs[1] = iReserveID
 /;
 
+CustomEvent AssaultAttackersDown
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+/;
+
+CustomEvent AssaultDefendersDown
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+/;
+
 ; ---------------------------------------------
 ; Consts
 ; ---------------------------------------------
@@ -293,6 +305,11 @@ EndFunction
 
 ; 1.1.1 - Adding overrides to take away protected status from attackers and defenders
 Bool Function SetupOptionsV2(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true, Bool abForceAttackersKillable = false, Bool abForceDefendersKillable = false)
+	return SetupOptionsV3(aiReserveID, abDisableFastTravel, abSettlersAreDefenders, abRobotsAreDefenders, abAutoStartAssaultOnLoad, abAutoStartAssaultWhenPlayerReachesAttackFrom, abMoveAttackersToStartPoint, abMoveDefendersToCenterPoint, abAttackersDeadFailsAssault, abAutoHandleObjectives, abGuardsKillableEvenOnSubdue, abAttackersKillableEvenOnSubdue, abAlwaysSubdueUniques, abChildrenFleeDuringAttack, abForceAttackersKillable, abForceDefendersKillable, abAutoCompleteAssaultWhenOneSideIsDown = true)
+EndFunction
+
+; 2.3.4 - Added new parameter abAutoCompleteAssaultWhenOneSideIsDown which can be used to stop an assault from failing/succeeding just because one side is down. In this case, the system calling the assault will be expected to end the assault itself.
+Bool Function SetupOptionsV3(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true, Bool abForceAttackersKillable = false, Bool abForceDefendersKillable = false, Bool abAutoCompleteAssaultWhenOneSideIsDown = true)
 	Quest kQuestRef = FindAssaultQuest(aiReserveID)
 	
 	if( ! kQuestRef)
@@ -317,6 +334,7 @@ Bool Function SetupOptionsV2(int aiReserveID, Bool abDisableFastTravel = true, B
 		asAssaultQuest.bChildrenFleeDuringAttack = abChildrenFleeDuringAttack
 		asAssaultQuest.bForceAttackersKillable = abForceAttackersKillable
 		asAssaultQuest.bForceDefendersKillable = abForceDefendersKillable
+		asAssaultQuest.bAutoCompleteAssaultWhenOneSideIsDown = abAutoCompleteAssaultWhenOneSideIsDown
 	endif
 	
 	return true
@@ -477,6 +495,24 @@ Bool Function SetupDefendersV2(int aiReserveID, Faction aDefendingFaction = None
 	return true
 EndFunction
 
+Bool Function ForceComplete(int aiReserveID, Bool abAttackersWin = true)
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if( ! kQuestRef)
+		return false
+	endif
+	
+	WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+	if(asAssaultQuest)
+		asAssaultQuest.ForceComplete(abAttackersWin)
+	else
+		return false
+	endif
+	
+	return true
+EndFunction
+
 
 ; To be called by Assault quests themselves
 Function AssaultStarted_Private(Quest akSenderRef, ObjectReference akWorkshopRef, Int aiAssaultType, Faction akAttackingFaction, Faction akDefendingFaction)
@@ -540,6 +576,41 @@ Function AssaultStopped_Private(Quest akSenderRef)
 	kArgs[1] = iReserveID
 	
 	SendCustomEvent("AssaultStopped", kArgs)
+EndFunction
+
+
+; 2.3.4 To be called by Assault quests themselves
+Function AssaultAttackersDown_Private(Quest akSenderRef)
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+	endif
+	
+	kArgs[1] = iReserveID
+	
+	SendCustomEvent("AssaultAttackersDown", kArgs)
+EndFunction
+
+; 2.3.4 To be called by Assault quests themselves
+Function AssaultDefendersDown_Private(Quest akSenderRef)
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+	endif
+	
+	kArgs[1] = iReserveID
+	
+	SendCustomEvent("AssaultDefendersDown", kArgs)
 EndFunction
 
 

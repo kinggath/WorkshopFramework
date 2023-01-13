@@ -217,7 +217,7 @@ Event OnTimer(Int aiTimerID)
 				endif
 			endif
 
-			if(bCurrentWorkshopRefFound)
+			if(bCurrentWorkshopRefFound && bEnteringWorkshopLocation)
 				; Workshop changed or previous settlement unloaded
 				kArgs = new Var[3]
 				kArgs[0] = currentWorkshop

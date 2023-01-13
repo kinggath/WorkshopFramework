@@ -1699,6 +1699,28 @@ EndFunction
 
 
 ; ------------------------------
+; ClearCollectionFromCollection
+; 
+; Removes all aliases from one collection from another collection
+;
+; Parameters:
+; RefCollectionAlias aRemoveCollection, RefCollectionAlias aFromCollection
+; ------------------------------
+
+Function ClearCollectionFromCollection(RefCollectionAlias aRemoveCollection, RefCollectionAlias aFromCollection) global
+	int i = 0
+	while(i < aRemoveCollection.GetCount())
+		ObjectReference thisRef = aRemoveCollection.GetAt(i)
+		
+		if(thisRef != None)
+			aFromCollection.RemoveRef(thisRef)
+		endIf
+		
+		i += 1
+	endWhile
+EndFunction
+
+; ------------------------------
 ; WorkshopFromReferences
 ; 
 ; Determine which of the two references is a Workshop and return it
@@ -1714,3 +1736,86 @@ WorkshopScript Function WorkshopFromReferences( ObjectReference akObj1, ObjectRe
 	Return lkWorkshop
 EndFunction
 
+
+; ------------------------------
+; Safe_RemoveAllItems
+; 
+; Removes all items from akSourceContainer, optionally sending it to akTransferTo. There are a few differences between this and the vanilla RemoveAllItems function. Most importantly, this takes into account the max number of an item that can be safely added in one call and divides it across multiple calls of Safe_RemoveItem. This also adds the abSilent option, but at the expense of the abKeepOwnership option.
+;
+; Parameters:
+; ObjectReference akSourceContainer = Container to remove from
+; ObjectReference akTransferTo = (optional) Container to move items to
+; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
+; ------------------------------
+
+bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectReference akTransferTo = None, Bool abSilent = true)
+ 	; setup to prevent possible infinite loop
+	int iBreakCount = 0
+	int iBreakCountMax = 0x7FFFFFFF	; max Papyrus int, 32 bit signed integer, which I assume is the max number of forms a Container can hold
+	
+    ; this will loop while akSourceContainer has inventory and our break condition is false
+    while(akSourceContainer.GetItemCount(None) > 0 && iBreakCount < iBreakCountMax)
+        ; we will individually move one BaseObject at a time...        
+        ObjectReference kDropped = akSourceContainer.DropFirstObject(abInitiallyDisabled=true)
+        
+        ; make sure we have a valid ref
+        if(kDropped != none)
+			Form aBaseForm = kDropped.GetBaseObject()
+			
+			; done with object, put it back! - for items like ammo, when dropped from a container, 1 = the whole stack!
+			akSourceContainer.AddItem(kDropped, 1, abSilent = true)
+			Safe_RemoveItem(akSourceContainer, aBaseForm, aiCount = -1, abSilent = abSilent, akOtherContainer = akTransferTo) ; -1 = All of that item
+        endif
+		
+		iBreakCount += 1
+    endwhile
+    
+	return iBreakCount < iBreakCountMax
+EndFunction
+
+; ------------------------------
+; Safe_RemoveItem
+; 
+; Removes aiCount of item akItemToRemove from akSourceContainer, optionally sending it to akOtherContainer. The difference between this and the vanilla RemoveItem function is that this takes into account the max number of an item that can be safely added in one call and divides it across multiple calls.
+;
+; Parameters:
+; ObjectReference akSourceContainer = Container to remove from
+; Form akItemToRemove = Item type to remove, can be anything RemoveItem function supports
+; Int aiCount = (optional) Number to remove
+; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
+; ObjectReference akOtherContainer = (optional) Container to move items to
+; ------------------------------
+bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRemove, Int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None)
+	if(akItemToRemove == None || akSourceContainer == None)
+        return false
+    endif
+    
+	int	uint_16max = 0x0000FFFF	; max value for unsigned 16 bit integer
+	int iRemainingToMove = aiCount
+	int iContainerItemCount = akSourceContainer.GetItemCount(akItemToRemove)
+	
+	if(iRemainingToMove < 0 || iRemainingToMove > iContainerItemCount)
+		; negative number = move all
+		iRemainingToMove = iContainerItemCount
+	endIf
+
+	Int iMoveCount = uint_16max
+	
+	; setup to prevent possible infinite loop
+	int iBreakCount = 0
+	int iBreakCountMax = 0x7FFFFFFF	; max value for signed 32 bit integer
+	
+	while(iRemainingToMove > 0 && iBreakCount < iBreakCountMax)
+		if(iRemainingToMove < uint_16max)
+			iMoveCount = iRemainingToMove
+		endif
+		
+		akSourceContainer.RemoveItem(akItemToRemove, iMoveCount, abSilent = abSilent, akOtherContainer = akOtherContainer)
+		; RemoveItem(Form akItemToRemove, int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None)
+		
+		iRemainingToMove -= iMoveCount
+		iBreakCount += 1
+	endwhile
+	
+	return iBreakCount < iBreakCountMax
+EndFunction

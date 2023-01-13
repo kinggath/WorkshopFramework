@@ -1788,10 +1788,10 @@ Event OnWorkshopMode(bool aStart)
 	endif
 	
 	; 1.1.7 - WSFW Moving outside of aStart block
-	Var[] kargs = new Var[0]
-	kargs.Add(NONE)
-	kargs.Add(Self)
-	kargs.Add(aStart)
+	Var[] kargs = new Var[3]
+	kargs[0] = None
+	kargs[1] = Self
+	kargs[2] = aStart
 				
 	WorkshopParent.SendCustomEvent("WorkshopEnterMenu", kargs)		
 

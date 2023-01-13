@@ -89,6 +89,8 @@ Group Aliases
 	
 	RefCollectionAlias Property StartingAttackers Auto Const Mandatory
 	RefCollectionAlias Property StartingDefenders Auto Const Mandatory
+	RefCollectionAlias Property ReinforcementAttackers Auto Const Mandatory
+	RefCollectionAlias Property ReinforcementDefenders Auto Const Mandatory
 	
 	RefCollectionAlias Property Defenders Auto Const Mandatory
 	{ Actually points to RemainingDefenders, which are removed as they are killed (Defenders is a bad name, but don't want to risk breaking other mods). If you need access to all defenders, including dead ones, check the PlayerEnemies or PlayerAllies aliases, depending on bPlayerIsEnemy setting. }
@@ -122,6 +124,8 @@ Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
 	Keyword Property WorkshopLinkHome Auto Const Mandatory ;2.0.1
+	
+	LocationRefType Property MapMarkerRefType Auto Const Mandatory ; 2.3.4
 EndGroup
 
 
@@ -160,6 +164,8 @@ Bool Property bAlwaysSubdueUniques = true Auto Hidden
 Bool Property bAutoHandleObjectives = true Auto Hidden
 Bool Property bAutoCaptureSettlement = false Auto Hidden
 Bool Property bChildrenFleeDuringAttack = true Auto Hidden
+
+Bool Property bAutoCompleteAssaultWhenOneSideIsDown = true Auto Hidden
 
 Bool Property bForceDefendersKillable = false Auto Hidden ; 1.1.1
 Bool Property bForceAttackersKillable = false Auto Hidden ; 1.1.1
@@ -276,6 +282,12 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				endif
 				
 				ObjectReference kAttackFrom = AttackFromAlias.GetRef()
+				if(kAttackFrom.HasRefType(MapMarkerRefType))
+					ObjectReference kLinkedHeadingRef = kAttackFrom.GetLinkedRef()
+					if(kLinkedHeadingRef != None)
+						kAttackFrom = kLinkedHeadingRef
+					endif
+				endif
 				
 				if(PlayerRef.GetDistance(kAttackFrom) < fPlayerArriveDistance)
 					SetStage(iStage_PlayerArrived)
@@ -335,13 +347,41 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		if(bAutoHandleObjectives)
 			if(iCurrentAssaultType == AssaultManager.iType_Defend)
 				SetObjectiveDisplayed(17, false)
-				SetObjectiveDisplayed(22)
+				
+				if(IsObjectiveDisplayed(30))
+					; Reinforcements
+					SetObjectiveDisplayed(32) ; Remaining attackers
+				else
+					if( ! IsObjectiveDisplayed(22))
+						SetObjectiveDisplayed(22) ; Remaining attackers
+					endif
+				endif
 			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
 				SetObjectiveDisplayed(15, false)
-				SetObjectiveDisplayed(20)
+				
+				if(IsObjectiveDisplayed(30))
+					; Reinforcements
+					SetObjectiveDisplayed(31) ; Remaining defenders
+				else
+					if( ! IsObjectiveDisplayed(20))
+						SetObjectiveDisplayed(20) ; Remaining defenders
+					endif
+				endif
 			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
 				SetObjectiveDisplayed(16, false)
-				SetObjectiveDisplayed(21)
+				
+				if(IsObjectiveDisplayed(30))
+					; Reinforcements
+					SetObjectiveDisplayed(31) ; Remaining defenders (kill reinforcements)
+				else
+					if( ! IsObjectiveDisplayed(21))
+						SetObjectiveDisplayed(21) ; Subdue Remaining defenders
+					endif
+				endif
+				
+				if( ! IsObjectiveDisplayed(21))
+					SetObjectiveDisplayed(21)
+				endif
 			endif
 		endif
 	elseif(aiStageID == iStage_AllEnemiesSubdued)
@@ -353,36 +393,42 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			SetStage(iStage_EnemiesDown)
 		endif
 	elseif(aiStageID == iStage_EnemiesDown)
-		if(TryToMarkSuccessful())
-			if(iCurrentAssaultType == AssaultManager.iType_Defend)
-				if(bAutoHandleObjectives)
-					SetObjectiveCompleted(17)
-					
-					if(IsObjectiveDisplayed(22))
-						SetObjectiveCompleted(22)
-					endif
-				endif
-			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
-				if(bAutoHandleObjectives)
-					SetObjectiveCompleted(15)
-					
-					if(IsObjectiveDisplayed(20))
-						SetObjectiveCompleted(20)
-					endif
-				endif
-			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
-				if(bAutoHandleObjectives)
-					SetObjectiveCompleted(16)
-					
-					if(IsObjectiveDisplayed(21))
-						SetObjectiveCompleted(21)
-					endif
-				endif
-			endif
-		endif		
+		if(bAutoHandleObjectives)
+			; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
+			SetObjectiveDisplayed(20, false)
+			SetObjectiveDisplayed(21, false)
+			SetObjectiveDisplayed(22, false)
+		endif
+		
+		if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			AssaultManager.AssaultAttackersDown_Private(Self)
+		else
+			AssaultManager.AssaultDefendersDown_Private(Self)
+		endif
+		
+		if(bAutoCompleteAssaultWhenOneSideIsDown)
+			TryToMarkSuccessful()			
+		endif
 	elseif(aiStageID == iStage_AllAlliesDown)
-		if(bAttackersDeadFailsAssault)
-			SetStage(iStage_Failed)
+		if(bAutoHandleObjectives)
+			; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
+			SetObjectiveDisplayed(20, false)
+			SetObjectiveDisplayed(21, false)
+			SetObjectiveDisplayed(22, false)
+		endif
+		
+		if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			AssaultManager.AssaultDefendersDown_Private(Self)
+			
+			if(bAutoCompleteAssaultWhenOneSideIsDown)
+				SetStage(iStage_Failed)
+			endif
+		else
+			AssaultManager.AssaultAttackersDown_Private(Self)
+			
+			if(bAutoCompleteAssaultWhenOneSideIsDown && bAttackersDeadFailsAssault)
+				SetStage(iStage_Failed)
+			endif
 		endif
 	elseif(aiStageID == iStage_Failed)
 		FailAllObjectives()
@@ -430,15 +476,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			StartTimer(fTimerLength_Shutdown, iTimerID_Shutdown)
 		endif
 	elseif(aiStageID == iStage_AutoComplete)
-		; Player didn't show up to resolve this in time, resolve "off-camera"
-		ObjectReference kWorkshopRef = WorkshopAlias.GetRef()
-		
-		if(kWorkshopRef.Is3dLoaded() && GetStageDone(iStage_Started))
-			; Assault running and player is here, check again shortly
-			StartTimerGameTime(0.01, iTimerID_AutoComplete)
-		else
-			AutoResolveAssault()
-		endif
+		TryToAutoResolveAssault()
 	elseif(aiStageID == iStage_Shutdown)
 		UnregisterForAllEvents()
 		
@@ -479,7 +517,41 @@ Int Function GetReserveID()
 EndFunction
 
 
+Function ForceComplete(Bool abAttackersWin = true)
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		if( ! abAttackersWin && TryToMarkSuccessful())
+			return
+		endif
+	else
+		if(abAttackersWin && TryToMarkSuccessful())
+			return
+		endif
+	endif
+	
+	SetStage(iStage_Failed)
+EndFunction
+
+Function SwitchToReinforcementObjectives()
+	; Turn off the kill/subdue objectives and display reinforcement
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		SetObjectiveDisplayed(22, false)
+		SetObjectiveDisplayed(30)
+	elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
+		SetObjectiveDisplayed(20, false)
+		SetObjectiveDisplayed(30)
+	elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+		SetObjectiveDisplayed(21, false)
+		SetObjectiveDisplayed(30)
+	endif
+EndFunction
+
+
 Bool Function TryToMarkSuccessful()
+	if(GetStageDone(iStage_Success))
+		; Already succeeded
+		return true
+	endif
+	
 	if( ! GetStageDone(iStage_Failed))
 		SetStage(iStage_Success)
 		
@@ -539,7 +611,12 @@ Function SetupAssault()
 			DefenderFactionAlias.AddRef(kLeaderRef)
 		endif
 		
-		if(iCurrentAssaultType != AssaultManager.iType_Defend) 
+		if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			; Make sure defenders stay subdued after bleeding out
+			if( ! bForceDefendersKillable)
+				PreventCollectionBleedoutRecovery(Defenders)
+			endif
+		else
 			AddCollectionToCompleteAliases(Settlers, abDefenders = true)
 			AddCollectionToCompleteAliases(NonSpeakingSettlers, abDefenders = true)
 			AddCollectionToCompleteAliases(Synths, abDefenders = true)
@@ -747,33 +824,69 @@ Function SpawnAttackers(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference ak
 EndFunction
 
 ; 2.3.3 - Refactoring to separate alias handling from spawning - this will allow callers to handle their own spawning externally
-Function SetupSpawnedAttacker(Actor akSpawnedActor)
+Function SetupSpawnedAttacker(Actor akSpawnedActor, Bool abIsReinforcement = false)
 	ModTraceCustom(sLogName, "SetupSpawnedAttacker(" + akSpawnedActor + ")")
 	SpawnedAttackersAlias.AddRef(akSpawnedActor)
 	Attackers.AddRef(akSpawnedActor)
 	AttackerFactionAlias.AddRef(akSpawnedActor)
 	
+	if(abIsReinforcement)
+		ReinforcementAttackers.AddRef(akSpawnedActor)
+		
+		if(GetStageDone(iStage_TriggerAI))
+			akSpawnedActor.AddToFaction(ActivateAIFaction)
+		endif
+	else
+		StartingAttackers.AddRef(akSpawnedActor)
+	endif
+	
 	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		if(bPlayerInvolved)
+			PlayerEnemies.AddRef(akSpawnedActor)
+		endif
+		
 		ModTraceCustom(sLogName, "    Defend assault type, adding attacker to victory condition alias.")
 		; Spawned NPCs should just be killed unless unique/essential already
 		if(ShouldForceSubdue(akSpawnedActor))
 			SubdueToComplete.AddRef(akSpawnedActor)
 		else
-			if( ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
+			if(abIsReinforcement || ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
 				ClearProtectedStatus(akSpawnedActor)
 			endif
 			
 			KillToComplete.AddRef(akSpawnedActor)
 		endif
+	else
+		if(bPlayerInvolved)
+			PlayerAllies.AddRef(akSpawnedActor)
+		endif
+		
+		ClearProtectedStatus(akSpawnedActor)
 	endif
 EndFunction
 
-Function SetupSpawnedDefender(Actor akSpawnedActor)
+Function SetupSpawnedDefender(Actor akSpawnedActor, Bool abIsReinforcement = false)
 	SpawnedDefendersAlias.AddRef(akSpawnedActor)
 	Defenders.AddRef(akSpawnedActor)
 	DefenderFactionAlias.AddRef(akSpawnedActor)
 	
-	if(iCurrentAssaultType != AssaultManager.iType_Defend)
+	if(abIsReinforcement)
+		ReinforcementDefenders.AddRef(akSpawnedActor)
+	else
+		StartingDefenders.AddRef(akSpawnedActor)
+	endif
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		if(bPlayerInvolved)
+			PlayerAllies.AddRef(akSpawnedActor)
+		endif
+		
+		ClearProtectedStatus(akSpawnedActor)
+	else
+		if(bPlayerInvolved)
+			PlayerEnemies.AddRef(akSpawnedActor)
+		endif
+		
 		; Spawned NPCs should just be killed unless unique/essential already
 		if(ShouldForceSubdue(akSpawnedActor))
 			SubdueToComplete.AddRef(akSpawnedActor)
@@ -848,6 +961,17 @@ Function StartAssault()
 	endif
 EndFunction
 
+Function TryToAutoResolveAssault()
+	; Player didn't show up to resolve this in time, resolve "off-camera"
+	ObjectReference kWorkshopRef = WorkshopAlias.GetRef()
+	
+	if(kWorkshopRef.Is3dLoaded() && GetStageDone(iStage_Started))
+		; Assault running and player is here, check again shortly
+		StartTimerGameTime(0.01, iTimerID_AutoComplete)
+	else
+		AutoResolveAssault()
+	endif
+EndFunction
 
 Function AutoResolveAssault()
 	if( ! GetStageDone(iStage_Shutdown))		
@@ -1127,17 +1251,19 @@ EndFunction
 
 
 Function StartAIPackages()
-	if(AttackerFactionAlias.Find(PlayerAlias.GetRef()) >= 0)
-		AssaultDefendersFaction.SetPlayerEnemy(true)
-		
-		if(DefendingFaction != None)
-			DefendingFaction.SetPlayerEnemy(true)
-		endif
-	else
-		AssaultAttackersFaction.SetPlayerEnemy(true)
-		
-		if(AttackingFaction != None)
-			AttackingFaction.SetPlayerEnemy(true)
+	if(bPlayerInvolved)
+		if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			AssaultAttackersFaction.SetPlayerEnemy(true)
+			
+			if(AttackingFaction != None)
+				AttackingFaction.SetPlayerEnemy(true)
+			endif
+		else
+			AssaultDefendersFaction.SetPlayerEnemy(true)
+			
+			if(DefendingFaction != None)
+				DefendingFaction.SetPlayerEnemy(true)
+			endif			
 		endif
 	endif
 	
@@ -1156,6 +1282,14 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 	int iCount = aCollection.GetCount()
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
 	ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
+	
+	if(kAttackFromRef.HasRefType(MapMarkerRefType))
+		ObjectReference kLinkedHeadingRef = kAttackFromRef.GetLinkedRef()
+		if(kLinkedHeadingRef != None)
+			kAttackFromRef = kLinkedHeadingRef
+		endif
+	endif
+	
 	
 	while(i < iCount)
 		Actor thisActor = aCollection.GetAt(i) as Actor
@@ -1237,8 +1371,13 @@ EndFunction
 Function CleanupAssault()
 	WorkshopScript thisWorkshop = WorkshopAlias.GetRef() as WorkshopScript
 	
-	Attackers.RemoveFromFaction(ActivateAIFaction) ; Clear attack AI
-	Children.RemoveFromFaction(ActivateAIFaction) ; Clear flee AI
+	if(Attackers != None)
+		Attackers.RemoveFromFaction(ActivateAIFaction) ; Clear attack AI
+	endif
+	
+	if(Children != None)
+		Children.RemoveFromFaction(ActivateAIFaction) ; Clear flee AI
+	endif
 	
 	RestoreProtectedStatus()
 		
@@ -1372,6 +1511,9 @@ Function HideAllObjectives()
 	SetObjectiveDisplayed(20, false)
 	SetObjectiveDisplayed(21, false)
 	SetObjectiveDisplayed(22, false)
+	SetObjectiveDisplayed(30, false)
+	SetObjectiveDisplayed(31, false)
+	SetObjectiveDisplayed(32, false)
 EndFunction
 
 
@@ -1407,7 +1549,7 @@ Function RestoreCollectionBleedoutRecovery(RefCollectionAlias aCollection)
 	int i = 0
 	while(i < aCollection.GetCount())
 		Actor thisActor = aCollection.GetAt(i) as Actor
-		if(thisActor.HasKeyword(BleedoutRecoveryStopped))
+		if(thisActor && thisActor.HasKeyword(BleedoutRecoveryStopped))
 			RestoreActorBleedoutRecovery(thisActor)
 		endif
 		
@@ -1429,6 +1571,24 @@ Function RestoreActorBleedoutRecovery(Actor akActorRef)
 	akActorRef.RestoreValue(HealthAV, fRestore)
 	akActorRef.SetNoBleedoutRecovery(false)
 	akActorRef.RemoveKeyword(BleedoutRecoveryStopped)
+EndFunction
+
+
+Function PreventCollectionBleedoutRecovery(RefCollectionAlias aCollection)
+	int i = 0
+	while(i < aCollection.GetCount())
+		Actor thisActor = aCollection.GetAt(i) as Actor
+		if(thisActor)
+			PreventActorBleedoutRecovery(thisActor)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+Function PreventActorBleedoutRecovery(Actor akActorRef)
+	akActorRef.SetNoBleedoutRecovery(true)
+	akActorRef.AddKeyword(BleedoutRecoveryStopped)
 EndFunction
 
 
