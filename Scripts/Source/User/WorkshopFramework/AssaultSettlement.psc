@@ -12,6 +12,7 @@ Scriptname WorkshopFramework:AssaultSettlement extends Quest
 
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
+import WorkshopFramework:WorkshopFunctions
 
 ; -------------------------------------------
 ; Consts
@@ -225,6 +226,9 @@ Event OnStoryScript(Keyword akKeyword, Location akLocation, ObjectReference akRe
 	; aiValue2 = ReserveID
 	Debug.OpenUserLog(sLogName)
 	
+	iLastStageSet = -1
+	fLastStageSetTimestamp = 0.0
+	
 	if(akRef1 != None)
 		VerbAlias.ForceRefTo(akRef1)
 	endif
@@ -267,8 +271,22 @@ Event OnTimerGameTime(Int aiTimerID)
 EndEvent
 
 
+Int iLastStageSet = -1
+Float fLastStageSetTimestamp = 0.0
+
 Event OnStageSet(Int aiStageID, Int aiItemID)
 	ModTraceCustom(sLogName, Self + ".OnStageSet(" + aiStageID + ", " + aiItemID + ")")
+	Float fCurrentTime = Utility.GetCurrentRealTime()
+	if(aiStageID == iLastStageSet)
+		if(fCurrentTime < fLastStageSetTimestamp + 3.0) ; 3 second buffer
+			; This stage just triggered, let's not rapidly repeat it
+			return
+		endif
+	else
+		iLastStageSet = aiStageID
+		fLastStageSetTimestamp = fCurrentTime
+	endif
+	
 	if(aiStageID == iStage_Ready)
 		if(fAutoEndTime > 0)
 			StartTimerGameTime(fAutoEndTime, iTimerID_AutoComplete)
@@ -319,10 +337,17 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				SetObjectiveCompleted(10)
 			endif
 			
+			; When player arrives let's correct the objectives if there is no one to subdue
+			if(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+				if(SubdueToComplete.GetCount() == 0)
+					iCurrentAssaultType = AssaultManager.iType_Attack_Wipeout
+				else
+					SetObjectiveDisplayed(16)
+				endif
+			endif
+			
 			if(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
 				SetObjectiveDisplayed(15)
-			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
-				SetObjectiveDisplayed(16)
 			endif
 		endif
 		
@@ -570,7 +595,11 @@ Function SetupAssault()
 		
 	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
-	int iWorkshopID = kWorkshopRef.GetWorkshopID()
+	int iWorkshopID = -1
+	if(kWorkshopRef != None)
+		iWorkshopID = kWorkshopRef.GetWorkshopID()
+	endif
+	
 	; Add settlers to aliases
 	if(bSettlersAreDefenders)
 		RemoveInvalidSettlers() ; 1.1.3
@@ -580,7 +609,7 @@ Function SetupAssault()
 		int i = 0
 		while(i < PermanentActorAliases.GetCount())
 			Actor thisActor = PermanentActorAliases.GetAt(i) as Actor
-			if(thisActor != None && WorkshopFramework:WorkshopFunctions.GetWorkshopID(thisActor) == iWorkshopID)
+			if(thisActor != None && GetWorkshopID(thisActor) == iWorkshopID)
 				PermanentSettlers.Add(thisActor)
 			endif
 			
@@ -714,11 +743,6 @@ Function SetupAssault()
 		Attackers.AddRefCollection(OtherAttackers)
 		AttackerFactionAlias.AddRefCollection(OtherAttackers)
 		
-		; 1.1.3 - Make sure attackers aren't in the settlement's ownership faction
-		if(kWorkshopRef.SettlementOwnershipFaction != None)
-			AttackerFactionAlias.RemoveFromFaction(kWorkshopRef.SettlementOwnershipFaction)
-		endif
-		
 		if(iCurrentAssaultType == AssaultManager.iType_Defend)
 			AddCollectionToCompleteAliases(OtherAttackers)
 		else
@@ -739,8 +763,10 @@ Function SetupAssault()
 			endWhile			
 		endif
 	endif
-	
-	
+		
+	; 2.3.5 - Make sure attackers aren't in WorkshopNPCFaction or the settlement's ownership faction or they won't be hostile to defenders
+	RemoveSettlementFactionsFromCollection(AttackerFactionAlias)
+		
 	; 2.3.3 - Storing original attacker/defender sets in unique collections. This is to maintain a copy of the original sets of attackers and defenders without having to check PlayerAllies and PlayerEnemies since we want to eventually support NPC vs NPC assaults
 	StartingAttackers.AddRefCollection(Attackers)
 	StartingDefenders.AddRefCollection(Defenders)
@@ -762,7 +788,7 @@ Function SetupAssault()
 			Actor thisActor = PlayerAllies.GetAt(i) as Actor
 			
 			if(thisActor)
-				AssaultManager.RemainPlayerEnemy.RemoveFromRef(thisActor)
+				AssaultManager.RemainPlayerEnemyCollection.RemoveRef(thisActor)
 			endif
 			
 			i += 1
@@ -825,10 +851,13 @@ EndFunction
 
 ; 2.3.3 - Refactoring to separate alias handling from spawning - this will allow callers to handle their own spawning externally
 Function SetupSpawnedAttacker(Actor akSpawnedActor, Bool abIsReinforcement = false)
-	ModTraceCustom(sLogName, "SetupSpawnedAttacker(" + akSpawnedActor + ")")
+	ModTraceCustom(sLogName, "SetupSpawnedAttacker(" + akSpawnedActor + ", abIsReinforcement = " + abIsReinforcement + ")")
 	SpawnedAttackersAlias.AddRef(akSpawnedActor)
 	Attackers.AddRef(akSpawnedActor)
 	AttackerFactionAlias.AddRef(akSpawnedActor)
+	
+	; 2.3.5 - Make sure attackers aren't in WorkshopNPCFaction or the settlement's ownership faction or they won't be hostile to defenders
+	RemoveSettlementFactions(akSpawnedActor)
 	
 	if(abIsReinforcement)
 		ReinforcementAttackers.AddRef(akSpawnedActor)
@@ -1213,12 +1242,12 @@ EndFunction
 Function ProcessCapture()
 	if(bAutoCaptureSettlement)
 		if(bSettlersJoinFaction && ! bPlayerIsEnemy)
-			; Clear our RemainPlayerEnemy alias in case its applied
+			; Clear our RemainPlayerEnemyCollection alias
 			int i = 0
 			while(i < Settlers.GetCount())
 				Actor thisActor = Settlers.GetAt(i) as Actor
 				if(thisActor)
-					AssaultManager.RemainPlayerEnemy.RemoveFromRef(thisActor)
+					AssaultManager.RemainPlayerEnemyCollection.RemoveRef(thisActor)
 				endif
 				
 				i += 1
@@ -1228,7 +1257,7 @@ Function ProcessCapture()
 			while(i < NonSpeakingSettlers.GetCount())
 				Actor thisActor = NonSpeakingSettlers.GetAt(i) as Actor
 				if(thisActor)
-					AssaultManager.RemainPlayerEnemy.RemoveFromRef(thisActor)
+					AssaultManager.RemainPlayerEnemyCollection.RemoveRef(thisActor)
 				endif
 				
 				i += 1
@@ -1238,7 +1267,7 @@ Function ProcessCapture()
 			while(i < Synths.GetCount())
 				Actor thisActor = Synths.GetAt(i) as Actor
 				if(thisActor)
-					AssaultManager.RemainPlayerEnemy.RemoveFromRef(thisActor)
+					AssaultManager.RemainPlayerEnemyCollection.RemoveRef(thisActor)
 				endif
 				
 				i += 1
@@ -1368,11 +1397,76 @@ Function SetupMapMarker(bool abStart = true)
 EndFunction
 
 
+Function RemoveSettlementFactionsFromCollection(RefCollectionAlias aCollection)
+	int i = 0
+	while(i < aCollection.GetCount())
+		Actor thisActor = aCollection.GetAt(i) as Actor
+		if(thisActor != None)
+			RemoveSettlementFactions(thisActor)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+Function RemoveSettlementFactions(Actor akActorRef)
+	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
+	WorkshopScript kActorWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	if(kWorkshopRef != None && kWorkshopRef == kActorWorkshopRef && kWorkshopRef.SettlementOwnershipFaction != None && kWorkshopRef.UseOwnershipFaction)
+		if(ApplyWorkshopOwnerFaction(akActorRef))
+			if(CountsForPopulation(akActorRef))
+				akActorRef.SetCrimeFaction(None)
+			else
+				akActorRef.SetFactionOwner(None)
+			endif
+		endif
+						
+		; Most NPCs shouldn't be in this faction, but just in case
+		akActorRef.RemoveFromFaction(kWorkshopRef.SettlementOwnershipFaction)
+	endif
+	
+	akActorRef.RemoveFromFaction(WorkshopNPCFaction)
+EndFunction
+
+Function RestoreSettlementFactionsToCollection(RefCollectionAlias aCollection)
+	int i = 0
+	while(i < aCollection.GetCount())
+		Actor thisActor = aCollection.GetAt(i) as Actor
+		if(thisActor != None)
+			RestoreSettlementFactions(thisActor)
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
+
+Function RestoreSettlementFactions(Actor akActorRef)
+	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
+	WorkshopScript kActorWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
+	if(kWorkshopRef != None && kWorkshopRef == kActorWorkshopRef)
+		if(kActorWorkshopRef.SettlementOwnershipFaction != None && kActorWorkshopRef.UseOwnershipFaction)
+			if(ApplyWorkshopOwnerFaction(akActorRef))
+				if(CountsForPopulation(akActorRef))
+					akActorRef.SetCrimeFaction(kActorWorkshopRef.SettlementOwnershipFaction)
+				else
+					akActorRef.SetFactionOwner(kActorWorkshopRef.SettlementOwnershipFaction)
+				endif
+			endif
+		endif
+	endif
+	
+	if(kActorWorkshopRef != None)
+		akActorRef.AddToFaction(WorkshopNPCFaction)
+	endif
+EndFunction
+
+
 Function CleanupAssault()
 	WorkshopScript thisWorkshop = WorkshopAlias.GetRef() as WorkshopScript
 	
 	if(Attackers != None)
 		Attackers.RemoveFromFaction(ActivateAIFaction) ; Clear attack AI
+		RestoreSettlementFactionsToCollection(Attackers)
 	endif
 	
 	if(Children != None)
@@ -1388,7 +1482,7 @@ Function CleanupAssault()
 			while(i < PlayerEnemies.GetCount())
 				Actor thisActor = PlayerEnemies.GetAt(i) as Actor
 				if(thisActor && ! thisActor.IsEssential()&& ! thisActor.IsDead())
-					AssaultManager.RemainPlayerEnemy.ApplyToRef(thisActor)
+					AssaultManager.RemainPlayerEnemyCollection.AddRef(thisActor)
 				endif
 				
 				i += 1

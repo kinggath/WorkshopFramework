@@ -137,6 +137,7 @@ Bool bAvailableOptionItemsAreReferences = false
 Bool bStartBarterSelectedFormlistAreReferences = false
 Bool bStoreResultsAsReferences = false
 Bool bDestroyNonCachedBarterSelectReferences = false
+Bool bCallerWillHandleBarterSelectLeftovers = false
 Formlist SelectedResultsFormlist
 Formlist StartBarterSelectedFormList
 
@@ -412,6 +413,12 @@ int Function ShowFormlistBarterSelectMenuV4(Form afBarterDisplayNameForm, Formli
 EndFunction
 
 int Function ShowFormlistBarterSelectMenuV5(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Float afMaxWaitForBarterSelect = 0.0)
+	return ShowFormlistBarterSelectMenuV6(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn,  aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences, abCallerWillHandleBarterSelectLeftovers = false, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
+EndFunction
+
+
+
+int Function ShowFormlistBarterSelectMenuV6(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Bool abCallerWillHandleBarterSelectLeftovers = false, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse) 
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -439,6 +446,7 @@ int Function ShowFormlistBarterSelectMenuV5(Form afBarterDisplayNameForm, Formli
 	bStartBarterSelectedFormlistAreReferences = abStartBarterSelectedFormlistAreReferences
 	bStoreResultsAsReferences = abStoreResultsAsReferences
 	bDestroyNonCachedBarterSelectReferences = abDestroyNonCachedBarterSelectReferences
+	bCallerWillHandleBarterSelectLeftovers = abCallerWillHandleBarterSelectLeftovers
 	StartBarterSelectedFormList = aStartBarterSelectedFormlist
 	
 	if(kCurrentPhantomVendorContainer == None)
@@ -645,6 +653,11 @@ Int Function ShowFormlistBarterSelectMenuAndWaitV3(Form afBarterDisplayNameForm,
 EndFunction
 
 Int Function ShowFormlistBarterSelectMenuAndWaitV5(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
+	return ShowFormlistBarterSelectMenuAndWaitV6(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences = false, abCallerWillHandleBarterSelectLeftovers = false, afMaxWaitTime = afMaxWaitTime, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
+EndFunction
+
+
+Int Function ShowFormlistBarterSelectMenuAndWaitV6(Form afBarterDisplayNameForm, Formlist aAvailableOptionsFormlist, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Bool abCallerWillHandleBarterSelectLeftovers = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
 	if(bPhantomVendorInUse) 
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -661,7 +674,7 @@ Int Function ShowFormlistBarterSelectMenuAndWaitV5(Form afBarterDisplayNameForm,
 		endif
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowFormlistBarterSelectMenuV5(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences, afMaxWaitForBarterSelect)
+	Int iResult = ShowFormlistBarterSelectMenuV6(afBarterDisplayNameForm, aAvailableOptionsFormlist, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences, abCallerWillHandleBarterSelectLeftovers, afMaxWaitForBarterSelect)
 	
 	;Debug.MessageBox("ShowFormlistBarterSelectMenuAndWaitV5 received call back ID " + iResult + " waiting for phantom vendor selection to complete for up to " + afMaxWaitTime + " seconds.")
 	
@@ -697,7 +710,11 @@ EndFunction
 
 
 int Function ShowBarterSelectMenuV5(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Float afMaxWaitForBarterSelect = 0.0)
-	ModTraceCustom(sUILog, "ShowBarterSelectMenuV5 called.")
+	return ShowBarterSelectMenuV6(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences, abCallerWillHandleBarterSelectLeftovers = false, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
+EndFunction
+
+int Function ShowBarterSelectMenuV6(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Bool abCallerWillHandleBarterSelectLeftovers = false, Float afMaxWaitForBarterSelect = 0.0)
+	ModTraceCustom(sUILog, "ShowBarterSelectMenuV6 called.")
 	if(bPhantomVendorInUse)
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -726,6 +743,7 @@ int Function ShowBarterSelectMenuV5(Form afBarterDisplayNameForm, Form[] aAvaila
 	bStartBarterSelectedFormlistAreReferences = abStartBarterSelectedFormlistAreReferences
 	bStoreResultsAsReferences = abStoreResultsAsReferences
 	bDestroyNonCachedBarterSelectReferences = abDestroyNonCachedBarterSelectReferences
+	bCallerWillHandleBarterSelectLeftovers = abCallerWillHandleBarterSelectLeftovers
 	
 	if(kCurrentPhantomVendorContainer == None)
 		bPhantomVendorInUse = false
@@ -805,7 +823,11 @@ Int Function ShowBarterSelectMenuAndWaitV3(Form afBarterDisplayNameForm, Form[] 
 EndFunction
 
 Int Function ShowBarterSelectMenuAndWaitV4(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
-	ModTraceCustom(sUILog, "ShowBarterSelectMenuAndWaitV4 called.")
+	return ShowBarterSelectMenuAndWaitV5(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences = false, abCallerWillHandleBarterSelectLeftovers = false, afMaxWaitTime = afMaxWaitTime, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
+EndFunction
+
+Int Function ShowBarterSelectMenuAndWaitV5(Form afBarterDisplayNameForm, Form[] aAvailableOptions, Formlist aStoreResultsIn, Keyword[] aFilterKeywords = None, Int aiAcceptStolen = 2, Formlist aStartBarterSelectedFormlist = None, Bool abVendorSideEqualsChoice = false, Bool abAvailableOptionItemsAreReferences = false, Bool abStartBarterSelectedFormlistAreReferences = false, Bool abStoreResultsAsReferences = false, Bool abDestroyNonCachedBarterSelectReferences = false, Bool abCallerWillHandleBarterSelectLeftovers = false, Float afMaxWaitTime = 60.0, Float afMaxWaitForBarterSelect = 0.0)
+	ModTraceCustom(sUILog, "ShowBarterSelectMenuAndWaitV5 called.")
 	if(bPhantomVendorInUse)
 		if(afMaxWaitForBarterSelect != 0.0)
 			Float fWaitedTime = 0.0
@@ -822,7 +844,7 @@ Int Function ShowBarterSelectMenuAndWaitV4(Form afBarterDisplayNameForm, Form[] 
 		endif
 	endif   ; REMINDER - do not set this to true after this, as the menu function will do so
 	
-	Int iResult = ShowBarterSelectMenuV5(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences = abDestroyNonCachedBarterSelectReferences, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
+	Int iResult = ShowBarterSelectMenuV6(afBarterDisplayNameForm, aAvailableOptions, aStoreResultsIn, aFilterKeywords, aiAcceptStolen, aStartBarterSelectedFormlist, abVendorSideEqualsChoice, abAvailableOptionItemsAreReferences, abStartBarterSelectedFormlistAreReferences, abStoreResultsAsReferences, abDestroyNonCachedBarterSelectReferences = abDestroyNonCachedBarterSelectReferences, abCallerWillHandleBarterSelectLeftovers = abCallerWillHandleBarterSelectLeftovers, afMaxWaitForBarterSelect = afMaxWaitForBarterSelect)
 	
 	if(iResult > -1)
 		; Callback ID received, let's begin our waiting loop
@@ -1067,25 +1089,26 @@ Function ProcessItemPool(Form[] aItemPool)
 			;ModTraceCustom(sUILog, " Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
 			
 			; Item was left in select container, don't count as selected, but return to cache, destroy, or drop
-			
-			if(kCurrentCacheRef != None || ! bAvailableOptionItemsAreReferences || bDestroyNonCachedBarterSelectReferences)
-				; If bAvailableOptionItemsAreReferences == true and not using a cache, moving the items to a None container would be destroying them, so only do so if explicitly requested. Otherwise, we'll just let them get returned to the player by ProcessBarterSelection
-				if(bVendorSideEqualsChoice)
-					PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
-				else
-					; ModTraceCustom(sUILog, " Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
-					kCurrentPhantomVendorContainer.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
-				endif
-			elseif(bAvailableOptionItemsAreReferences && ! bDestroyNonCachedBarterSelectReferences)
-				; Added 2.3.2
-				; If these were items the player accidentally deposited, they wouldn't be refs, since the caller doesn't want these destroyed, let's just drop them and they will be persisted by whatever system needs them and that way won't be confusingly returned to the player
-				if(thisForm as ObjectReference)
-					(thisForm as ObjectReference).Drop(true)
-				else
+			if( ! bCallerWillHandleBarterSelectLeftovers)
+				if(kCurrentCacheRef != None || ! bAvailableOptionItemsAreReferences || bDestroyNonCachedBarterSelectReferences)
+					; If bAvailableOptionItemsAreReferences == true and not using a cache, moving the items to a None container would be destroying them, so only do so if explicitly requested. Otherwise, we'll just let them get returned to the player by ProcessBarterSelection
 					if(bVendorSideEqualsChoice)
-						PlayerRef.DropObject(thisForm, 1)
+						PlayerRef.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
 					else
-						kCurrentPhantomVendorContainer.DropObject(thisForm, 1)
+						; ModTraceCustom(sUILog, " Removing item " + thisForm + " from phantom vendor container " + kCurrentPhantomVendorContainer + ", which currently has " + kCurrentPhantomVendorContainer.GetItemCount(thisForm) + ", sending to kCurrentCacheRef " + kCurrentCacheRef)
+						kCurrentPhantomVendorContainer.RemoveItem(thisForm, 1, abSilent = true, akOtherContainer = kCurrentCacheRef)
+					endif
+				elseif(bAvailableOptionItemsAreReferences && ! bDestroyNonCachedBarterSelectReferences)
+					; Added 2.3.2
+					; If these were items the player accidentally deposited, they wouldn't be refs, since the caller doesn't want these destroyed, let's just drop them and they will be persisted by whatever system needs them and that way won't be confusingly returned to the player
+					if(thisForm as ObjectReference)
+						(thisForm as ObjectReference).Drop(true)
+					else
+						if(bVendorSideEqualsChoice)
+							PlayerRef.DropObject(thisForm, 1)
+						else
+							kCurrentPhantomVendorContainer.DropObject(thisForm, 1)
+						endif
 					endif
 				endif
 			endif
@@ -1132,6 +1155,7 @@ Function ResetPhantomVendors()
 	bStartBarterSelectedFormlistAreReferences = false
 	bStoreResultsAsReferences = false
 	bDestroyNonCachedBarterSelectReferences = false
+	bCallerWillHandleBarterSelectLeftovers = false
 	
 	kCurrentPhantomVendor = None
 	kCurrentPhantomVendorContainer = None

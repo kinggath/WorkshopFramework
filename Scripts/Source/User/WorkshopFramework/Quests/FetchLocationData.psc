@@ -17,4 +17,7 @@ Group Aliases
 	LocationAlias Property RequestedLocation Auto Const Mandatory
 	ReferenceAlias Property MapMarker Auto Const Mandatory
 	ReferenceAlias Property CenterMarker Auto Const Mandatory
+	ReferenceAlias[] Property EdgeMarkers Auto Const Mandatory
+	ReferenceAlias[] Property LinkedAttackMarkers Auto Const Mandatory
+	ReferenceAlias[] Property NearbyMapMarkers Auto Const Mandatory
 EndGroup

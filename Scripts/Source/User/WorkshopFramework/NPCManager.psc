@@ -722,7 +722,7 @@ EndFunction
 
 ; Alternative to WorkshopParent.AddActorToWorkshop that does not require the WorkshopNPCScript
 Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool abResetMode = false)
-	;ModTrace("AddNPCToWorkshop called on " + akActorRef + " targeting settlement " + akWorkshopRef)
+	ModTrace("AddNPCToWorkshop called on " + akActorRef + " targeting settlement " + akWorkshopRef)
 	int iLockKey = GetLock()
 		
 	if(iLockKey <= GENERICLOCK_KEY_NONE)

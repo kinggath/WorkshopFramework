@@ -465,7 +465,7 @@ ObjectReference Function GetMapMarker(Location akLocation) global
 		WorkshopFramework:Quests:FetchLocationData SEQControllerLocFinder = SEQ as WorkshopFramework:Quests:FetchLocationData
 		
 		ObjectReference kMapMarkerRef = SEQControllerLocFinder.MapMarker.GetRef()
-
+		
 		SEQ.Dispose()
 		
 		return kMapMarkerRef

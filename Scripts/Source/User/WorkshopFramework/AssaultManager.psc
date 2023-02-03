@@ -74,6 +74,7 @@ EndGroup
 Group Aliases
 	ReferenceAlias Property SafeSpawnPoint Auto Const Mandatory
 	ReferenceAlias Property RemainPlayerEnemy Auto Const Mandatory
+	RefCollectionAlias Property RemainPlayerEnemyCollection Auto Const Mandatory
 EndGroup
 
 Group Assets
