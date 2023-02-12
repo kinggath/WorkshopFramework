@@ -160,8 +160,14 @@ Function UpdateDisplay()
 		if(bLinkControlledObjectToWorkshop)
 			kControlledRef.SetLinkedRef(GetLinkedRef(WorkshopItemKeyword), WorkshopItemKeyword)
 			
+			WorkshopObjectScript asWorkshopObject = kControlledRef as WorkshopObjectScript
+			if(asWorkshopObject)
+				asWorkshopObject.workshopID = workshopID
+				asWorkshopObject.HandleCreation(true)
+			endif
+			
 			if(kControlledRef.HasKeyword(WorkshopWorkObject))
-				Actor thisActor = GetAssignedActor()
+				Actor thisActor = GetActorRefOwner()
 				if(thisActor != None)
 					AssignToControlledObject(thisActor)
 				endif
@@ -230,7 +236,9 @@ Function AssignToControlledObject(Actor akActorRef)
 		return
 	endif
 	
-	WorkshopParent.AssignActorToObjectPUBLIC(akActorRef as WorkshopNPCScript, kControlledRef as WorkshopObjectScript)
+	Self.AssignActor(None)
+	
+	WorkshopParent.AssignActorToObjectPUBLIC(akActorRef as WorkshopNPCScript, kControlledRef as WorkshopObjectScript)	
 	
 	; Calling AssignActor will unassign our actor from this object, so let's assign them back to it immediately at the engine level or it will look confusing from an interface standpoint
 	SetActorRefOwner(akActorRef, true)

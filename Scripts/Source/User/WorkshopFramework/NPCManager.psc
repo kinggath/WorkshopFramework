@@ -901,6 +901,10 @@ Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = 
 		RemoveAliasData(akActorRef)
 		akActorRef.SetValue(GetWorkshopPlayerOwnedAV(), 0)
 	else
+		if(akWorkshopRef.SettlementOwnershipFaction && akWorkshopRef.UseOwnershipFaction)
+			akActorRef.RemoveFromFaction(akWorkshopRef.SettlementOwnershipFaction)
+		endif
+		
 		; 2.0.7 - Fixing a bug where some NPCs, such as dogs, who's workshop package have a Wander flag, will get stuck wandering in their original location forever after being transferred
 		RemoveAliasData(akActorRef)
 		akActorRef.EvaluatePackage()

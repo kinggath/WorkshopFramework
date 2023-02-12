@@ -46,6 +46,12 @@ kArgs[0] = Quest
 kArgs[1] = iReserveID
 /;
 
+CustomEvent AssaultFirstBlood
+;/
+kArgs[0] = Quest
+kArgs[1] = iReserveID
+/;
+
 CustomEvent AssaultAttackersDown
 ;/
 kArgs[0] = Quest
@@ -579,6 +585,22 @@ Function AssaultStopped_Private(Quest akSenderRef)
 	SendCustomEvent("AssaultStopped", kArgs)
 EndFunction
 
+; 2.3.5 - New event
+Function AssaultFirstBlood_Private(Quest akSenderRef)
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akSenderRef
+	
+	int iRunningIndex = RunningQuests.FindStruct("kQuestRef", akSenderRef)
+	int iReserveID = -1
+	
+	if(iRunningIndex >= 0)
+		iReserveID = RunningQuests[iRunningIndex].iReserveID
+	endif
+	
+	kArgs[1] = iReserveID
+	
+	SendCustomEvent("AssaultFirstBlood", kArgs)
+EndFunction
 
 ; 2.3.4 To be called by Assault quests themselves
 Function AssaultAttackersDown_Private(Quest akSenderRef)

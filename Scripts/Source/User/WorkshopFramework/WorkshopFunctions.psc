@@ -1229,7 +1229,7 @@ Function UnassignActorFromObject(Actor akActorRef, WorkshopObjectScript akWorksh
 endFunction
 
 
-; Replace WorkshopParent.UnassignActor 
+; Replace WorkshopParent.UnassignActor  - IMPORTANT: WorkshopParent's implementation can also handle removing the actor from the workshop. This implementation instead does NOT do so, but this script's RemoveActorFromWorkshop WILL call this UnassignActor function to handle removing them from assignments.
 function UnassignActor(Actor akActorRef, bool abSendUnassignEvent = true, bool abResetMode = false, bool abNPCTransfer = false, bool abRemovingFromWorkshop = false, WorkshopScript akWorkshopRef = None) global
 	WorkshopFramework:NPCManager NPCManager = GetNPCManager()
 	

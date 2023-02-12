@@ -214,6 +214,8 @@ Bool Property bSurvivingSpawnedDefendersRemain = false Auto Hidden
 Bool Property bEnemySurvivorsRemainEnemyToPlayer = true Auto Hidden
 
 
+Bool Property bFirstBloodSent = false Auto Hidden
+
 ; TODO: Currently using just one faction for attack and one for defense means that if we ever have two opposing attacks (one with the player attacking and one with the player defending) happening simultaneously, the factions will be incorrectly matched. Likely need a different solution to this for aggression against the player.
 
 ; -------------------------------------------
@@ -278,8 +280,10 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 	ModTraceCustom(sLogName, Self + ".OnStageSet(" + aiStageID + ", " + aiItemID + ")")
 	Float fCurrentTime = Utility.GetCurrentRealTime()
 	if(aiStageID == iLastStageSet)
-		if(fCurrentTime < fLastStageSetTimestamp + 3.0) ; 3 second buffer
+		if(fCurrentTime < fLastStageSetTimestamp + 2.0) ; 2 second buffer
 			; This stage just triggered, let's not rapidly repeat it
+			ModTraceCustom(sLogName, Self + ".OnStageSet stage " + aiStageID + " was just triggered, preventing from repeating immediately.")
+			
 			return
 		endif
 	else
@@ -368,6 +372,13 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		
 		; 1.1.10 - Loop a timer to ensure enemy deaths are caught
 		RunEnemyMonitor()
+	elseif(aiStageID == iStage_FirstDown)
+		if( ! bFirstBloodSent)
+			bFirstBloodSent = true
+			
+			; Only send event once
+			AssaultManager.AssaultFirstBlood_Private(Self)
+		endif
 	elseif(aiStageID == iStage_MostEnemiesDown)
 		if(bAutoHandleObjectives)
 			if(iCurrentAssaultType == AssaultManager.iType_Defend)
@@ -852,79 +863,120 @@ EndFunction
 ; 2.3.3 - Refactoring to separate alias handling from spawning - this will allow callers to handle their own spawning externally
 Function SetupSpawnedAttacker(Actor akSpawnedActor, Bool abIsReinforcement = false)
 	ModTraceCustom(sLogName, "SetupSpawnedAttacker(" + akSpawnedActor + ", abIsReinforcement = " + abIsReinforcement + ")")
+	
+	; First call SetupAttacker
+	SetupAttacker(akSpawnedActor, abIsReinforcement = abIsReinforcement)
+	
+	; Add to Spawned alias
 	SpawnedAttackersAlias.AddRef(akSpawnedActor)
-	Attackers.AddRef(akSpawnedActor)
-	AttackerFactionAlias.AddRef(akSpawnedActor)
 	
-	; 2.3.5 - Make sure attackers aren't in WorkshopNPCFaction or the settlement's ownership faction or they won't be hostile to defenders
-	RemoveSettlementFactions(akSpawnedActor)
-	
-	if(abIsReinforcement)
-		ReinforcementAttackers.AddRef(akSpawnedActor)
-		
-		if(GetStageDone(iStage_TriggerAI))
-			akSpawnedActor.AddToFaction(ActivateAIFaction)
-		endif
-	else
-		StartingAttackers.AddRef(akSpawnedActor)
-	endif
-	
+	; Ensure killable
 	if(iCurrentAssaultType == AssaultManager.iType_Defend)
-		if(bPlayerInvolved)
-			PlayerEnemies.AddRef(akSpawnedActor)
-		endif
-		
-		ModTraceCustom(sLogName, "    Defend assault type, adding attacker to victory condition alias.")
-		; Spawned NPCs should just be killed unless unique/essential already
-		if(ShouldForceSubdue(akSpawnedActor))
-			SubdueToComplete.AddRef(akSpawnedActor)
-		else
-			if(abIsReinforcement || ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
-				ClearProtectedStatus(akSpawnedActor)
-			endif
-			
-			KillToComplete.AddRef(akSpawnedActor)
-		endif
+		KillToComplete.AddRef(akSpawnedActor)
 	else
-		if(bPlayerInvolved)
-			PlayerAllies.AddRef(akSpawnedActor)
-		endif
-		
 		ClearProtectedStatus(akSpawnedActor)
 	endif
 EndFunction
 
-Function SetupSpawnedDefender(Actor akSpawnedActor, Bool abIsReinforcement = false)
-	SpawnedDefendersAlias.AddRef(akSpawnedActor)
-	Defenders.AddRef(akSpawnedActor)
-	DefenderFactionAlias.AddRef(akSpawnedActor)
+
+; 2.3.5 - Further refactored SetupSpawnedAttacker so we can use this same setup for other attackers, particularly non-spawned reinforcements
+Function SetupAttacker(Actor akAttacker, Bool abIsReinforcement = false)
+	ModTraceCustom(sLogName, "SetupAttacker(" + akAttacker + ", abIsReinforcement = " + abIsReinforcement + ")")
+
+	Attackers.AddRef(akAttacker)
+	AttackerFactionAlias.AddRef(akAttacker)
+	
+	; 2.3.5 - Make sure attackers aren't in WorkshopNPCFaction or the settlement's ownership faction or they won't be hostile to defenders
+	RemoveSettlementFactions(akAttacker)
 	
 	if(abIsReinforcement)
-		ReinforcementDefenders.AddRef(akSpawnedActor)
+		ReinforcementAttackers.AddRef(akAttacker)
+		
+		if(GetStageDone(iStage_TriggerAI))
+			akAttacker.AddToFaction(ActivateAIFaction)
+		else
+			akAttacker.RemoveFromFaction(ActivateAIFaction) ; In case they were still in that faction from a previous assault
+		endif
 	else
-		StartingDefenders.AddRef(akSpawnedActor)
+		StartingAttackers.AddRef(akAttacker)
 	endif
 	
 	if(iCurrentAssaultType == AssaultManager.iType_Defend)
 		if(bPlayerInvolved)
-			PlayerAllies.AddRef(akSpawnedActor)
+			PlayerEnemies.AddRef(akAttacker)
 		endif
 		
-		ClearProtectedStatus(akSpawnedActor)
+		ModTraceCustom(sLogName, "    Defend assault type, adding attacker to victory condition alias.")
+		; Spawned NPCs should just be killed unless unique/essential already
+		if(ShouldForceSubdue(akAttacker))
+			SubdueToComplete.AddRef(akAttacker)
+		else
+			if(abIsReinforcement || ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
+				ClearProtectedStatus(akAttacker)
+			endif
+			
+			KillToComplete.AddRef(akAttacker)
+		endif
 	else
 		if(bPlayerInvolved)
-			PlayerEnemies.AddRef(akSpawnedActor)
+			PlayerAllies.AddRef(akAttacker)
 		endif
 		
-		; Spawned NPCs should just be killed unless unique/essential already
-		if(ShouldForceSubdue(akSpawnedActor))
-			SubdueToComplete.AddRef(akSpawnedActor)
-		else
-			ClearProtectedStatus(akSpawnedActor)
-			KillToComplete.AddRef(akSpawnedActor)					
+		if( ! ShouldForceSubdue(akAttacker))
+			ClearProtectedStatus(akAttacker)
 		endif
 	endif
 EndFunction
+
+
+Function SetupSpawnedDefender(Actor akSpawnedActor, Bool abIsReinforcement = false)
+	SetupDefender(akSpawnedActor, abIsReinforcement = abIsReinforcement)
+	
+	SpawnedDefendersAlias.AddRef(akSpawnedActor)
+	
+	; Ensure killable
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		ClearProtectedStatus(akSpawnedActor)
+	else
+		ClearProtectedStatus(akSpawnedActor)
+		KillToComplete.AddRef(akSpawnedActor)
+	endif
+EndFunction
+
+
+Function SetupDefender(Actor akDefender, Bool abIsReinforcement = false)
+	Defenders.AddRef(akDefender)
+	DefenderFactionAlias.AddRef(akDefender)
+	
+	if(abIsReinforcement)
+		ReinforcementDefenders.AddRef(akDefender)
+	else
+		StartingDefenders.AddRef(akDefender)
+	endif
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		if(bPlayerInvolved)
+			PlayerAllies.AddRef(akDefender)
+		endif
+		
+		if( ! ShouldForceSubdue(akDefender))
+			ClearProtectedStatus(akDefender)
+		endif
+	else
+		if(bPlayerInvolved)
+			PlayerEnemies.AddRef(akDefender)
+		endif
+		
+		; Spawned NPCs should just be killed unless unique/essential already
+		if(ShouldForceSubdue(akDefender))
+			SubdueToComplete.AddRef(akDefender)
+		else
+			ClearProtectedStatus(akDefender)
+			KillToComplete.AddRef(akDefender)					
+		endif
+	endif
+EndFunction
+
 
  ; 1.1.3
 Function RemoveInvalidSettlers()
@@ -1410,9 +1462,10 @@ Function RemoveSettlementFactionsFromCollection(RefCollectionAlias aCollection)
 EndFunction
 
 Function RemoveSettlementFactions(Actor akActorRef)
-	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
+	ModTraceCustom(sLogName, "RemoveSettlementFactions(" + akActorRef + ")")
+	
 	WorkshopScript kActorWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
-	if(kWorkshopRef != None && kWorkshopRef == kActorWorkshopRef && kWorkshopRef.SettlementOwnershipFaction != None && kWorkshopRef.UseOwnershipFaction)
+	if(kActorWorkshopRef != None && kActorWorkshopRef.SettlementOwnershipFaction != None && kActorWorkshopRef.UseOwnershipFaction)
 		if(ApplyWorkshopOwnerFaction(akActorRef))
 			if(CountsForPopulation(akActorRef))
 				akActorRef.SetCrimeFaction(None)
@@ -1421,8 +1474,7 @@ Function RemoveSettlementFactions(Actor akActorRef)
 			endif
 		endif
 						
-		; Most NPCs shouldn't be in this faction, but just in case
-		akActorRef.RemoveFromFaction(kWorkshopRef.SettlementOwnershipFaction)
+		akActorRef.RemoveFromFaction(kActorWorkshopRef.SettlementOwnershipFaction)
 	endif
 	
 	akActorRef.RemoveFromFaction(WorkshopNPCFaction)
@@ -1441,9 +1493,10 @@ Function RestoreSettlementFactionsToCollection(RefCollectionAlias aCollection)
 EndFunction
 
 Function RestoreSettlementFactions(Actor akActorRef)
-	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
+	ModTraceCustom(sLogName, "RestoreSettlementFactions(" + akActorRef + ")")
 	WorkshopScript kActorWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
-	if(kWorkshopRef != None && kWorkshopRef == kActorWorkshopRef)
+	
+	if(kActorWorkshopRef != None)
 		if(kActorWorkshopRef.SettlementOwnershipFaction != None && kActorWorkshopRef.UseOwnershipFaction)
 			if(ApplyWorkshopOwnerFaction(akActorRef))
 				if(CountsForPopulation(akActorRef))
@@ -1451,11 +1504,11 @@ Function RestoreSettlementFactions(Actor akActorRef)
 				else
 					akActorRef.SetFactionOwner(kActorWorkshopRef.SettlementOwnershipFaction)
 				endif
+				
+				akActorRef.AddToFaction(kActorWorkshopRef.SettlementOwnershipFaction)
 			endif
 		endif
-	endif
-	
-	if(kActorWorkshopRef != None)
+		
 		akActorRef.AddToFaction(WorkshopNPCFaction)
 	endif
 EndFunction
@@ -1758,7 +1811,7 @@ Bool Function CheckForEnemiesDown()
 		while(i < iCount)
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
-			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
 				if( ! thisActor.Is3dLoaded())
 					; In case the actor fled or the AI package took it somewhere strange
 					thisActor.MoveTo(DefendFromAlias.GetRef())
@@ -1778,7 +1831,7 @@ Bool Function CheckForEnemiesDown()
 		while(i < iCount)
 			Actor thisActor = KillToComplete.GetAt(i) as Actor
 			
-			if( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
 				if( ! thisActor.Is3dLoaded())
 					; In case the actor fled or the AI package took it somewhere strange
 					thisActor.MoveTo(DefendFromAlias.GetRef())
@@ -1792,4 +1845,27 @@ Bool Function CheckForEnemiesDown()
 	endif
 	
 	return true
+EndFunction
+
+
+Int Function CountActiveFighters(Bool abAttackers = true)
+	int iCount = 0
+	
+	RefCollectionAlias checkCollection = Attackers
+	if( ! abAttackers)
+		checkCollection = Defenders
+	endif
+	
+	int i = 0
+	while(i < checkCollection.GetCount())
+		Actor thisActor = checkCollection.GetAt(i) as Actor
+		
+		if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+			iCount += 1
+		endif	
+						
+		i += 1
+	endWhile
+	
+	return iCount
 EndFunction
