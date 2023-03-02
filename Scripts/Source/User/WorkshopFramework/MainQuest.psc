@@ -331,6 +331,8 @@ Function HandleGameLoaded()
 	StartQuests()
 	
 	ClearInWorkshopModeFlags()
+    
+    WorkshopParent.WSFW_CheckWorkshops()
 
 	Parent.HandleGameLoaded()
 EndFunction

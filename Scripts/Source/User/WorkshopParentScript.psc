@@ -1310,6 +1310,10 @@ function InitializeLocation(WorkshopScript workshopRef, RefCollectionAlias Settl
 		; 2.0.16 
 		workshopRef.myMapMarker = theMapMarker.GetRef()
 	endif
+    
+    if(!workshopRef.myMapMarker)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("WARNING: No MapMarker recieved for Workshop "+workshopRef+", this might be a bug!")
+    endif
 
 	; force recalc (unloaded workshop)
 	workshopRef.RecalculateWorkshopResources(true)
@@ -1435,11 +1439,15 @@ EndEvent
 ;		TRUE = initializeEventHandler needs to handle initialize events for new locations
 ;		FALSE = no locations need to be initialized (all are already in Workshops array)
 bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form initializeEventHandler)
+    WorkshopFramework:Library:UtilityFunctions.ModTrace("ReinitializeLocationsPUBLIC("+newWorkshops+", "+initializeEventHandler+"): "+(self.isStopped())+"; "+(self.isRunning())+"; "+self.getStage())
+    
 	; wait for main initialization process to finish
 	while(GetStageDone(20) == false)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("-> Waiting for Stage 20")
 		debug.trace( " ... waiting for primary WorkshopInitializeLocation process to finish...")
 		utility.wait(2.0)
 	endWhile
+    WorkshopFramework:Library:UtilityFunctions.ModTrace("ReinitializeLocationsPUBLIC("+newWorkshops+", "+initializeEventHandler+"): Stage 20 reached, continuing")
 
 	; lock editing
 	GetEditLock()
@@ -1457,9 +1465,11 @@ bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form in
 		; is this already in Workshops array?
 		int workshopIndex = Workshops.Find(workshopRef)
 		if workshopIndex == -1
+            ; WSFW: sanity checks
 			; not in list - add me to arrays and initialize
 			; NOTE: this basically replicates code in OnStageSet, but safer to duplicate it here than change that to a function call
 			; START:
+            if(IsWorkshopValid(workshopRef))            
 				; add workshop to array
 				Workshops.Add(workshopRef)
 				int newIndex = Workshops.Length-1
@@ -1478,6 +1488,7 @@ bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form in
 				debug.trace(" OnInit: location " + newIndex + "=" + WorkshopLocations[newIndex])
 				; register for daily update
 				Workshops[newIndex].RegisterForCustomEvent(self, "WorkshopDailyUpdate")
+            endif
 			; END
 		endif
 		i += 1
@@ -1504,6 +1515,65 @@ bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form in
 
 	return bLocationsToInit
 endFunction
+
+bool function IsWorkshopValid(WorkshopScript workshop)
+    Location workshopLocation = workshop.GetCurrentLocation()
+    if(!workshopLocation)
+        ; this probably won't happen
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": no location!")
+        return false
+    endif
+    int prevWorkshop = WorkshopLocations.Find(workshopLocation)
+    if(prevWorkshop > -1)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the location "+workshopLocation+" is already registered for workshop "+Workshops[prevWorkshop])
+        return false
+    endif
+    
+    ; potentially also check if workshopLocation is any of: Commonwealth, FarHarbor, NukaWorld
+    Location CommonwealthRoot = Game.GetFormFromFile(0x00002CF0, "Fallout4.esm") as Location
+    if(CommonwealthRoot && CommonwealthRoot == workshopLocation)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the generic Commonwealth location "+workshopLocation+" cannot be used as a settlement location!")
+        return false
+    endif
+    
+    ; DLC03FarHarbor "The Island" [WRLD:03000B0F]
+    Location FarHarborRoot = Game.GetFormFromFile(0x00000B0F, "DLCCoast.esm") as Location
+    if(FarHarborRoot && FarHarborRoot == workshopLocation)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the generic Far Harbor location "+workshopLocation+" cannot be used as a settlement location!")
+        return false
+    endif
+    
+    ; DLC04NukaWorldLocation "Nuka-World" [LCTN:06008060]
+    Location NukaWorldRoot = Game.GetFormFromFile(0x00008060, "DLCNukaWorld.esm") as Location
+    if(NukaWorldRoot && NukaWorldRoot == workshopLocation)
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the generic Nuka World location "+workshopLocation+" cannot be used as a settlement location!")
+        return false
+    endif
+    
+    ; F4SE checks
+    WorkshopFramework:F4SEManager F4SEManager = GetF4SEManager()
+    if( F4SEManager.IsF4SERunning )
+        EncounterZone ez = workshopLocation.GetEncounterZone()
+        if(!ez)
+            WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the location "+workshopLocation+" has no encounter zone!")
+            return false
+        endif
+        if(!ez.IsWorkshop())
+            WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the encounter zone "+ez+" is not flagged as 'workshop'!")
+            return false
+        endif
+        if(!ez.IsNeverResetable())
+            WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the encounter zone "+ez+" is not flagged as 'never resets'!")
+            return false
+        endif
+    endif
+    
+    return true
+endfunction
+
+WorkshopFramework:F4SEManager Function GetF4SEManager()
+	return Game.GetFormFromFile(0x0000269C, "WorkshopFramework.esm") as WorkshopFramework:F4SEManager
+EndFunction
 
 ; returns the total in all player-owned settlements for the specified rating
 float function GetWorkshopRatingTotal(int ratingIndex)
@@ -2775,6 +2845,28 @@ function AddActorToWorkshop(WorkshopNPCScript assignedActor, WorkshopScript work
 	endif
 endFunction
 
+function WSFW_CheckWorkshops()
+    
+    if(!GetStageDone(20))
+        ; too early to check, it seems to have... weird results otherwise
+        return
+    endif
+    
+    int numErrors = 0
+    int i=0
+    while(i<Workshops.length)
+        WorkshopScript ws = Workshops[i]
+        if(!ws || !ws.IsBoundGameObjectAvailable())
+            numErrors += 1
+            WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: Found a gap in the Workshops array at position #"+i+"! This is very bad!")
+        endif
+        i += 1
+    endwhile
+
+    if(numErrors > 0)
+        Debug.MessageBox("Workshop Framework has encountered an error! Your Workshops array seems to have invalid entries, probably due to removed settlement mods. It is not recommended to continue playing this save.")
+    endif
+endfunction
 
 ; WSFW: WARNING - This is not ready for use yet and the signature may change
 Function WSFW_AddActorToLocationPUBLIC(Actor assignedActor, Location assignedLocation, Keyword assignedKeyword)
