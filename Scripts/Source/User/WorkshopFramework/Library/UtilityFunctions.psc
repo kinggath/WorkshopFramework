@@ -1819,3 +1819,40 @@ bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRe
 	
 	return iBreakCount < iBreakCountMax
 EndFunction
+
+
+Bool Function IsTrap(ObjectReference akRef) global
+	if(akRef as DoorChain)
+		return true
+	endif
+	
+	if(akRef as TrapBase)
+		return true
+	endif
+	
+	if(akRef as TrapCanChimes)
+		return true
+	endif
+	
+	if(akRef as TrapTripwire)
+		return true
+	endif
+	
+	if(akRef as TrapMonkeyTriggerScript)
+		return true
+	endif
+		
+	if(akRef as TrapBreakableWalkway)
+		return true
+	endif
+		
+	if(akRef as TrapTrigTension)
+		return true
+	endif
+		
+	if(akRef as TrapBreakableSoundScript)
+		return true
+	endif
+	
+	return false
+EndFunction

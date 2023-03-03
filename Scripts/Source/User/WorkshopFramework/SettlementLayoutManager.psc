@@ -1505,7 +1505,6 @@ Int Function ExportLinkedItems(WorkshopScript akWorkshopRef, String asLogName)
 	while(i < kLinkedRefs.Length)
 		WorkshopFramework:ObjectRefs:Thread_ExportObjectData kThread = ThreadManager.CreateThread(ExportObjectThread) as WorkshopFramework:ObjectRefs:Thread_ExportObjectData
 		
-		
 		if(kThread)
 			int j = 0
 			while(j < AdditionalSkipForms.Length)
@@ -1781,14 +1780,22 @@ Function DumpSettlementLayoutInfo(WorkshopScript akWorkshopRef, Int aiType)
 	while(i < akWorkshopRef.AppliedLayouts.Length)
 		WorkshopFramework:Weapons:SettlementLayout thisLayout = akWorkshopRef.AppliedLayouts[i]
 		
-		if(aiType == 0)
-			thisLayout.DumpNonResourceObjects()
-		elseif(aiType == 1)
-			thisLayout.DumpWorkshopResources()
-		elseif(aiType == 2)
-			thisLayout.DumpPowerConnections()
-		endif
+		DumpLayout(thisLayout, aiType)
 		
 		i += 1
 	endWhile	
+EndFunction
+
+Function DumpLayout(WorkshopFramework:Weapons:SettlementLayout akLayout, Int aiType)
+	if(aiType == 0)
+		akLayout.DumpNonResourceObjects()
+	elseif(aiType == 1)
+		akLayout.DumpWorkshopResources()
+	elseif(aiType == 2)
+		akLayout.DumpPowerConnections()
+	elseif(aiType == 3)
+		akLayout.DumpVanillaObjectsToRemove()
+	elseif(aiType == 4)
+		akLayout.DumpVanillaObjectsToRestore()
+	endif
 EndFunction

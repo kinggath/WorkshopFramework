@@ -59,10 +59,13 @@ Function RunCode()
 	
 	ObjectReference kFoundRef = Game.FindClosestReferenceOfTypeFromRef(BaseForm, kPositionHelper, 5.0)
 	
+	;ModTrace("Thread_RestoreObject attempting to restore " + BaseForm)
 	; If yes, can we restore it?
 	Bool bCreateNew = true
 	if(kFoundRef != None)
+		ModTrace("    Found ref " + kFoundRef)
 		if(kFoundRef.IsDisabled())
+			;ModTrace("    Ref was disabled, let's re-enable it.")
 			kFoundRef.Enable(false)
 			
 			Utility.Wait(0.01)
@@ -77,6 +80,7 @@ Function RunCode()
 	
 	; Can't find or can't restore, build a new one
 	if(bCreateNew)
+		;ModTrace("    No ref found, creating new.")
 		Int iPlaceObjectCallbackID = PlaceObjectManager.CreateObject(RestoreObjectData, kWorkshopRef, abCallbackEventNeeded = false)
 	endif
 EndFunction

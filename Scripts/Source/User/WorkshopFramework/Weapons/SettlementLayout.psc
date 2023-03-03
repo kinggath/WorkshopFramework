@@ -617,6 +617,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 		endif
 		
 		if(bShouldPlace)
+			ModTrace("Layout placing " + FormToPlace + ", found in group " + aiObjectsGroupType)
 			WorkshopFramework:ObjectRefs:Thread_PlaceObject kThread = ThreadManager.CreateThread(PlaceObjectThread) as WorkshopFramework:ObjectRefs:Thread_PlaceObject
 			
 			if(kThread)	
@@ -1180,6 +1181,40 @@ EndFunction
 
 
 ; Test Commands
+
+Function DumpVanillaObjectsToRemove()
+	ModTrace("==============================")
+	ModTrace("Starting dump of VanillaObjectsToRemove for " + Self)
+	ModTrace("==============================")
+	
+	int i = 0
+	while(i < VanillaObjectsToRemove.Length)
+		ModTrace("[" + i + "] " + VanillaObjectsToRemove[i])
+		
+		i += 1
+	endWhile
+	
+	ModTrace("==============================")
+	ModTrace("Completed dump of VanillaObjectsToRemove for " + Self)
+	ModTrace("==============================")
+EndFunction
+
+Function DumpVanillaObjectsToRestore()
+	ModTrace("==============================")
+	ModTrace("Starting dump of VanillaObjectsToRestore for " + Self)
+	ModTrace("==============================")
+	
+	int i = 0
+	while(i < VanillaObjectsToRestore.Length)
+		ModTrace("[" + i + "] " + VanillaObjectsToRestore[i])
+		
+		i += 1
+	endWhile
+	
+	ModTrace("==============================")
+	ModTrace("Completed dump of VanillaObjectsToRestore for " + Self)
+	ModTrace("==============================")
+EndFunction
 
 Function DumpNonResourceObjects()
 	ModTrace("==============================")

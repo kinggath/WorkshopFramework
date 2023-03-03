@@ -43,6 +43,8 @@ Keyword Property ActorTypeTurret Auto Const Mandatory
 Keyword Property IncludeIfDisabled Auto Const Mandatory
 { Point to vanilla keyword LinkDisable - this way any mod can add it to their items to allow them to be exported while hidden. }
 
+Keyword Property WorkshopStackedItemParentKEYWORD Auto Const Mandatory
+
 Faction Property DomesticAnimalFaction Auto Const Mandatory
 
 GlobalVariable Property Setting_Export_IncludeAnimals Auto Const Mandatory
@@ -137,6 +139,8 @@ Function RunCode()
 		endif
 	endif
 	
+	ObjectReference kStackedParentRef = kObjectRef.GetLinkedRef(WorkshopStackedItemParentKEYWORD)
+	
 	; This will make it easier to potentially do manual edits of items - we can also use this to filter out a lot of the items from being included in the RestoreVanilla lists
 	String sObjectName = F4SEManager.GetFormName(BaseForm)
 	if(sObjectName == "")
@@ -171,7 +175,6 @@ Function RunCode()
 	sMessageText += BaseForm + sLogDelimitter_LineItem + sPluginName + sLogDelimitter_LineItem + fX + sLogDelimitter_LineItem + fY + sLogDelimitter_LineItem + fZ + sLogDelimitter_LineItem + fAngleX + sLogDelimitter_LineItem + fAngleY + sLogDelimitter_LineItem + fAngleZ + sLogDelimitter_LineItem + fScale + sLogDelimitter_LineItem + bForceStatic + sLogDelimitter_LineItem + bIsResourceObject + sLogDelimitter_LineItem + sObjectName + sLogDelimitter_LineItem + kObjectRef + sLogDelimitter_LineItem
 	
 	; Add flags
-	sMessageText += sLogDelimitter_Flags
 	if(bIsLootable)
 		sMessageText += "1"
 	else
@@ -386,7 +389,11 @@ EndFunction
 
 
 Bool Function ShouldExport()
-	if(kObjectRef.IsDisabled() && (kObjectRef.IsDeleted() || ! kObjectRef.HasKeyword(IncludeIfDisabled)))
+	if(kObjectRef.IsDeleted() || (kObjectRef.IsDisabled() && ! kObjectRef.HasKeyword(IncludeIfDisabled)))
+		return false
+	endif
+	
+	if(kObjectRef.GetLinkedRef() != None && ! IsTrap(kObjectRef))
 		return false
 	endif
 	

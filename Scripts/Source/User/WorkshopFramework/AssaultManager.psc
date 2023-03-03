@@ -292,6 +292,19 @@ Bool Function SetupComplete(Int aiReserveID)
 EndFunction
 
 
+Function StartAssault(Int aiReserveID) ; Trigger the attack to begin
+	Quest kQuestRef = FindAssaultQuest(aiReserveID)
+	
+	if(kQuestRef)
+		WorkshopFramework:AssaultSettlement asAssaultQuest = kQuestRef as WorkshopFramework:AssaultSettlement
+		
+		if(asAssaultQuest)
+			asAssaultQuest.StartAssault()
+		endif
+	endif
+EndFunction
+
+
 Function StopAssault(Int aiReserveID)
 	Quest kQuestRef = FindAssaultQuest(aiReserveID)
 	

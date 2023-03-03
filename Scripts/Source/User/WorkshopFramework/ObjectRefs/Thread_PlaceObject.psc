@@ -308,7 +308,8 @@ Function RunCode()
 		
 		kResult = kTempPositionHelper.PlaceAtMe(SpawnMe, 1, abInitiallyDisabled = bInitiallyDisabled, abDeleteWhenAble = false)
 				
-		if(kResult != None && ! kResult.IsDeleted())		
+		if(kResult != None && ! kResult.IsDeleted())	
+			ModTrace("Thread_PlaceObject placed form " + SpawnMe + ", result ref: " + kResult)
 			SendExtraData(kResult)
 			; Handle Sim Settlements extras immediately so we can pause the initilization and prevent mass spam
 			if(BuildingPlan != None)
@@ -318,6 +319,7 @@ Function RunCode()
 			if(bVerbose)
 				Debug.TraceAndBox("Object placed " + kResult)
 			endif
+			
 			if(kResult as Actor)
 				; Actors must be enabled before they can be manipulated
 				kResult.Enable(false)

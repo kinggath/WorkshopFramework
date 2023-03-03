@@ -58,7 +58,9 @@ Function RunCode()
 	; If found, is it already disabled?
 	Bool bScrapNeeded = true
 	if(kFoundRef != None)
+		;ModTrace("Thread_FindAndScrapObject search for " + BaseForm + ", found ref " + kFoundRef)
 		if(kFoundRef.IsDisabled())
+			ModTrace("    " + kFoundRef + " already disabled.")
 			bScrapNeeded = false
 		endif
 	else

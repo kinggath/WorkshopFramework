@@ -299,10 +299,6 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		if(bPlayerInvolved)
 			Actor PlayerRef = PlayerAlias.GetActorRef()
 			if(iCurrentAssaultType != AssaultManager.iType_Defend)
-				if(bAutoHandleObjectives)
-					SetObjectiveDisplayed(10)					
-				endif
-				
 				ObjectReference kAttackFrom = AttackFromAlias.GetRef()
 				if(kAttackFrom.HasRefType(MapMarkerRefType))
 					ObjectReference kLinkedHeadingRef = kAttackFrom.GetLinkedRef()
@@ -319,16 +315,10 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				
 				AttackerFactionAlias.AddRef(PlayerRef)
 			else
-				if(bAutoHandleObjectives)
-					SetObjectiveDisplayed(17)					
-				endif
-				
 				DefenderFactionAlias.AddRef(PlayerRef)
 			endif
 			
-			if(bAutoHandleObjectives)
-				SetActive() ; Mark it active in the player's quest log
-			endif
+			TriggerInitialObjectives()
 		endif
 	elseif(aiStageID == iStage_AttackStartedByCombat)
 		; Combat started because player attacked settlement without meeting up, or the NPCs started combat before the player reached them - so we need to trigger the player arrived event and trigger the assault to start
@@ -337,22 +327,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		StartAssault()
 	elseif(aiStageID == iStage_PlayerArrived)
 		if(bAutoHandleObjectives)
-			if(IsObjectiveDisplayed(10))
-				SetObjectiveCompleted(10)
-			endif
-			
-			; When player arrives let's correct the objectives if there is no one to subdue
-			if(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
-				if(SubdueToComplete.GetCount() == 0)
-					iCurrentAssaultType = AssaultManager.iType_Attack_Wipeout
-				else
-					SetObjectiveDisplayed(16)
-				endif
-			endif
-			
-			if(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
-				SetObjectiveDisplayed(15)
-			endif
+			TriggerPlayerInvolvedObjectives()
 		endif
 		
 		if(bAutoStartAssaultWhenPlayerReachesAttackFrom)
@@ -1847,6 +1822,41 @@ Bool Function CheckForEnemiesDown()
 	return true
 EndFunction
 
+
+Function TriggerInitialObjectives()			
+	if(iCurrentAssaultType != AssaultManager.iType_Defend)
+		if(bAutoHandleObjectives)
+			SetObjectiveDisplayed(10)					
+		endif
+	else
+		if(bAutoHandleObjectives)
+			SetObjectiveDisplayed(17)					
+		endif
+	endif
+	
+	if(bAutoHandleObjectives)
+		SetActive() ; Mark it active in the player's quest log
+	endif
+EndFunction
+
+Function TriggerPlayerInvolvedObjectives()
+	if(IsObjectiveDisplayed(10))
+		SetObjectiveCompleted(10)
+	endif
+	
+	; When player arrives let's correct the objectives if there is no one to subdue
+	if(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+		if(SubdueToComplete.GetCount() == 0)
+			iCurrentAssaultType = AssaultManager.iType_Attack_Wipeout
+		else
+			SetObjectiveDisplayed(16)
+		endif
+	endif
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
+		SetObjectiveDisplayed(15)
+	endif
+EndFunction
 
 Int Function CountActiveFighters(Bool abAttackers = true)
 	int iCount = 0

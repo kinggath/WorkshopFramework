@@ -195,6 +195,10 @@ Bool Function TransmitConnectedPower(ObjectReference akObjectRef)
 EndFunction
 
 
+Int Function GetLoadOrderAgnosticLightFormID(Int aiFormID)
+	return Math.LogicalAnd(aiFormID, 0x00000FFF)
+EndFunction
+
 Int Function GetLoadOrderAgnosticFormID(Int aiFormID)
 	return Math.LogicalAnd(aiFormID, 0x00FFFFFF)
 EndFunction
