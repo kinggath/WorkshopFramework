@@ -1748,7 +1748,7 @@ EndFunction
 ; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
 ; ------------------------------
 
-bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectReference akTransferTo = None, Bool abSilent = true)
+bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectReference akTransferTo = None, Bool abSilent = true) global
  	; setup to prevent possible infinite loop
 	int iBreakCount = 0
 	int iBreakCountMax = 0x7FFFFFFF	; max Papyrus int, 32 bit signed integer, which I assume is the max number of forms a Container can hold
@@ -1785,7 +1785,7 @@ EndFunction
 ; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
 ; ObjectReference akOtherContainer = (optional) Container to move items to
 ; ------------------------------
-bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRemove, Int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None)
+bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRemove, Int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None) global
 	if(akItemToRemove == None || akSourceContainer == None)
         return false
     endif
