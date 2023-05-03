@@ -399,7 +399,10 @@ Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
 	int i = 0
 	while(i < Workshops.Length)
-		Workshops[i].UFO4P_InWorkshopMode = false
+		if ( Workshops[i] != none )
+			Workshops[i].UFO4P_InWorkshopMode = false
+		endif
+		
 		i += 1
 	endwhile
 EndFunction
