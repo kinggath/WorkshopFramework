@@ -347,7 +347,11 @@ Bool Function _ObjectHasPersistenceActorValue( ObjectReference akREFR )
     While( liIndex > 0 )
         liIndex -= 1
         
-        If( akREFR.GetBaseValue( kActorValues[ liIndex ] ) != 0.0 )
+        ;; Compare the value on the target REFR with the value on the Fiber
+        ;; The Fiber has no AVIFs so it will return the default value
+        ;; This will handle non-zero default AVIFs
+        ActorValue lkAVIF = kActorValues[ liIndex ]
+        If( akREFR.GetBaseValue( lkAVIF ) != Self.GetBaseValue( lkAVIF ) )
             Return True
         EndIf
     EndWhile

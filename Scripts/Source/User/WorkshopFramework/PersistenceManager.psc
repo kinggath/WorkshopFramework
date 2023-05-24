@@ -424,8 +424,15 @@ EndFunction
 
 ;; Mods should call this function to add their keyword that may be attached to an ObjectReference that should be persisted
 Function Add_PersistReference_Keyword( Keyword akKYWD )
+    Debug.TraceStack( "akKYWD = " + akKYWD )
     kFLST_PersistReference_Keywords.AddForm( akKYWD )
 EndFunction
+
+
+Keyword[] Function Get_PersistReference_Keywords()
+    Return FormListToArray( kFLST_PersistReference_Keywords ) As Keyword[]
+EndFunction
+
 
 
 
@@ -589,7 +596,7 @@ Event WorkshopFramework:Library:ObjectRefs:FiberController.OnFiberComplete( Work
         + "\n\tlkMessage          = " + lkMessage \
         + "\n\tTotal Persisted Objects = " + kAlias_PersistentObjects.GetCount() \
         + "\n\tPaste this line in the console to get a full list of persisted objects (written to the " + LogFile() + " log):" \
-        + "\n\t\tcqf WSFW_PersistenceManager DumpPersistedRefs")
+        + "\n\t\tcqf WSFW_PersistenceManager DumpPersistedRefs" )
     
 EndEvent
 
@@ -1256,6 +1263,8 @@ EndEvent
 
 Function DumpPersistedRefs()
 
+    String lsLogFile = LogFile()
+    
     String lsDump = Self + " :: DumpPersistedRefs() :: You asked for it..."
     Int liScanBuffer = ( __iQueueBufferActive + 1 ) % 2
     lsDump += "\n\t__iQueueBufferActive = " + __iQueueBufferActive
@@ -1265,29 +1274,139 @@ Function DumpPersistedRefs()
 
     Int liIndex = kAlias_PersistentObjects.GetCount()
     lsDump += "\n\tTotal Persisted = " + liIndex
+    Debug.TraceUser( lsLogFile, lsDump )
+    
+
+    ActorValue[] lkActorValues  = Get_PersistReference_ActorValues()
+    Form[]       lkBaseObjects  = Get_PersistReference_BaseObjects()
+    Keyword[]    lkKeywords     = Get_PersistReference_Keywords()
+    Keyword      lkMustPersist  = Game.GetFormFromFile( 0x0004AF68, "Fallout4.esm" ) As Keyword
+    Keyword      lkDoNotPersist = Game.GetFormFromFile( 0x0010805B, "Fallout4.esm" ) As Keyword
+    ObjectReference lkReference = Game.GetFormFromFile( 0x00004CEA, "WorkshopFramework.esm" ) As ObjectReference ;; The WSFW spawn marker shall be our reference object for AVIFs
 
     ;; This will work backwards to try and stay ahead of any cleaning that may be running at the same time
     While( liIndex > 0 )
         liIndex -= 1
-        
         ObjectReference lkObject = kAlias_PersistentObjects.GetAt( liIndex )
+        
+        lsDump = Self + " :: DumpPersistedRefs() ::\n\tAlias Index = " + liIndex + "\n\tlkObject = " + lkObject
+        
         If( lkObject != None )
-            lsDump += "\n\tlkObject = " + lkObject
             
             Form lkBaseObject = lkObject.GetBaseObject()
             If( lkBaseObject != None )
-                lsDump += "\n\t\tlkBaseObject = " + lkBaseObject
+                lsDump += "\n\tlkBaseObject = " + lkBaseObject
             EndIf
-
+            
             ObjectReference lkWorkshop = lkObject.GetLinkedRef( kKYWD_WorkshopItemKeyword )
             If( lkWorkshop != None )
-                lsDump += "\n\t\tlkWorkshop = " + lkWorkshop
+                lsDump += "\n\tlkWorkshop = " + lkWorkshop
             EndIf
+            
+            lsDump = lsDump + __FindReasonForPersistence( lkObject, lkActorValues, lkBaseObjects, lkKeywords, lkMustPersist, lkDoNotPersist, lkReference )
+            
         EndIf
+        
+        Debug.TraceUser( lsLogFile, lsDump )
     EndWhile
 
-    ;; Now you're gonna get it!
-    Debug.TraceUser( LogFile(), lsDump )
+    ;; It is done
+EndFunction
+
+
+
+
+Form Function __FindPersistenceActorValue( ObjectReference akREFR, ActorValue[] akActorValues, ObjectReference akReference )
+    Int liIndex = akActorValues.Length
+    While( liIndex > 0 )
+        liIndex -= 1
+        ActorValue lkAVIF = akActorValues[ liIndex ]
+        If( akREFR.GetBaseValue( lkAVIF ) != akReference.GetBaseValue( lkAVIF ) )
+            Return akActorValues[ liIndex ]
+        EndIf
+    EndWhile
+    Return None
+EndFunction
+
+Form Function __FindPersistenceKeyword( ObjectReference akREFR, Keyword[] akKeywords )
+    Int liIndex = akKeywords.Length
+    While( liIndex > 0 )
+        liIndex -= 1
+        Keyword lkKYWD = akKeywords[ liIndex ]
+        If( akREFR.HasKeyword( lkKYWD ) )
+            Return lkKYWD
+        EndIf
+    EndWhile
+    Return None
+EndFunction
+
+Bool Function __BaseObjectRequiresPersistence( Form akBaseObject, Form[] akBaseObjects )
+    Return( akBaseObjects.Find( akBaseObject ) >= 0 )
+EndFunction
+
+String Function __GenerateReasonString( Bool abNeedsPersistence, String asReason, ScriptObject akExtra = None )
+    String lsDebug = "\n\tabNeedsPersistence = " + abNeedsPersistence + "\n\tasReason = " + asReason
+    If( akExtra != None )
+        lsDebug = lsDebug + "\n\takExtra = " + akExtra
+    EndIf
+    Return lsDebug
+EndFunction
+
+String Function __FindReasonForPersistence( \
+    ObjectReference     akREFR, \
+    ActorValue[]        akActorValues, \
+    Form[]              akBaseObjects, \
+    Keyword[]           akKeywords, \
+    Keyword             akMustPersist, \
+    Keyword             akDoNotPersist, \
+    ObjectReference     akReference )
+    ;; Do fast fails...
+    
+    ;; Required test (native remote call) regardless of anything else
+    If  ( akREFR.IsDeleted() )
+        Return __GenerateReasonString( False, "IsDeleted()" )
+    EndIf
+
+    ;; Some check are against the base object
+    Form lkBaseObject = akREFR.GetBaseObject()
+
+    ;; Engine level forced persistence
+    If( lkBaseObject.HasKeyword( akMustPersist ) )\
+    ||( akREFR.HasKeyword( akMustPersist ) )
+        Return __GenerateReasonString( True, "MustPersist" )
+    EndIf
+
+    ;; Our override to prevent non-engine forced persistence
+    If( lkBaseObject.HasKeyword( akDoNotPersist ) )\
+    ||( akREFR.HasKeyword( akDoNotPersist ) )
+        Return __GenerateReasonString( False, "DoNotPersist" )
+    EndIf
+    
+    ;; Super fast test for WorkshopObjectScript
+    WorkshopObjectScript lkWSObject = akREFR As WorkshopObjectScript
+    If( lkWSObject != None )
+        Return __GenerateReasonString( True, "WorkshopObjectScript" )
+    EndIf
+    
+    ;; Fast test the base object being in the array
+    If( __BaseObjectRequiresPersistence( lkBaseObject, akBaseObjects ) )
+        Return __GenerateReasonString( True, "BaseObject" )
+    EndIf
+    
+    ;; Quick test (one native remote call) for having one of the keywords
+    Form lkExtra = __FindPersistenceKeyword( akREFR, akKeywords )
+    If( lkExtra != None )
+        Return __GenerateReasonString( True, "Keyword", lkExtra )
+    EndIf
+    
+    ;; Slow test (multiple native remote calls) for having any of the Actor Values
+    lkExtra = __FindPersistenceActorValue( akREFR, akActorValues, akReference )
+    If( lkExtra != None )
+        Return __GenerateReasonString( True, "ActorValue", lkExtra )
+    EndIf
+    
+    ;; After all that, we don't need to be persisted
+    Return __GenerateReasonString( False, "No persistence required" )
 EndFunction
 
 
