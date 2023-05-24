@@ -424,7 +424,6 @@ EndFunction
 
 ;; Mods should call this function to add their keyword that may be attached to an ObjectReference that should be persisted
 Function Add_PersistReference_Keyword( Keyword akKYWD )
-    Debug.TraceStack( "akKYWD = " + akKYWD )
     kFLST_PersistReference_Keywords.AddForm( akKYWD )
 EndFunction
 
