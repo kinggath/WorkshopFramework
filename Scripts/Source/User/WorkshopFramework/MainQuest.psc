@@ -223,7 +223,8 @@ Event OnTimer(Int aiTimerID)
 				kArgs[0] = currentWorkshop
 				kArgs[1] = lastWorkshop
 				kArgs[2] = bLastSettlementUnloaded ; If lastWorkshop == currentWorkshop && bLastSettlementUnloaded - it means the player traveled far enough to unload the last settlement, but never visited a new one in between
-
+					
+				;Debug.MessageBox("WSFW_Main sending PlayerEnteredSettlement event")
 				SendCustomEvent("PlayerEnteredSettlement", kArgs)
 
 				bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
@@ -331,6 +332,8 @@ Function HandleGameLoaded()
 	StartQuests()
 	
 	ClearInWorkshopModeFlags()
+	
+	WorkshopParent.WSFW_CheckWorkshops()
 
 	Parent.HandleGameLoaded()
 EndFunction
@@ -399,7 +402,10 @@ Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
 	int i = 0
 	while(i < Workshops.Length)
-		Workshops[i].UFO4P_InWorkshopMode = false
+		if(Workshops[i] != None)
+			Workshops[i].UFO4P_InWorkshopMode = false
+		endif
+		
 		i += 1
 	endwhile
 EndFunction
@@ -929,4 +935,17 @@ Function CountOwnedSettlements(Bool abIncludeOutposts = true, Bool abIncludeVass
 	WorkshopScript[] Owned = WorkshopFramework:WorkshopFunctions.GetPlayerOwnedSettlements(abIncludeOutposts, abIncludeVassals, abIncludeVirtual)
 	
 	Debug.MessageBox("You own " + Owned.Length + " settlements.")
+EndFunction
+
+
+Function DumpWorkshops()
+	ModTrace("DumpWorkshops()")
+	WorkshopScript[] Workshops = WorkshopParent.Workshops
+	int i = 0
+	while(i < Workshops.Length)
+		ModTrace("    " + Workshops[i])
+		
+		i += 1
+	endwhile
+	ModTrace("DumpWorkshops() complete.")
 EndFunction

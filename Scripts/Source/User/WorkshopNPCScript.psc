@@ -73,6 +73,10 @@ LocationRefType Property CustomBossLocRefType Auto Const
 { Patch 1.4: custom loc ref type to use for this actor when assigning to workshop }
 
 
+; WSFW
+	; Override default Boss reftype and CustomBossLocRefType const property
+LocationRefType Property OverrideBossLocRefType = None Auto Hidden 
+
 Form Property WSFWOverwriteCheck = None Auto Hidden
 { Used by Workshop Framework to verify if this script has been overwritten }
 
@@ -185,11 +189,11 @@ function SetSynth(bool isSynth)
 		if workshopRef.myLocation
 			if isSynth
 				SetLocRefType(workshopRef.myLocation, WorkshopParent.WorkshopSynthRefType)
+				ClearFromOldLocations() ; 101931: make sure location data is correct
 			else
 				; change back to Boss
-				SetLocRefType(workshopRef.myLocation, WorkshopParent.Boss)
+				SetAsBoss(workshopRef.myLocation) ; WSFW 2.3.5 switched this to use the SetAsBoss function so custom ref types are used
 			endif
-			ClearFromOldLocations() ; 101931: make sure location data is correct
 		endif
 	endif
 endFunction
@@ -214,13 +218,22 @@ function AddMultiResourceProduction(float newProduction)
 	multiResourceProduction += newProduction
 endFunction
 
+
 ; Patch 1.4 - custom boss loc ref type
 function SetAsBoss(Location newLocation)
-	if CustomBossLocRefType
+	if( ! IsCreated())
+		return
+	endif
+	
+	if(OverrideBossLocRefType) ; WSFW 2.3.5
+		SetLocRefType(newLocation, OverrideBossLocRefType)
+	elseif(CustomBossLocRefType)
 		SetLocRefType(newLocation, CustomBossLocRefType)
 	else
 		SetLocRefType(newLocation, WorkshopParent.Boss)
 	endif
+	
+	
 	ClearFromOldLocations() ; 101931: make sure location data is correct
 endFunction
 

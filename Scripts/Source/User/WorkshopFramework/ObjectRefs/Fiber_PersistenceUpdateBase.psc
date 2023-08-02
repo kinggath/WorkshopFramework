@@ -313,7 +313,9 @@ Function _PersistObject( ObjectReference akREFR, WorkshopScript akWorkshop = Non
     ;;    akWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword ) As WorkshopScript
     ;;EndIf
     kAlias_PersistentObjects.AddRef( akREFR )
-    akREFR.SetLinkedRef( kREFR_PersistentObjects, kKYWD_PersistentObject )
+	if(kKYWD_PersistentObject != None)
+		akREFR.SetLinkedRef( kREFR_PersistentObjects, kKYWD_PersistentObject )
+	endif
 EndFunction
 
 
@@ -347,7 +349,11 @@ Bool Function _ObjectHasPersistenceActorValue( ObjectReference akREFR )
     While( liIndex > 0 )
         liIndex -= 1
         
-        If( akREFR.GetBaseValue( kActorValues[ liIndex ] ) != 0.0 )
+		;; Compare the value on the target REFR with the value on the Fiber
+        ;; The Fiber has no AVIFs so it will return the default value
+        ;; This will handle non-zero default AVIFs
+        ActorValue lkAVIF = kActorValues[ liIndex ]
+        If( akREFR.GetBaseValue( lkAVIF ) != Self.GetBaseValue( lkAVIF ) )
             Return True
         EndIf
     EndWhile

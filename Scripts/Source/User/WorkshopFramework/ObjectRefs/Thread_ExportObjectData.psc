@@ -393,7 +393,8 @@ Bool Function ShouldExport()
 		return false
 	endif
 	
-	if(kObjectRef.GetLinkedRef() != None && ! IsTrap(kObjectRef))
+	if(kObjectRef.GetLinkedRef() != None && ! kObjectRef.IsCreated() && ! IsTrap(kObjectRef))
+		; Linked non-created (ie vanilla objects) are generally going to be something special we don't want to export - but this is a way we can detect vanilla traps and allow them to be exported for scrap profiles.
 		return false
 	endif
 	

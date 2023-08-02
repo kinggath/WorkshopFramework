@@ -100,7 +100,7 @@ ActorValueSet[] Property TagAVs Auto Hidden
 Keyword[] Property TagKeywords Auto Hidden
 LinkToMe[] Property LinkedRefs Auto Hidden
 RefCollectionAlias Property AddPlacedObjectToCollection Auto Hidden ; 2.0.0 - Simple way for calling function to remotely gain access to these - they'll be in charge of unpersisting these
-
+Bool Property bRemoveItemsOnPlace = false Auto Hidden ; 2.3.6 - means of preventing containers full of items from being placed
 
 Int Property iBatchID = -1 Auto Hidden ; 1.0.5 - Used for tagging a group of threads
 
@@ -346,6 +346,11 @@ Function RunCode()
 			
 			if(fScale != 1)
 				kResult.SetScale(fScale)
+			endif
+			
+			; 2.3.6
+			if(bRemoveItemsOnPlace)
+				kResult.RemoveAllItems()
 			endif
 			
 			; 1.0.5 - Prior to this, the item was either faded in, or left for the calling script to enable, the bFadeIn adds the possibility of popping in the object from here. We do it at this particular point because the OnLoad event is registered and all 3d data is set which all go quicker while disabled

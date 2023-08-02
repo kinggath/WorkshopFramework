@@ -570,14 +570,19 @@ EndFunction
 
 
 Function SetAsBoss(Actor akActorRef, Location aLocation) global
+	Debug.Trace("WorkshopFunctions.SetAsBoss(" + akActorRef + ", " + aLocation + ")")
 	WorkshopNPCScript asWorkshopNPC = akActorRef as WorkshopNPCScript
 	
 	if(asWorkshopNPC)
+		Debug.Trace("    WorkshopNPC calling asWorkshopNPC.SetAsBoss")
 		asWorkshopNPC.SetAsBoss(aLocation)
 	else
-		akActorRef.SetLocRefType(aLocation, GetBossRefType())
+		Debug.Trace("    Non-WorkshopNPC calling akActorRef.SetLocRefType")
+		if(akActorRef.IsCreated())
+			akActorRef.SetLocRefType(aLocation, GetBossRefType())
 		
-		akActorRef.ClearFromOldLocations()
+			akActorRef.ClearFromOldLocations()
+		endif
 	endif
 endFunction
 

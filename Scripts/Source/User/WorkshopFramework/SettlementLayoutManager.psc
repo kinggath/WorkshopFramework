@@ -222,8 +222,10 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 		if(kThreadRef.IsBoundGameObjectAvailable())
 			kThreadRef.StartTimer(1.0)
 		endif
-		
+		 
 		LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
+		
+		ModTrace("      PlaceObjectCallback -- Received: " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + ", Awaiting: " + LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
 		
 		if(LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived >=  LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
 			BuildingCompleted(iCallbackTrackingIndex)
@@ -1374,11 +1376,12 @@ EndFunction
 
 
 Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akWorkshopRef = None)
+	ModTrace("ExportSettlementLayout called.")
 	if( ! F4SEManager.IsF4SERunning)
 		Debug.MessageBox("This feature requires the Fallout 4 script extender (F4SE).")
 		
 		return
-	endif	
+	endif
 	
 	if( ! akWorkshopRef)
 		akWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
@@ -1391,6 +1394,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	endif
 	
 	if(bExportInProgress)
+		ModTrace("    Existing export in progress. Exiting.")
 		return
 	endif
 	
@@ -1406,7 +1410,10 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	iExportCallbacksReceived = 0
 	iProgressUpdateCounter_Export = 0
 	
+	ModTrace("    Preparing to export, temporarily setting iAwaitingExportCallbacks to " + iDummyCallbackCount + " until predicted count can be made")
+	
 	if(bUseHUDProgressModule)
+		ModTrace("    Creating progress bar...")
 		HUDFrameworkManager.CreateProgressBar(Self, sProgressBarID_Export, "Exporting Settlement") ; TODO - Get an icon for this
 		
 		; Display immediately so user knows something is happening
@@ -1422,6 +1429,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 		asExportFileName = sExportLogBase + "_" + Utility.RandomInt(0, 999999)
 	endif
 	
+	ModTrace("    Starting export log " + asExportFileName)
 	Debug.OpenUserLog(asExportFileName)
 	
 	Var[] kArgs = new Var[2]
@@ -1444,6 +1452,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 		endif
 	endWhile
 	
+	ModTrace("    Outputting initial layout export header data to " + asExportFileName)
 	; Record workshop data - this section was added to support conversion to TS Blueprints
 	Worldspace WorkshopWorldspace = akWorkshopRef.GetWorldspace()
 	String sWorkshopData = sPlayerName + "," + WorkshopWorldspace + "," + F4SEManager.GetFormName(WorkshopWorldspace) + "," + F4SEManager.GetPluginNameFromForm(WorkshopWorldspace) + "," + akWorkshopRef.GetBaseObject() + "," + akWorkshopRef.GetParentCell() + "," + F4SEManager.GetPluginNameFromForm(akWorkshopRef.GetParentCell()) + "," + (akWorkshopRef.IsInInterior() as Int) + "," + akWorkshopRef.X + "," + akWorkshopRef.Y + "," + akWorkshopRef.Z + "," + akWorkshopRef.GetAngleX() + "," + akWorkshopRef.GetAngleY() + "," + akWorkshopRef.GetAngleZ() + "," + akWorkshopRef.GetValue(PopulationAV) as Int
@@ -1463,6 +1472,7 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	ModTraceCustom(asExportFileName, "|||Load Order;;;" + sPlugins + ";;;" + sLightPlugins)
 	
 	if(Setting_Export_IncludeVanillaScrapInfo.GetValueInt() == 1)
+		ModTrace("    Triggering export of unlinked items for scrap profile.")
 		kArgs = new Var[2]
 		kArgs[0] = akWorkshopRef
 		kArgs[1] = asExportFileName
@@ -1474,13 +1484,18 @@ Function ExportSettlementLayout(String asExportFileName = "", WorkshopScript akW
 	
 	int iThreadsStarted = ExportLinkedItems(akWorkshopRef, asExportFileName)
 	
+	ModTrace("    ExportLinkedItems started " + iThreadsStarted + " threads.")
+	
 	bExportThreadingInProgress = false
 	; Record Debug Log name so that the next run can close it
 	sLastExportLogName = asExportFileName
 	
 	Utility.Wait(3.0) ; Give enough time for each export call to have predicted callbacks
+	
+	ModTrace("    iAwaitingExportCallbacks after export threads = " + iAwaitingExportCallbacks + ".")
 	iAwaitingExportCallbacks -=	iDummyCallbackCount
 	
+	ModTrace("    iAwaitingExportCallbacks after removing iDummyCallbackCount = " + iAwaitingExportCallbacks + ".")	
 	
 	if(iExportCallbacksReceived >= iAwaitingExportCallbacks)
 		ExportCompleted()

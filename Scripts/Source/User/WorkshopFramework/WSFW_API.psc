@@ -475,6 +475,43 @@ ObjectReference Function GetMapMarker(Location akLocation) global
 EndFunction
 
 ; ------------------------------
+; GetAllMapMarkersFromLocation
+;
+; Description: Some locations have multiple map markers within their bounds, this will return them (note this currently only supports 3, additional support would need to be set up on the aliases of the WSFW_FetchLocationData quests.
+; ------------------------------
+ObjectReference[] Function GetAllMapMarkersFromLocation(Location akLocation) global
+	WorkshopFramework:WSFW_APIQuest API = GetAPI()
+	
+	WorkshopFramework:Library:StoryEventQuest SEQ = API.StoryEventManager.WSFW_API_SendStoryEvent(API.EventKeyword_FetchLocationData, plocLocation = akLocation, pfltTimeout = 5.0)
+	
+	if(SEQ != None)
+		WorkshopFramework:Quests:FetchLocationData SEQControllerLocFinder = SEQ as WorkshopFramework:Quests:FetchLocationData
+		
+		ObjectReference[] kMapMarkers = new ObjectReference[0]
+		ObjectReference kMapMarkerRef = SEQControllerLocFinder.MapMarker.GetRef()
+		if(kMapMarkerRef)
+			kMapMarkers.Add(kMapMarkerRef)
+		endif
+		
+		kMapMarkerRef = SEQControllerLocFinder.MapMarker02.GetRef()
+		if(kMapMarkerRef)
+			kMapMarkers.Add(kMapMarkerRef)
+		endif
+		
+		kMapMarkerRef = SEQControllerLocFinder.MapMarker03.GetRef()
+		if(kMapMarkerRef)
+			kMapMarkers.Add(kMapMarkerRef)
+		endif
+		
+		SEQ.Dispose()
+		
+		return kMapMarkers
+	endif
+	
+	return None
+EndFunction
+
+; ------------------------------
 ; GetLocationCenter
 ;
 ; Description: Grabs the map marker from a location

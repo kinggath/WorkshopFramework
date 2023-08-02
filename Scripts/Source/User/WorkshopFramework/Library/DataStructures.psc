@@ -40,7 +40,7 @@ Struct ActorValueSet
 	
 	; 1.0.4 addition - will allow for using these as conditionals
 	Int iCompareMethod = 0
-	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue }
+	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, -3 means must not be equal to fValue }
 EndStruct
 
 Struct KeywordDataSet
@@ -56,7 +56,7 @@ Struct KeywordDataSet
 	
 	; 1.0.4 addition - will allow for using these as conditionals
 	Int iCompareMethod = 0
-	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue }
+	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, -3 means must not be equal to fValue }
 EndStruct
 
 
@@ -73,7 +73,7 @@ Struct GlobalVariableSet
 	{ The value to check for based on iCompareMethod }
 	
 	Int iCompareMethod = 0
-	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue }
+	{ 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, -3 means must not be equal to fValue }
 EndStruct
 
 ; 1.0.4 - Expanding common structure options
@@ -129,7 +129,7 @@ Struct ScriptPropertySet
 	{ If property holds a string, it will be checked for matching against this }
 	
 	Int iCompareMethod = 0
-	{ Float/Int: 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, String/Form: 0 means check for match, any other value means check for mismatch }
+	{ Float/Int: 0 means the value must be exactly = fValue, -1 means the value must be <= fValue, -2 means the value must be < fValue, 1 means the value must be >= fValue, 2 means the value must be > fValue, String/Form: 0 means check for match, any other value means check for mismatch, -3 means must not be equal to fValue }
 	
 	Form MatchForm = None
 	{ Form to test property value against if it is a Form. [Optional] Either this, or iMatchFormID + sMatchPluginName have to be set. }

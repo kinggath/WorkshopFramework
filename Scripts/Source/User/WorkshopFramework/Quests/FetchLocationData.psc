@@ -16,6 +16,11 @@ Scriptname WorkshopFramework:Quests:FetchLocationData extends WorkshopFramework:
 Group Aliases
 	LocationAlias Property RequestedLocation Auto Const Mandatory
 	ReferenceAlias Property MapMarker Auto Const Mandatory
+	{ IMPORTANT - Intentionally not allowing disabled, as we don't want to fetch markers that are meant to be replaced. For example, Malden Middle School becomes Vault 75 once you discover it. }
+	ReferenceAlias Property MapMarker02 Auto Const Mandatory
+	{ Some locations can end up with multiple map markers }
+	ReferenceAlias Property MapMarker03 Auto Const Mandatory
+	{ Some locations can end up with multiple map markers }
 	ReferenceAlias Property CenterMarker Auto Const Mandatory
 	ReferenceAlias[] Property EdgeMarkers Auto Const Mandatory
 	ReferenceAlias[] Property LinkedAttackMarkers Auto Const Mandatory

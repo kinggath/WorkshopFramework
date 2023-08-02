@@ -332,7 +332,11 @@ Bool Function CheckKeywordDataSet(Location akLocation, KeywordDataSet aKWDSet) g
 		Float fFormValue = akLocation.GetKeywordData(thisForm)
 		Float fCheckValue = aKWDSet.fValue
 		
-		if(aKWDSet.iCompareMethod == -2)
+		if(aKWDSet.iCompareMethod == -3)
+			if(fFormValue != fCheckValue)
+				return true
+			endif
+		elseif(aKWDSet.iCompareMethod == -2)
 			if(fFormValue < fCheckValue)
 				return true
 			endif
@@ -398,7 +402,11 @@ Bool Function CheckActorValueSet(ObjectReference akCheckRef, ActorValueSet aAVSe
 		Float fFormValue = akCheckRef.GetValue(thisForm)
 		Float fCheckValue = aAVSet.fValue
 		
-		if(aAVSet.iCompareMethod == -2)
+		if(aAVSet.iCompareMethod == -3)
+			if(fFormValue != fCheckValue)
+				bCheckPassed =  true
+			endif
+		elseif(aAVSet.iCompareMethod == -2)
 			if(fFormValue < fCheckValue)
 				bCheckPassed = true
 			endif
@@ -513,7 +521,11 @@ Bool Function CheckGlobalVariableSet(GlobalVariableSet aGlobalSet) global
 		Float fFormValue = thisForm.GetValue()
 		Float fCheckValue = aGlobalSet.fValue
 		
-		if(aGlobalSet.iCompareMethod == -2)
+		if(aGlobalSet.iCompareMethod == -3)
+			if(fFormValue != fCheckValue)
+				return true
+			endif
+		elseif(aGlobalSet.iCompareMethod == -2)
 			if(fFormValue < fCheckValue)
 				return true
 			endif
@@ -724,7 +736,11 @@ Bool Function CheckScriptPropertySet(ScriptPropertySet aScriptPropertySet) globa
 			endif
 		elseif(vPropertyValue is Int || vPropertyValue is Float)
 			Float fPropertyValue = vPropertyValue as Float
-			if(aScriptPropertySet.iCompareMethod == -2)
+			if(aScriptPropertySet.iCompareMethod == -3)
+				if(fPropertyValue != aScriptPropertySet.fValue)
+					return true
+				endif
+			elseif(aScriptPropertySet.iCompareMethod == -2)
 				if(fPropertyValue < aScriptPropertySet.fValue)
 					return true
 				endif
@@ -1748,7 +1764,7 @@ EndFunction
 ; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
 ; ------------------------------
 
-bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectReference akTransferTo = None, Bool abSilent = true)
+bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectReference akTransferTo = None, Bool abSilent = true) global
  	; setup to prevent possible infinite loop
 	int iBreakCount = 0
 	int iBreakCountMax = 0x7FFFFFFF	; max Papyrus int, 32 bit signed integer, which I assume is the max number of forms a Container can hold
@@ -1785,7 +1801,7 @@ EndFunction
 ; bool abSilent = (optional) If true, will not post notifications about items being removed if akSourceContainer or akOtherContainer is the player
 ; ObjectReference akOtherContainer = (optional) Container to move items to
 ; ------------------------------
-bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRemove, Int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None)
+bool Function Safe_RemoveItem(ObjectReference akSourceContainer, Form akItemToRemove, Int aiCount = 1, bool abSilent = false, ObjectReference akOtherContainer = None) global
 	if(akItemToRemove == None || akSourceContainer == None)
         return false
     endif
@@ -1833,7 +1849,7 @@ Bool Function IsTrap(ObjectReference akRef) global
 	if(akRef as TrapCanChimes)
 		return true
 	endif
-	
+	 
 	if(akRef as TrapTripwire)
 		return true
 	endif
@@ -1855,4 +1871,21 @@ Bool Function IsTrap(ObjectReference akRef) global
 	endif
 	
 	return false
+EndFunction
+
+
+Bool Function IsValidForm(Form aFormToCheck) global
+	if(aFormToCheck == None)
+		return false
+	endif
+	
+	if(aFormToCheck.GetFormID() == 0x00000000)
+		return false
+	endif
+	
+	if( ! aFormToCheck.IsBoundGameObjectAvailable())
+		return false
+	endif
+	
+	return true
 EndFunction

@@ -1116,7 +1116,7 @@ Function ProcessItemPool(Form[] aItemPool)
         
 		ModTraceCustom(sUILog, " Calling Remove(0) on pool we are processing, expecting to remove " + aItemPool[0])
         aItemPool.Remove(0)
-		ModTraceCustom(sUILog, "     After remove call entry 0 of pool = " + aItemPool[0])
+		ModTraceCustom(sUILog, "     After remove call entry 0 of pool = " + aItemPool)
     EndWhile
 EndFunction
 

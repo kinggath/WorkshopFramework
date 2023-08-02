@@ -132,6 +132,21 @@ Function HandleGameLoaded()
 	RegisterForEvents()
 EndFunction
 
+Function HandleInstallModChanges()
+	int iVersion235a = 65
+	if(iInstalledVersion < iVersion235a)
+		WorkshopScript[] AllWorkshops = WorkshopParent.Workshops
+		int i = 0
+		while(i < AllWorkshops.Length)
+			if(AllWorkshops[i].GetState() == "RelinkingActors")
+				AllWorkshops[i].GoToState("Initialized")
+			endif
+			
+			i += 1
+		endWhile
+	endif
+EndFunction
+
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------

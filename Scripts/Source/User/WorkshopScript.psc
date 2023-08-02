@@ -2997,11 +2997,13 @@ EndFunction
 
 
 Function RelinkWorkshopActors()
+	ObjectReference[] WorkshopActors = GetWorkshopActors() ; Grab actors first as the RelinkingActors state will hold the call in a loop until the state is exited
+	
 	GoToState("RelinkingActors")
 	; WSFW - 2.0.21 - Discovered that actors can end up in weird state where they have a sort of broken link via WorkshopItemKeyword. When this occurs, GetLinkedRef(WorkshopItemKeyword) will still show the actor as connected to the workshop, but calling RecalculateResources can count them as not being part of the settlement and they end up reducing population count and unassigning from some objects. Linking them to something else temporarily and then back seems to resolve it. 
 		
 	Keyword WorkshopItemKeyword = WorkshopFramework:WorkshopFunctions.GetWorkshopItemKeyword()
-	ObjectReference[] WorkshopActors = GetWorkshopActors()
+	
 
 	Actor PlayerRef = Game.GetPlayer()
 	int i = WorkshopActors.Length

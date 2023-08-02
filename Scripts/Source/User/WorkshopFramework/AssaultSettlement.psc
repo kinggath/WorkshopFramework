@@ -8,7 +8,7 @@
 ; N/A
 ; ---------------------------------------------
 
-Scriptname WorkshopFramework:AssaultSettlement extends Quest
+Scriptname WorkshopFramework:AssaultSettlement extends Quest Conditional
 
 import WorkshopFramework:Library:DataStructures
 import WorkshopFramework:Library:UtilityFunctions
@@ -39,6 +39,10 @@ int Property iStage_Failed = 90 autoReadOnly
 int Property iStage_Success = 100 autoReadOnly
 
 int Property iStage_Shutdown = 1000 autoReadOnly
+
+Int Property iObjectiveSet_Defend = 1 autoReadOnly
+Int Property iObjectiveSet_Wipeout = 2 autoReadOnly
+Int Property iObjectiveSet_Subdue = 3 autoReadOnly
 
 int Property iTimerID_AutoRunSetup = 100 autoReadOnly
 int Property iTimerID_Shutdown = 101 autoReadOnly
@@ -147,7 +151,13 @@ Float Property fPlayerArriveDistance = 500.0 Auto Hidden
 
 Bool Property bDisabledMapMarker = false Auto Hidden
 Int Property iReserveID = -1 Auto Hidden
-Int Property iCurrentAssaultType = -1 Auto Hidden
+Int Property iCurrentAssaultType = -1 Auto Hidden Conditional
+
+Function UpdateCurrentAssaultType(Int aiType)
+	iCurrentAssaultType = aiType
+EndFunction
+
+Int Property iObjectiveSet = 0 Auto Hidden
 
 ; Prep variables
 Bool Property bAutoShutdownQuest = true Auto Hidden
@@ -163,6 +173,7 @@ Bool Property bGuardsKillableEvenOnSubdue = false Auto Hidden ; Non-settler NPCs
 Bool Property bAttackersKillableEvenOnSubdue = false Auto Hidden
 Bool Property bAlwaysSubdueUniques = true Auto Hidden
 Bool Property bAutoHandleObjectives = true Auto Hidden
+Int Property iOverrideObjectiveSet = -1 Auto Hidden ; 2.3.6
 Bool Property bAutoCaptureSettlement = false Auto Hidden
 Bool Property bChildrenFleeDuringAttack = true Auto Hidden
 
@@ -215,6 +226,7 @@ Bool Property bEnemySurvivorsRemainEnemyToPlayer = true Auto Hidden
 
 
 Bool Property bFirstBloodSent = false Auto Hidden
+Bool Property bReinforcementsPhase = false Auto Hidden
 
 ; TODO: Currently using just one faction for attack and one for defense means that if we ever have two opposing attacks (one with the player attacking and one with the player defending) happening simultaneously, the factions will be incorrectly matched. Likely need a different solution to this for aggression against the player.
 
@@ -235,7 +247,7 @@ Event OnStoryScript(Keyword akKeyword, Location akLocation, ObjectReference akRe
 		VerbAlias.ForceRefTo(akRef1)
 	endif
 	
-	iCurrentAssaultType = aiValue1
+	UpdateCurrentAssaultType(aiValue1)
 	iReserveID = aiValue2
 	
 	SetStage(iStage_Setup)
@@ -247,9 +259,18 @@ EndEvent
 
 Event OnTimer(Int aiTimerID)
 	if(aiTimerID == iTimerID_EnemyMonitor)
-		if( ! GetStageDone(iStage_EnemiesDown))
+		if( ! GetStageDone(iStage_EnemiesDown) || bReinforcementsPhase)
 			if(CheckForEnemiesDown())
-				SetStage(iStage_EnemiesDown)
+				if( ! GetStageDone(iStage_EnemiesDown))
+					SetStage(iStage_EnemiesDown)
+				else
+					; Run the handling code to fire off events and objective updates again
+					HandleAllEnemiesDown()
+				endif
+				
+				if(bReinforcementsPhase) ; Keep running monitor until quest is stopped
+					RunEnemyMonitor()
+				endif
 			else
 				RunEnemyMonitor()
 			endif
@@ -356,7 +377,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 		endif
 	elseif(aiStageID == iStage_MostEnemiesDown)
 		if(bAutoHandleObjectives)
-			if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			if(iObjectiveSet == iObjectiveSet_Defend)
 				SetObjectiveDisplayed(17, false)
 				
 				if(IsObjectiveDisplayed(30))
@@ -367,18 +388,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 						SetObjectiveDisplayed(22) ; Remaining attackers
 					endif
 				endif
-			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
-				SetObjectiveDisplayed(15, false)
-				
-				if(IsObjectiveDisplayed(30))
-					; Reinforcements
-					SetObjectiveDisplayed(31) ; Remaining defenders
-				else
-					if( ! IsObjectiveDisplayed(20))
-						SetObjectiveDisplayed(20) ; Remaining defenders
-					endif
-				endif
-			elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+			elseif(iObjectiveSet == iObjectiveSet_Subdue)
 				SetObjectiveDisplayed(16, false)
 				
 				if(IsObjectiveDisplayed(30))
@@ -393,6 +403,17 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 				if( ! IsObjectiveDisplayed(21))
 					SetObjectiveDisplayed(21)
 				endif
+			else
+				SetObjectiveDisplayed(15, false)
+				
+				if(IsObjectiveDisplayed(30))
+					; Reinforcements
+					SetObjectiveDisplayed(31) ; Remaining defenders
+				else
+					if( ! IsObjectiveDisplayed(20))
+						SetObjectiveDisplayed(20) ; Remaining defenders
+					endif
+				endif
 			endif
 		endif
 	elseif(aiStageID == iStage_AllEnemiesSubdued)
@@ -404,22 +425,7 @@ Event OnStageSet(Int aiStageID, Int aiItemID)
 			SetStage(iStage_EnemiesDown)
 		endif
 	elseif(aiStageID == iStage_EnemiesDown)
-		if(bAutoHandleObjectives)
-			; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
-			SetObjectiveDisplayed(20, false)
-			SetObjectiveDisplayed(21, false)
-			SetObjectiveDisplayed(22, false)
-		endif
-		
-		if(iCurrentAssaultType == AssaultManager.iType_Defend)
-			AssaultManager.AssaultAttackersDown_Private(Self)
-		else
-			AssaultManager.AssaultDefendersDown_Private(Self)
-		endif
-		
-		if(bAutoCompleteAssaultWhenOneSideIsDown)
-			TryToMarkSuccessful()			
-		endif
+		HandleAllEnemiesDown()
 	elseif(aiStageID == iStage_AllAlliesDown)
 		if(bAutoHandleObjectives)
 			; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
@@ -544,15 +550,37 @@ EndFunction
 
 Function SwitchToReinforcementObjectives()
 	; Turn off the kill/subdue objectives and display reinforcement
-	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+	if(iObjectiveSet == iObjectiveSet_Defend)
 		SetObjectiveDisplayed(22, false)
 		SetObjectiveDisplayed(30)
-	elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
-		SetObjectiveDisplayed(20, false)
-		SetObjectiveDisplayed(30)
-	elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+	elseif(iObjectiveSet == iObjectiveSet_Subdue)		
 		SetObjectiveDisplayed(21, false)
 		SetObjectiveDisplayed(30)
+	else
+		SetObjectiveDisplayed(20, false)
+		SetObjectiveDisplayed(30)
+	endif
+	
+	bReinforcementsPhase = true
+	RunEnemyMonitor()
+EndFunction
+
+Function HandleAllEnemiesDown()
+	if(bAutoHandleObjectives)
+		; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
+		SetObjectiveDisplayed(20, false)
+		SetObjectiveDisplayed(21, false)
+		SetObjectiveDisplayed(22, false)
+	endif
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Defend)
+		AssaultManager.AssaultAttackersDown_Private(Self)
+	else
+		AssaultManager.AssaultDefendersDown_Private(Self)
+	endif
+	
+	if(bAutoCompleteAssaultWhenOneSideIsDown)
+		TryToMarkSuccessful()			
 	endif
 EndFunction
 
@@ -579,11 +607,15 @@ Function SetupAssault()
 	; Setup map marker and fast travel
 	SetupMapMarker(true)
 		
-	WorkshopScript kWorkshopRef = WorkshopAlias.GetRef() as WorkshopScript
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
+	WorkshopScript kWorkshopRef = None
 	int iWorkshopID = -1
-	if(kWorkshopRef != None)
-		iWorkshopID = kWorkshopRef.GetWorkshopID()
+	if(WorkshopAlias != None)
+		WorkshopAlias.GetRef() as WorkshopScript
+		
+		if(kWorkshopRef != None)
+			iWorkshopID = kWorkshopRef.GetWorkshopID()
+		endif
 	endif
 	
 	; Add settlers to aliases
@@ -648,7 +680,7 @@ Function SetupAssault()
 	endif
 	
 	; Add robots to aliases
-	if(bRobotsAreDefenders)
+	if(bRobotsAreDefenders && Robots != None)
 		Defenders.AddRefCollection(Robots)
 		DefenderFactionAlias.AddRefCollection(Robots)
 		
@@ -765,7 +797,9 @@ Function SetupAssault()
 			PlayerAllies.AddRefCollection(Attackers)
 			PlayerEnemies.AddRefCollection(Defenders)
 			
-			; Turn settlement against the player		ControlManager.TurnSettlementAgainstPlayer(kWorkshopRef)
+			if(kWorkshopRef != None)
+				; Turn settlement against the player		ControlManager.TurnSettlementAgainstPlayer(kWorkshopRef)
+			endif
 		endif
 		
 		; Clear the player enemy application from any allies in case they switched for some reason
@@ -1325,7 +1359,9 @@ Function StartAIPackages()
 	
 	Attackers.AddToFaction(ActivateAIFaction)
 	if(bChildrenFleeDuringAttack) ; 1.1.1 - This hadn't been setup correctly before
-		Children.AddToFaction(ActivateAIFaction)
+		if(Children != None)
+			Children.AddToFaction(ActivateAIFaction)
+		endif
 	endif
 	
 	Attackers.EvaluateAll()	
@@ -1572,7 +1608,7 @@ Function CleanupAssault()
 	
 	; Reset everything to defaults
 	iReserveID = -1
-	iCurrentAssaultType = -1
+	UpdateCurrentAssaultType(-1)
 	
 	bDisableFastTravel = true
 	bSettlersAreDefenders = true
@@ -1823,14 +1859,26 @@ Bool Function CheckForEnemiesDown()
 EndFunction
 
 
-Function TriggerInitialObjectives()			
-	if(iCurrentAssaultType != AssaultManager.iType_Defend)
+Function TriggerInitialObjectives()
+	if(iOverrideObjectiveSet >= 1)
+		iObjectiveSet = iOverrideObjectiveSet
+	else
+		if(iCurrentAssaultType == AssaultManager.iType_Defend)
+			iObjectiveSet = iObjectiveSet_Defend
+		elseif(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
+			iObjectiveSet = iObjectiveSet_Subdue
+		else
+			iObjectiveSet = iObjectiveSet_Wipeout
+		endif
+	endif
+	
+	if(iObjectiveSet == iObjectiveSet_Defend)
 		if(bAutoHandleObjectives)
-			SetObjectiveDisplayed(10)					
+			SetObjectiveDisplayed(17)
 		endif
 	else
 		if(bAutoHandleObjectives)
-			SetObjectiveDisplayed(17)					
+			SetObjectiveDisplayed(10)					
 		endif
 	endif
 	
@@ -1847,14 +1895,19 @@ Function TriggerPlayerInvolvedObjectives()
 	; When player arrives let's correct the objectives if there is no one to subdue
 	if(iCurrentAssaultType == AssaultManager.iType_Attack_Subdue)
 		if(SubdueToComplete.GetCount() == 0)
-			iCurrentAssaultType = AssaultManager.iType_Attack_Wipeout
-		else
-			SetObjectiveDisplayed(16)
+			UpdateCurrentAssaultType(AssaultManager.iType_Attack_Wipeout)
+			if(iOverrideObjectiveSet < 1)
+				iObjectiveSet = iObjectiveSet_Wipeout
+			endif
 		endif
 	endif
 	
-	if(iCurrentAssaultType == AssaultManager.iType_Attack_Wipeout)
-		SetObjectiveDisplayed(15)
+	if(iObjectiveSet == iObjectiveSet_Defend) 
+		; No additional objectives needed for defend
+	elseif(iObjectiveSet == iObjectiveSet_Subdue)
+		SetObjectiveDisplayed(16) ; Subdue
+	else
+		SetObjectiveDisplayed(15) ; Wipeout
 	endif
 EndFunction
 
