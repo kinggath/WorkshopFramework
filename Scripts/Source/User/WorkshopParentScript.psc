@@ -5299,8 +5299,23 @@ function WSFW_CheckWorkshops()
         i += 1
     endwhile
 
-    if(numErrors > 0)
-        Debug.MessageBox("Workshop Framework has encountered an error! Your Workshops array seems to have invalid entries, probably due to removed settlement mods. It is not recommended to continue playing this save.")
+	GlobalVariable WSFW_WorkshopsWarningSuppression = Game.GetFormFromFile(0x00015175, "WorkshopFramework.esm") as GlobalVariable
+	
+    if(numErrors > 0 && WSFW_WorkshopsWarningSuppression.GetValueInt() == 0)
+		Message WSFW_WorkshopsWarning = Game.GetFormFromFile(0x00015176, "WorkshopFramework.esm") as Message
+		
+		int iConfirm = WSFW_WorkshopsWarning.Show()
+			; Players will only have OK unless they have our esl installed which will override this message with a second option
+		if(iConfirm == 1)
+			; Player is requesting to suppress
+			Message WSFW_WorkshopWarningSuppressConfirmation = Game.GetFormFromFile(0x00015177, "WorkshopFramework.esm") as Message
+			iConfirm = WSFW_WorkshopWarningSuppressConfirmation.Show()
+			
+			if(iConfirm == 1)
+				; Player confirmed so set global to suppress
+				WSFW_WorkshopsWarningSuppression.SetValueInt(1)
+			endif
+		endif
     endif
 endfunction
 
