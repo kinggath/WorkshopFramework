@@ -671,9 +671,11 @@ Function SetupAssault()
 			if(kLeaderRef && ! kLeaderRef.IsInFaction(CaptiveFaction))
 				if(kLeaderRef.IsInFaction(WorkshopNPCFaction) && (ShouldForceSubdue(kLeaderRef) || iCurrentAssaultType == AssaultManager.iType_Attack_Subdue))
 					SubdueToComplete.AddRef(kLeaderRef)
+					KillToComplete.RemoveRef(kLeaderRef)
 				else
 					ClearProtectedStatus(kLeaderRef)
 					KillToComplete.AddRef(kLeaderRef)
+					SubdueToComplete.RemoveRef(kLeaderRef)
 				endif
 			endif
 		endif
@@ -882,6 +884,7 @@ Function SetupSpawnedAttacker(Actor akSpawnedActor, Bool abIsReinforcement = fal
 	; Ensure killable
 	if(iCurrentAssaultType == AssaultManager.iType_Defend)
 		KillToComplete.AddRef(akSpawnedActor)
+		SubdueToComplete.RemoveRef(akSpawnedActor) ; Make sure not in both aliases
 	else
 		ClearProtectedStatus(akSpawnedActor)
 	endif
@@ -919,12 +922,14 @@ Function SetupAttacker(Actor akAttacker, Bool abIsReinforcement = false)
 		; Spawned NPCs should just be killed unless unique/essential already
 		if(ShouldForceSubdue(akAttacker))
 			SubdueToComplete.AddRef(akAttacker)
+			KillToComplete.RemoveRef(akAttacker)
 		else
 			if(abIsReinforcement || ! bAutoStartAssaultWhenPlayerReachesAttackFrom) ; Protected status will be cleared later
 				ClearProtectedStatus(akAttacker)
 			endif
 			
 			KillToComplete.AddRef(akAttacker)
+			SubdueToComplete.RemoveRef(akAttacker)
 		endif
 	else
 		if(bPlayerInvolved)
@@ -949,6 +954,8 @@ Function SetupSpawnedDefender(Actor akSpawnedActor, Bool abIsReinforcement = fal
 	else
 		ClearProtectedStatus(akSpawnedActor)
 		KillToComplete.AddRef(akSpawnedActor)
+		
+		SubdueToComplete.RemoveRef(akSpawnedActor) ; Make sure not in both aliases
 	endif
 EndFunction
 
@@ -979,9 +986,11 @@ Function SetupDefender(Actor akDefender, Bool abIsReinforcement = false)
 		; Spawned NPCs should just be killed unless unique/essential already
 		if(ShouldForceSubdue(akDefender))
 			SubdueToComplete.AddRef(akDefender)
+			KillToComplete.RemoveRef(akDefender)
 		else
 			ClearProtectedStatus(akDefender)
-			KillToComplete.AddRef(akDefender)					
+			KillToComplete.AddRef(akDefender)
+			SubdueToComplete.RemoveRef(akDefender)
 		endif
 	endif
 EndFunction
@@ -1408,10 +1417,12 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 			; Add to victory tracking aliases
 			if(ShouldForceSubdue(thisActor) || (iCurrentAssaultType == AssaultManager.iType_Attack_Subdue && abDefenders && ! bForceDefendersKillable && ( ! abGuardNPCs || ! bGuardsKillableEvenOnSubdue)))
 				SubdueToComplete.AddRef(thisActor)
+				KillToComplete.RemoveRef(thisActor)
 			else
 				ClearProtectedStatus(thisActor)
 													
-				KillToComplete.AddRef(thisActor)					
+				KillToComplete.AddRef(thisActor)
+				SubdueToComplete.RemoveRef(thisActor)
 			endif
 		endif
 		
