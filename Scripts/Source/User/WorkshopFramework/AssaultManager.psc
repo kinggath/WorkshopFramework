@@ -181,6 +181,11 @@ Function HandleQuestInit()
 EndFunction
 
 Function HandleGameLoaded()
+	; Normally this code would be in HandleInstallModChanges, but we haven't been recording version until 2.3.8, so have to run it once here
+	Patch238() ; Must be above Parent.HandleGameLoaded as it will set iInstalledVersion
+	
+	Parent.HandleGameLoaded() ; Added in 2.3.8, it was mistakenly left out meaning prior to this, install version would not have been recorded
+	
 	RegisterForEvents()
 EndFunction
 
@@ -200,6 +205,36 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+Function Patch238()
+	int iVersion238 = 104
+	if(iInstalledVersion >= iVersion238)
+		return
+	endif
+	
+	int i = 0
+	while(i < RunningQuests.Length)
+		WorkshopFramework:AssaultSettlement asAssaultQuest = RunningQuests[i].kQuestRef as WorkshopFramework:AssaultSettlement
+		
+		if(asAssaultQuest.IsRunning())
+			int j = asAssaultQuest.KillToComplete.GetCount()
+			while(j > 0)
+				j -= 1
+				Actor thisActor = asAssaultQuest.KillToComplete.GetAt(j) as Actor
+				if(asAssaultQuest.ShouldForceSubdue(thisActor))
+					asAssaultQuest.SubdueToComplete.AddRef(thisActor)
+					asAssaultQuest.KillToComplete.RemoveRef(thisActor)
+				endif				
+			endWhile
+			
+			if(asAssaultQuest.SubdueToComplete.GetCount() > 0)
+				asAssaultQuest.PreventCollectionBleedoutRecovery(asAssaultQuest.SubdueToComplete)
+			endif
+		endif
+		
+		i += 1
+	endWhile
+EndFunction
 
 Function RegisterForEvents() 
 	RegisterDefaultAssaultQuests()

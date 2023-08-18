@@ -129,6 +129,7 @@ Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
 	Keyword Property WorkshopLinkHome Auto Const Mandatory ;2.0.1
+	Keyword Property ForceSubdueDuringAssaultTagKeyword Auto Const Mandatory ;2.3.8
 	
 	LocationRefType Property MapMarkerRefType Auto Const Mandatory ; 2.3.4
 EndGroup
@@ -696,6 +697,7 @@ Function SetupAssault()
 		DefenderFactionAlias.AddRefCollection(OtherDefenders)
 		
 		if(iCurrentAssaultType != AssaultManager.iType_Defend)
+			
 			AddCollectionToCompleteAliases(OtherDefenders, abDefenders = true, abGuardNPCs = true)
 		endif
 	endif	
@@ -819,6 +821,9 @@ Function SetupAssault()
 		
 	if(SubdueToComplete.GetCount() == 0)
 		SetStage(iStage_AllEnemiesSubdued)
+	else
+		; Make sure SubdueToComplete stay down
+		PreventCollectionBleedoutRecovery(SubdueToComplete)
 	endif
 	
 	if(KillToComplete.GetCount() == 0)
@@ -940,6 +945,10 @@ Function SetupAttacker(Actor akAttacker, Bool abIsReinforcement = false)
 			ClearProtectedStatus(akAttacker)
 		endif
 	endif
+	
+	if(GetStageDone(iStage_TriggerAI))
+		akAttacker.AddToFaction(ActivateAIFaction)
+	endif
 EndFunction
 
 
@@ -1052,8 +1061,8 @@ EndFunction
 Function StartAssault()
 	if(GetStageDone(iStage_Ready) && ! GetStageDone(iStage_Started))
 		SetStage(iStage_Started)
-		SetStage(iStage_TriggerAI)
-			
+		SetStage(iStage_TriggerAI)		
+		
 		AssaultManager.AssaultStarted_Private(Self, WorkshopAlias.GetRef(), iCurrentAssaultType, AttackingFaction, DefendingFaction)
 		
 		ConfigureTurrets(abMakeDefenders = true)
@@ -1415,7 +1424,9 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 			; 1.1.1 - adjusted function to ensure WorkshopNPCs are correctly added to the victory aliases, and so NPCs are killable when appropriate
 				
 			; Add to victory tracking aliases
-			if(ShouldForceSubdue(thisActor) || (iCurrentAssaultType == AssaultManager.iType_Attack_Subdue && abDefenders && ! bForceDefendersKillable && ( ! abGuardNPCs || ! bGuardsKillableEvenOnSubdue)))
+			Bool bForceSubdue = ShouldForceSubdue(thisActor)
+			
+			if(bForceSubdue || (iCurrentAssaultType == AssaultManager.iType_Attack_Subdue && abDefenders && ! bForceDefendersKillable && ( ! abGuardNPCs || ! bGuardsKillableEvenOnSubdue)))
 				SubdueToComplete.AddRef(thisActor)
 				KillToComplete.RemoveRef(thisActor)
 			else
@@ -1439,7 +1450,11 @@ Function ClearProtectedStatus(Actor akActorRef)
 EndFunction
 
 Bool Function ShouldForceSubdue(Actor akActorRef)
-	if(akActorRef.IsEssential() || (bAlwaysSubdueUniques && akActorRef.GetLeveledActorBase().IsUnique()))
+	Bool bIsActorEssential = akActorRef.IsEssential()
+	
+	;ModTraceCustom(sLogName, "     ShouldForceSubdue(" + akActorRef + ") bIsActorEssential = " + bIsActorEssential)
+	
+	if(bIsActorEssential || (bAlwaysSubdueUniques && akActorRef.GetLeveledActorBase().IsUnique()) || akActorRef.HasKeyword(ForceSubdueDuringAssaultTagKeyword))
 		return true
 	endif
 	
@@ -1826,6 +1841,7 @@ EndFunction
 
 ; Added in 1.1.10 to ensure an assault doesn't get stuck if an Alias script fails to register a death/subdue
 Bool Function CheckForEnemiesDown()
+	Actor PlayerRef = PlayerAlias.GetActorRef()
 	int iCount = SubdueToComplete.GetCount()
 	
 	if(iCount > 0)
@@ -1834,9 +1850,10 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
 			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				if( ! thisActor.Is3dLoaded())
+				if( ! thisActor.Is3dLoaded() || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
 					thisActor.MoveTo(DefendFromAlias.GetRef())
+					thisActor.MoveToNearestNavmeshLocation()
 				endif				
 				
 				return false
@@ -1854,9 +1871,10 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = KillToComplete.GetAt(i) as Actor
 			
 			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				if( ! thisActor.Is3dLoaded())
+				if( ! thisActor.Is3dLoaded() || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
 					thisActor.MoveTo(DefendFromAlias.GetRef())
+					thisActor.MoveToNearestNavmeshLocation()
 				endif				
 				
 				return false
@@ -1942,4 +1960,27 @@ Int Function CountActiveFighters(Bool abAttackers = true)
 	endWhile
 	
 	return iCount
+EndFunction
+
+
+;
+; Test Functions
+;
+
+Function CheckSubdueOtherDefenders()
+	int i = 0
+	while(i < OtherDefenders.GetCount())
+		Actor thisActor = OtherDefenders.GetAt(i) as Actor
+		ModTraceCustom(sLogName, "     ShouldForceSubdue(" + thisActor + ") = " + ShouldForceSubdue(thisActor))
+		
+		i += 1
+	endWhile
+EndFunction
+
+Function CheckSubdue(Actor akActorRef)
+	if(akActorRef.IsEssential() || (bAlwaysSubdueUniques && akActorRef.GetLeveledActorBase().IsUnique()))
+		Debug.MessageBox("Actor should be subdued")
+	else
+		Debug.MessageBox("Actor should not be subdued")
+	endif
 EndFunction

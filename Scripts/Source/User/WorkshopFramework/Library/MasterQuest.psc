@@ -74,6 +74,11 @@ Quest[] Property JustStartedQuests Auto Hidden
 ; ---------------------------------------------
 
 Bool bTriggerGameLoadRunning = false
+Bool bLocationChangeTriggersSuppressed = false
+
+Function SuppressLocationChangeTriggers(Bool abSuppress = true)
+	bLocationChangeTriggersSuppressed = abSuppress
+EndFunction
 
 ; ---------------------------------------------
 ; Events 
@@ -132,7 +137,10 @@ EndFunction
 Function HandleGameLoaded()
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> GameLoaded called on MasterQuest " + Self)
 	JustStartedQuests = new Quest[0]
-		
+	
+	; Clear vars to ensure they are never pemanently stuck
+	bLocationChangeTriggersSuppressed = false
+	
 	if(iInstalledVersion < gCurrentVersion.GetValue())
 		bQuestStartupsComplete = false ; Make sure we confirm all necessary quests are running - including any new ones
 	endif
@@ -197,6 +205,10 @@ EndFunction
 
 
 Function TriggerLocationChange()
+	if(bLocationChangeTriggersSuppressed)
+		return
+	endif
+	
 	int i = 0
 	ModTrace("[MasterQuest] " + Self + " TriggerLocationChange called. Sending event to " + LocationChangedQuests.GetSize() + " quests.")
 	while(i < LocationChangedQuests.GetSize())
