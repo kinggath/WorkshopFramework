@@ -125,6 +125,7 @@ Function RegisterForEvents()
 EndFunction
 
 Function TurnSettlementAgainstPlayer(WorkshopScript akWorkshopRef)
+	; Turn turrets against player, turn SettlementOwnershipFaction against player
 	CaptureSettlement(akWorkshopRef, None, abSeverEnemySupplyLines = false, abRemoveEnemySettlers = false, abKillEnemySettlers = false, abCaptureTurrets = true, abCaptureContainers = false, abSettlersJoinFaction = false, abTogglePlayerOwnership = false, abPlayerIsEnemy = true, iCreateInvadingSettlers = -1)
 EndFunction
 

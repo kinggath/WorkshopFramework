@@ -365,6 +365,11 @@ EndFunction
 
 ; 2.3.4 - Added new parameter abAutoCompleteAssaultWhenOneSideIsDown which can be used to stop an assault from failing/succeeding just because one side is down. In this case, the system calling the assault will be expected to end the assault itself.
 Bool Function SetupOptionsV3(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true, Bool abForceAttackersKillable = false, Bool abForceDefendersKillable = false, Bool abAutoCompleteAssaultWhenOneSideIsDown = true)
+	SetupOptionsV4(aiReserveID, abDisableFastTravel, abSettlersAreDefenders, abRobotsAreDefenders, abAutoStartAssaultOnLoad, abAutoStartAssaultWhenPlayerReachesAttackFrom, abMoveAttackersToStartPoint, abMoveDefendersToCenterPoint, abAttackersDeadFailsAssault, abAutoHandleObjectives, abGuardsKillableEvenOnSubdue, abAttackersKillableEvenOnSubdue, abAlwaysSubdueUniques, abChildrenFleeDuringAttack, abForceAttackersKillable, abForceDefendersKillable, abAutoCompleteAssaultWhenOneSideIsDown, abAutoTurnTargetSettlementAgainstPlayer = true)
+EndFunction
+
+; 2.3.10 - Added abAutoTurnTargetSettlementAgainstPlayer flag
+Bool Function SetupOptionsV4(int aiReserveID, Bool abDisableFastTravel = true, Bool abSettlersAreDefenders = true, Bool abRobotsAreDefenders = true, Bool abAutoStartAssaultOnLoad = true, Bool abAutoStartAssaultWhenPlayerReachesAttackFrom = true, Bool abMoveAttackersToStartPoint = true, Bool abMoveDefendersToCenterPoint = true, Bool abAttackersDeadFailsAssault = true, Bool abAutoHandleObjectives = true, Bool abGuardsKillableEvenOnSubdue = false, Bool abAttackersKillableEvenOnSubdue = false, Bool abAlwaysSubdueUniques = true, Bool abChildrenFleeDuringAttack = true, Bool abForceAttackersKillable = false, Bool abForceDefendersKillable = false, Bool abAutoCompleteAssaultWhenOneSideIsDown = true, Bool abAutoTurnTargetSettlementAgainstPlayer = true)
 	Quest kQuestRef = FindAssaultQuest(aiReserveID)
 	
 	if( ! kQuestRef)
@@ -390,6 +395,7 @@ Bool Function SetupOptionsV3(int aiReserveID, Bool abDisableFastTravel = true, B
 		asAssaultQuest.bForceAttackersKillable = abForceAttackersKillable
 		asAssaultQuest.bForceDefendersKillable = abForceDefendersKillable
 		asAssaultQuest.bAutoCompleteAssaultWhenOneSideIsDown = abAutoCompleteAssaultWhenOneSideIsDown
+		asAssaultQuest.bAutoTurnTargetSettlementAgainstPlayer = abAutoTurnTargetSettlementAgainstPlayer
 	endif
 	
 	return true

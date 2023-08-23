@@ -177,6 +177,7 @@ Bool Property bAutoHandleObjectives = true Auto Hidden
 Int Property iOverrideObjectiveSet = -1 Auto Hidden ; 2.3.6
 Bool Property bAutoCaptureSettlement = false Auto Hidden
 Bool Property bChildrenFleeDuringAttack = true Auto Hidden
+Bool Property bAutoTurnTargetSettlementAgainstPlayer = true Auto Hidden ; 2.3.10
 
 Bool Property bAutoCompleteAssaultWhenOneSideIsDown = true Auto Hidden
 
@@ -801,7 +802,7 @@ Function SetupAssault()
 			PlayerAllies.AddRefCollection(Attackers)
 			PlayerEnemies.AddRefCollection(Defenders)
 			
-			if(kWorkshopRef != None)
+			if(kWorkshopRef != None && bAutoTurnTargetSettlementAgainstPlayer)
 				; Turn settlement against the player		ControlManager.TurnSettlementAgainstPlayer(kWorkshopRef)
 			endif
 		endif
