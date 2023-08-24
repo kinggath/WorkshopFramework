@@ -86,6 +86,7 @@ Group Aliases
 	{ Defenders will be moved to or spawned here. }
 	ReferenceAlias Property MapMarkerAlias Auto Const Mandatory
 	ReferenceAlias Property WorkshopAlias Auto Const Mandatory
+	ReferenceAlias Property CenterMarkerAlias Auto Const Mandatory
 	
 	RefCollectionAlias Property KillToComplete Auto Const Mandatory
 	RefCollectionAlias Property SubdueToComplete Auto Const Mandatory
@@ -129,6 +130,7 @@ Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property ProtectedStatusRemoved Auto Const Mandatory ; 1.1.1
 	Keyword Property WorkshopLinkHome Auto Const Mandatory ;2.0.1
+	Keyword Property WorkshopLinkSpawn Auto Const Mandatory ;2.3.11
 	Keyword Property ForceSubdueDuringAssaultTagKeyword Auto Const Mandatory ;2.3.8
 	
 	LocationRefType Property MapMarkerRefType Auto Const Mandatory ; 2.3.4
@@ -251,6 +253,14 @@ Event OnStoryScript(Keyword akKeyword, Location akLocation, ObjectReference akRe
 	
 	UpdateCurrentAssaultType(aiValue1)
 	iReserveID = aiValue2
+	
+	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
+	ObjectReference kWorkshopRef = WorkshopAlias.GetRef()
+	
+	if(kDefendFromRef == kWorkshopRef || kDefendFromRef == None)
+		kDefendFromRef = GetFallbackDefendFromRef()
+		DefendFromAlias.ForceRefTo(kDefendFromRef)
+	endif
 	
 	SetStage(iStage_Setup)
 	
@@ -851,6 +861,7 @@ EndFunction
 
 ; 2.1.2 - Refactoring
 Function SpawnDefenders(ActorBase aSpawnMe, Int aiSpawnCount, ObjectReference akSpawnAt)
+	ModTraceCustom(sLogName, "SpawnDefenders(" + aSpawnMe + ", " + aiSpawnCount + ", " + akSpawnAt + ")")
 	int i = 0
 	while(i < aiSpawnCount)
 		Actor kDefenderRef = akSpawnAt.PlaceActorAtMe(aSpawnMe)
@@ -1394,6 +1405,8 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
 	ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
 	
+	ModTraceCustom(sLogName, "AddCollectionToCompleteAliases(" + aCollection + ", " + abDefenders + ", " + abGuardNPCs + ") bMoveDefendersToCenterPoint = " + bMoveDefendersToCenterPoint + " (" + kDefendFromRef + "), bMoveAttackersToStartPoint = " + bMoveAttackersToStartPoint + " (" + kAttackFromRef + ")")
+	
 	if(kAttackFromRef.HasRefType(MapMarkerRefType))
 		ObjectReference kLinkedHeadingRef = kAttackFromRef.GetLinkedRef()
 		if(kLinkedHeadingRef != None)
@@ -1401,6 +1414,8 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 		endif
 	endif
 	
+	Bool bIsDefendFromLoaded = kDefendFromRef.Is3dLoaded()
+	Bool bIsAttackFromLoaded = kAttackFromRef.Is3dLoaded()
 	
 	while(i < iCount)
 		Actor thisActor = aCollection.GetAt(i) as Actor
@@ -1415,10 +1430,22 @@ Function AddCollectionToCompleteAliases(RefCollectionAlias aCollection, Bool abD
 			
 			if( ! bSkipActor)
 				; Move units
-				if(abDefenders && bMoveDefendersToCenterPoint)
-					thisActor.MoveTo(kDefendFromRef)
-				elseif( ! abDefenders && bMoveAttackersToStartPoint)
-					thisActor.MoveTo(kAttackFromRef)
+				if(abDefenders)
+					if(bMoveDefendersToCenterPoint)
+						thisActor.MoveTo(kDefendFromRef)
+					endif
+					
+					if(bIsDefendFromLoaded)
+						thisActor.MoveToNearestNavmeshLocation()
+					endif
+				elseif( ! abDefenders)
+					if(bMoveAttackersToStartPoint)
+						thisActor.MoveTo(kAttackFromRef)
+					endif
+					
+					if(bIsAttackFromLoaded)
+						thisActor.MoveToNearestNavmeshLocation()
+					endif
 				endif
 			endif 
 			
@@ -1840,10 +1867,37 @@ Function RunEnemyMonitor() ; 1.1.10
 	StartTimer(fTimerLength_EnemyMonitor, iTimerID_EnemyMonitor)
 EndFunction
 
+ObjectReference Function GetFallbackDefendFromRef()
+	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
+	ObjectReference kCenterMarkerRef = CenterMarkerAlias.GetRef()
+	ObjectReference kWorkshopRef = WorkshopAlias.GetRef()
+	; This is not ideal and will often result in NPCs under the world, let's try for center marker or spawn point. Note: We have center marker set up as a force into alias which should overwrite workshop ref being forced into the defend from alias, but it does not work for unknown reasons.
+	if(kCenterMarkerRef != None)
+		kDefendFromRef = kCenterMarkerRef
+	elseif(kWorkshopRef != None)
+		ObjectReference kSpawnPointRef = kWorkshopRef.GetLinkedRef(WorkshopLinkSpawn)
+		if(kSpawnPointRef != None)
+			kDefendFromRef = kSpawnPointRef
+		endif
+	endif
+	
+	if(kDefendFromRef == None)
+		kDefendFromRef = kWorkshopRef
+	endif
+	
+	return kDefendFromRef
+EndFunction
+
 ; Added in 1.1.10 to ensure an assault doesn't get stuck if an Alias script fails to register a death/subdue
+; 2.3.11 - Modified this check to also do a full reset of the location of unloaded or non-visible enemies to avoid them stuck under the world. Previously this would only hit the first NPC and then exit the check.
 Bool Function CheckForEnemiesDown()
 	Actor PlayerRef = PlayerAlias.GetActorRef()
 	int iCount = SubdueToComplete.GetCount()
+	Bool bAllDown = true
+	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
+	if(kDefendFromRef == None)
+		kDefendFromRef = GetFallbackDefendFromRef()
+	endif
 	
 	if(iCount > 0)
 		int i = 0
@@ -1851,13 +1905,18 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
 			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				if( ! thisActor.Is3dLoaded() || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
+				Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
-					thisActor.MoveTo(DefendFromAlias.GetRef())
-					thisActor.MoveToNearestNavmeshLocation()
+					
+					thisActor.MoveTo(kDefendFromRef)
+					
+					if(bIsActor3dloaded)
+						thisActor.MoveToNearestNavmeshLocation()
+					endif
 				endif				
 				
-				return false
+				bAllDown = false
 			endif
 						
 			i += 1
@@ -1872,20 +1931,25 @@ Bool Function CheckForEnemiesDown()
 			Actor thisActor = KillToComplete.GetAt(i) as Actor
 			
 			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				if( ! thisActor.Is3dLoaded() || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
+				Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
-					thisActor.MoveTo(DefendFromAlias.GetRef())
-					thisActor.MoveToNearestNavmeshLocation()
+					
+					thisActor.MoveTo(kDefendFromRef)
+					
+					if(bIsActor3dloaded)
+						thisActor.MoveToNearestNavmeshLocation()
+					endif
 				endif				
 				
-				return false
+				bAllDown = false
 			endif
 						
 			i += 1
 		endWhile
 	endif
 	
-	return true
+	return bAllDown
 EndFunction
 
 

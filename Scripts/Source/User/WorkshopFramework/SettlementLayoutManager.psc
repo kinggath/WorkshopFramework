@@ -105,7 +105,8 @@ Group Keywords
 	Keyword Property WorkshopItemKeyword Auto Const Mandatory
 	Keyword Property LinkCustom10 Auto Const Mandatory
 	Keyword Property PowerArmorKeyword Auto Const Mandatory
-	Keyword Property PreventScrappingKeyword Auto Const Mandatory
+	Keyword Property PreventLayoutScrappingKeyword Auto Const Mandatory
+	Keyword Property TemporaryPreventScrappingKeyword Auto Const Mandatory
 	
 	UniversalForm[] Property AlwaysAllowedActorTypes Auto Const Mandatory
 	{ Keywords or forms that should be imported/exported even when options exclude most Actors - for things like turrets and armor stands }
@@ -923,10 +924,10 @@ Int Function ScrapSettlement(WorkshopScript akWorkshopRef, Bool abScrapLinkedAnd
 	
 		i = 0
 		while(i < kLinkedRefs.Length)
-			if( ! abScrapLinkedAndCollectLootables || kLinkedRefs[i].IsCreated())
-				if(kLinkedRefs[i].HasKeyword(PreventScrappingKeyword))
+			if(kLinkedRefs[i].IsCreated() && ! kLinkedRefs[i].HasKeyword(PreventLayoutScrappingKeyword))
+				if(kLinkedRefs[i].HasKeyword(TemporaryPreventScrappingKeyword))
 					; Remove this so future attempts to scrap the settlement will work
-					kLinkedRefs[i].RemoveKeyword(PreventScrappingKeyword)
+					kLinkedRefs[i].RemoveKeyword(TemporaryPreventScrappingKeyword)
 				else
 					WorkshopFramework:ObjectRefs:Thread_ScrapObject kThread = ThreadManager.CreateThread(ScrapObjectThread) as WorkshopFramework:ObjectRefs:Thread_ScrapObject
 

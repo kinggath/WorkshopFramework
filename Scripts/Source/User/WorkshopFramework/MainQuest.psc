@@ -290,6 +290,11 @@ EndEvent
 ; ---------------------------------------------
 
 Function HandleInstallModChanges()
+	Int iVersion2311 = 107
+	if(iInstalledVersion < iVersion2311)
+		FixPopulationRating()
+	endif
+	
 	Int iVersion210 = 53
 	if(iInstalledVersion < iVersion210)
 		UIManager.Stop()
@@ -341,6 +346,8 @@ EndFunction
 
 Function HandleQuestInit()
 	Parent.HandleQuestInit()
+	
+	FixPopulationRating()
 EndFunction
 
 
@@ -926,6 +933,19 @@ Function RelinkLocalSettlers()
 	currentWorkshop.RelinkWorkshopActors()
 endFunction
 
+Function FixPopulationRating()
+	ActorValue WorkshopRatingPopulation = Game.GetFormFromFile(0x0012723E, "Fallout4.esm") as ActorValue
+	Actor CodsworthRef = Game.GetFormFromFile(0x0001CA7D, "Fallout4.esm") as Actor
+	Actor NickRef = Game.GetFormFromFile(0x00002F25, "Fallout4.esm") as Actor
+	
+	if(CodsworthRef != None)
+		CodsworthRef.SetValue(WorkshopRatingPopulation, 1.0)
+	endif
+	
+	if(NickRef != None)
+		NickRef.SetValue(WorkshopRatingPopulation, 1.0)
+	endif
+EndFunction
 
 ;
 ; Test Functions
