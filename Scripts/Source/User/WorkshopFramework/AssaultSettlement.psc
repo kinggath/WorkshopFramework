@@ -1894,9 +1894,22 @@ Bool Function CheckForEnemiesDown()
 	Actor PlayerRef = PlayerAlias.GetActorRef()
 	int iCount = SubdueToComplete.GetCount()
 	Bool bAllDown = true
+	ObjectReference kMoveToRef = None
 	ObjectReference kDefendFromRef = DefendFromAlias.GetRef()
 	if(kDefendFromRef == None)
 		kDefendFromRef = GetFallbackDefendFromRef()
+	endif
+	
+	if(iCurrentAssaultType == AssaultManager.iType_Defend || (iCurrentAssaultType != AssaultManager.iType_Defend && bReinforcementsPhase))
+		ObjectReference kAttackFromRef = AttackFromAlias.GetRef()
+		
+		if(kAttackFromRef == None)
+			kAttackFromRef = kDefendFromRef
+		endif
+		
+		kMoveToRef = kAttackFromRef
+	else
+		kMoveToRef = kDefendFromRef
 	endif
 	
 	if(iCount > 0)
@@ -1909,7 +1922,7 @@ Bool Function CheckForEnemiesDown()
 				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
 					
-					thisActor.MoveTo(kDefendFromRef)
+					thisActor.MoveTo(kMoveToRef)
 					
 					if(bIsActor3dloaded)
 						thisActor.MoveToNearestNavmeshLocation()
@@ -1935,7 +1948,7 @@ Bool Function CheckForEnemiesDown()
 				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
 					; In case the actor fled or the AI package took it somewhere strange
 					
-					thisActor.MoveTo(kDefendFromRef)
+					thisActor.MoveTo(kMoveToRef)
 					
 					if(bIsActor3dloaded)
 						thisActor.MoveToNearestNavmeshLocation()
