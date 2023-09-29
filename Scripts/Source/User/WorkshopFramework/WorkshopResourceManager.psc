@@ -768,7 +768,7 @@ EndFunction
 
 
 Function ApplyObjectSettlementResources(ObjectReference akObjectRef, WorkshopScript akWorkshopRef, Bool abRemoved = false, Bool abGetLock = false)
-	if( ! akObjectRef || ! akWorkshopRef) 
+	if( ! akObjectRef || ! akWorkshopRef || akObjectRef.IsDeleted()) 
 		return
 	endif
 	

@@ -318,6 +318,8 @@ EndFunction
 
 ; Simple threader that just calls a function and some float arguments to an arbitrary form, if multiple threads use the same aCallingForm, this won't be any faster than just calling them directly on that object in a sequence. The benefit of this particular RunThread function is as a throttle, or when many different objects need a function called on them.
 Bool Function RunRemoteFunctionThread(Int aiCallBackID, String asCustomCallbackID, Form aCallingForm, String asCastAs, String asFunction, Int aiStoredArgumentsIndex)
+	ModTrace(Self + ".RunRemoteFunctionThread(aiCallBackID = " + aiCallBackID + ", asCustomCallbackID = " + asCustomCallbackID + ", aCallingForm = " + aCallingForm + ", asFunction = " + asFunction + ", " + aiStoredArgumentsIndex + ")")
+	
 	if( ! aCallingForm)
 		return false
 	endif

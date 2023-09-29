@@ -53,7 +53,7 @@ int Property iTimerID_EnemyMonitor = 104 autoReadOnly ; Added in 1.1.10 to perio
 float Property fTimerLength_AutoRunSetup = 30.0 autoReadOnly ; If it takes longer than this, the requesting script can cancel the timer and call SetupAssault manually
 float Property fTimerLength_Shutdown = 10.0 autoReadOnly ; This is just designed to give other scripts a chance to react to the results before the aliases are cleared
 float Property fTimerLength_FailsafeNoSetup = 300.0 autoReadOnly ; After 5 minutes, quests are considered abandoned and shut down
-float Property fTimerLength_EnemyMonitor = 30.0 autoReadOnly
+float Property fTimerLength_EnemyMonitor = 45.0 autoReadOnly
 
 String sLogName = "WSFWAssault" Const
 ; -------------------------------------------
@@ -547,6 +547,7 @@ EndFunction
 
 
 Function ForceComplete(Bool abAttackersWin = true)
+	ModTraceCustom(sLogName, Self + ".ForceComplete(abAttackersWin = " + abAttackersWin + ")")
 	if(iCurrentAssaultType == AssaultManager.iType_Defend)
 		if( ! abAttackersWin && TryToMarkSuccessful())
 			return
@@ -578,6 +579,7 @@ Function SwitchToReinforcementObjectives()
 EndFunction
 
 Function HandleAllEnemiesDown()
+	ModTraceCustom(sLogName, Self + "HandleAllEnemiesDown()")
 	if(bAutoHandleObjectives)
 		; Hide objective to finish handling enemies so that if reinforcements are triggered their locations aren't immediately revealed
 		SetObjectiveDisplayed(20, false)
@@ -592,12 +594,14 @@ Function HandleAllEnemiesDown()
 	endif
 	
 	if(bAutoCompleteAssaultWhenOneSideIsDown)
+		ModTraceCustom(sLogName, Self + " bAutoCompleteAssaultWhenOneSideIsDown = true, calling TryToMarkSuccessful")
 		TryToMarkSuccessful()			
 	endif
 EndFunction
 
 
 Bool Function TryToMarkSuccessful()
+	ModTraceCustom(sLogName, Self + "TryToMarkSuccessful()")
 	if(GetStageDone(iStage_Success))
 		; Already succeeded
 		return true
@@ -1913,14 +1917,18 @@ Bool Function CheckForEnemiesDown()
 	endif
 	
 	if(iCount > 0)
+		Bool bPlayerCanSeeMoveToRef = PlayerRef.HasDetectionLOS(kMoveToRef)
 		int i = 0
 		while(i < iCount)
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
 			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
 				Bool bIsActor3dloaded = thisActor.Is3dLoaded()
-				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
-					; In case the actor fled or the AI package took it somewhere strange
+				Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
+					; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
+				if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
+				
+					; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
 					
 					thisActor.MoveTo(kMoveToRef)
 					
