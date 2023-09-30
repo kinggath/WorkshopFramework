@@ -556,6 +556,15 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     float defaultMaxTris  = akWorkshopRef.MaxTriangles
     float defaultMaxDraws = akWorkshopRef.MaxDraws
 
+	; prevent division by zero: assume Sanctuary values
+	if(defaultMaxTris <= 0)
+		defaultMaxTris = 3000000
+	endif
+
+	if(defaultMaxDraws <= 0)
+		defaultMaxDraws = 3000
+	endif
+
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
 	
