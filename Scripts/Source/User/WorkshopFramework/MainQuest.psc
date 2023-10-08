@@ -556,6 +556,9 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     float defaultMaxTris  = akWorkshopRef.MaxTriangles
     float defaultMaxDraws = akWorkshopRef.MaxDraws
 
+    float defaultCurTris = akWorkshopRef.CurrentTriangles
+    float defaultCurDraws = akWorkshopRef.CurrentDraws
+
 	; prevent division by zero: assume Sanctuary values
 	if(defaultMaxTris <= 0)
 		defaultMaxTris = 3000000
@@ -565,6 +568,15 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 		defaultMaxDraws = 3000
 	endif
 
+    ; if we can't know the real value, at least assume something which shouldn't break the system
+    if(defaultCurTris <= 0)
+        defaultCurTris = 1
+    endif
+
+    if(defaultCurDraws <= 0)
+        defaultCurDraws = 1
+    endif
+
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
 	
@@ -572,11 +584,11 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 	
 	if(curMaxTris <= 0)
-		curMaxTris = defaultMaxTris
+		curMaxTris = defaultCurTris
 	endif
 	
 	if(curMaxDraws <= 0)
-		curMaxDraws = defaultMaxDraws
+		curMaxDraws = defaultCurDraws
 	endif
 
     float percentTris  = 100 * curMaxTris / defaultMaxTris
@@ -589,6 +601,10 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 
     float newTris  = curMaxTris
     float newDraws = curMaxDraws
+
+    ; always write the current values back, to prevent weirdness
+    akWorkshopRef.setValue(WorkshopParent.WorkshopCurrentDraws, curMaxDraws)
+    akWorkshopRef.setValue(WorkshopParent.WorkshopCurrentTriangles, curMaxTris)
 
     int iChoice = IncreaseLimitsMenu.show(percentDisplay)
     
