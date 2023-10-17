@@ -73,7 +73,14 @@ Quest[] Property JustStartedQuests Auto Hidden
 ; Vars
 ; ---------------------------------------------
 
+Bool bQuestStartupInProgress = false
+Bool Function IsQuestStartupInProgress()
+	return bQuestStartupInProgress
+endFunction
 Bool bTriggerGameLoadRunning = false
+Bool Function IsTriggerGameLoadRunning()
+	return bTriggerGameLoadRunning
+endFunction
 Bool bLocationChangeTriggersSuppressed = false
 
 Function SuppressLocationChangeTriggers(Bool abSuppress = true)
@@ -140,6 +147,7 @@ Function HandleGameLoaded()
 	
 	; Clear vars to ensure they are never pemanently stuck
 	bLocationChangeTriggersSuppressed = false
+	bQuestStartupInProgress = false
 	
 	if(iInstalledVersion < gCurrentVersion.GetValue())
 		bQuestStartupsComplete = false ; Make sure we confirm all necessary quests are running - including any new ones
@@ -268,11 +276,19 @@ Bool Function SafeToStartFrameworkQuests()
 	endif
 EndFunction
 
+
 Bool Function StartQuests()	
 	if(bQuestStartupsComplete)
 		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Quest startup already complete.")
 		return true
 	endif
+	
+	if(bQuestStartupInProgress)
+		; Prevent multiple simultaneous runs
+		return false
+	endif
+	
+	bQuestStartupInProgress = true
 	
 	; In case of new game, be sure to wait for initialization to complete
 	if( ! SafeToStartFrameworkQuests())
@@ -310,6 +326,8 @@ Bool Function StartQuests()
 			bQuestStartupsComplete = true
 		endif
 	endif
+	
+	bQuestStartupInProgress = false
 	
 	return bQuestStartupsComplete
 EndFunction
