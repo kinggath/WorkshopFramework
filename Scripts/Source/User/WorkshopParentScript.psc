@@ -1518,6 +1518,19 @@ endFunction
 
 
 bool function IsWorkshopValid(WorkshopScript workshop)
+    if(workshop.IsCreated())
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("WARNING: refusing to register "+workshop+": not registering created workshops")
+        return false
+    endif
+
+    ;/
+    This might also be a useful feature: a certain keyword hard-prevents specific workshops from being registered
+    if(workshop.hasKeyword(WSFW_DoNotAutoassignKeyword))
+        WorkshopFramework:Library:UtilityFunctions.ModTrace("NOTICE: refusing to register "+workshop+": flagged against registration")
+        return false
+    endif
+    /;
+
     Location workshopLocation = workshop.GetCurrentLocation()
     if(!workshopLocation)
         ; this probably won't happen
