@@ -368,7 +368,11 @@ EndFunction
 Bool Function StartQuests()
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> WSFW MainQuest.StartQuests called.")
 	bFrameworkReady = Parent.StartQuests()
-
+	
+	if(bFrameworkReady)
+		SetStage(10) ; 2.3.16 - Give a stage for other quests to monitor for
+	endif
+	
 	return bFrameworkReady
 EndFunction
 

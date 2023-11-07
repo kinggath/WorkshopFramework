@@ -295,6 +295,7 @@ Bool Function StartQuests()
 		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Can't start quests yet, waiting for " + CheckQuest + " to hit stage " + iCheckQuestSafeToLaunchStage + ".")
 		
 		RegisterForRemoteEvent(CheckQuest, "OnStageSet")
+		bQuestStartupInProgress = false
 		return false
 	else
 		ModTrace("[WSFW] >>>>>>>>>>>>>>>>>>> Starting up " + FrameworkStartQuests.Length + " framework quests")

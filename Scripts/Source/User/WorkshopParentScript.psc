@@ -1079,6 +1079,12 @@ Function FillWSFWVars()
 	endif
 Endfunction
 
+Keyword Function GetVatsCCNoCloseUpsKeyword() ; 2.3.16
+	; If a workshop has this, it will prevent that workshop from being registered in the Workshops array
+	return Game.GetFormFromFile(0x0009F483, "Fallout4.esm") as Keyword
+EndFunction
+	
+
 ; ------------------------------------------------------
 ;
 ; WSFW - New Events
@@ -1469,7 +1475,7 @@ bool function ReinitializeLocationsPUBLIC(WorkshopScript[] newWorkshops, Form in
 			; not in list - add me to arrays and initialize
 			; NOTE: this basically replicates code in OnStageSet, but safer to duplicate it here than change that to a function call
 			; START:
-			if(IsWorkshopValid(workshopRef)) ; WSFW 2.3.6 - Confirm this is set up correctly
+			if(IsWorkshopValid(workshopRef) && ! workshopRef.HasKeyword(GetVatsCCNoCloseUpsKeyword())) ; WSFW 2.3.6 - Confirm this is set up correctly; WSFW 2.3.16 - Added keyword to prevent registration as a standard settlement
 				; add workshop to array
 				Workshops.Add(workshopRef)
 				int newIndex = Workshops.Length-1

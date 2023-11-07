@@ -1918,55 +1918,69 @@ Bool Function CheckForEnemiesDown()
 	
 	if(iCount > 0)
 		Bool bPlayerCanSeeMoveToRef = PlayerRef.HasDetectionLOS(kMoveToRef)
-		int i = 0
-		while(i < iCount)
+		int i = iCount
+		while(i > 0)
+			i -= 1
 			Actor thisActor = SubdueToComplete.GetAt(i) as Actor
 			
-			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				Bool bIsActor3dloaded = thisActor.Is3dLoaded()
-				Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
-					; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
-				if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
-				
-					; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
-					
-					thisActor.MoveTo(kMoveToRef)
-					
-					if(bIsActor3dloaded)
-						thisActor.MoveToNearestNavmeshLocation()
+			if(thisActor != None)
+				if(thisActor.IsDeleted())
+					SubdueToComplete.RemoveRef(thisActor)
+				elseif( ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+					if(thisActor.IsDisabled())
+						thisActor.Enable(false)
 					endif
-				endif				
-				
-				bAllDown = false
-			endif
+					
+					Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+					Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
+						; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
+					if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
+					
+						; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
 						
-			i += 1
+						thisActor.MoveTo(kMoveToRef)
+						
+						if(bIsActor3dloaded)
+							thisActor.MoveToNearestNavmeshLocation()
+						endif
+					endif				
+					
+					bAllDown = false
+				endif
+			endif
 		endWhile
 	endif
 	
 	iCount = KillToComplete.GetCount()
 	
 	if(iCount > 0)
-		int i = 0
-		while(i < iCount)
+		int i = iCount
+		while(i > 0)
+			i -= 1
 			Actor thisActor = KillToComplete.GetAt(i) as Actor
 			
-			if(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
-				Bool bIsActor3dloaded = thisActor.Is3dLoaded()
-				if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
-					; In case the actor fled or the AI package took it somewhere strange
-					
-					thisActor.MoveTo(kMoveToRef)
-					
-					if(bIsActor3dloaded)
-						thisActor.MoveToNearestNavmeshLocation()
+			if(thisActor != None)
+				if(thisActor.IsDeleted())
+					KillToComplete.RemoveRef(thisActor)
+				elseif(thisActor && ! thisActor.IsBleedingOut() && ! thisActor.IsDead())
+					if(thisActor.IsDisabled())
+						thisActor.Enable(false)
 					endif
-				endif				
-				
-				bAllDown = false
-			endif
+					
+					Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+					if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
+						; In case the actor fled or the AI package took it somewhere strange
 						
-			i += 1
+						thisActor.MoveTo(kMoveToRef)
+						
+						if(bIsActor3dloaded)
+							thisActor.MoveToNearestNavmeshLocation()
+						endif
+					endif				
+					
+					bAllDown = false
+				endif
+			endif
 		endWhile
 	endif
 	
