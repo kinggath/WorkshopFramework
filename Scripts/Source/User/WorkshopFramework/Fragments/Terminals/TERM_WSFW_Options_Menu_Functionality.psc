@@ -315,6 +315,22 @@ Setting_CapMaxNPCsByBedCount.SetValueInt(0)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_40
+Function Fragment_Terminal_40(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_EnableProductionCap.SetValue(1.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_41
+Function Fragment_Terminal_41(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSFW_Setting_EnableProductionCap.SetValue(0.0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property Setting_AdjustMaxNPCsByCharisma Auto Const
@@ -338,3 +354,5 @@ WorkshopFramework:MainQuest Property WSFW_MainQuest Auto Const
 GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
 
 GlobalVariable Property Setting_CapMaxNPCsByBedCount Auto Const Mandatory
+
+GlobalVariable Property WSFW_Setting_EnableProductionCap Auto Const Mandatory

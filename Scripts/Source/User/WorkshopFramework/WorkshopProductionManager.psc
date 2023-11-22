@@ -48,6 +48,7 @@ Group Controllers
 	
 	GlobalVariable Property Setting_AllowLinkedWorkshopConsumption Auto Const Mandatory
 	GlobalVariable Property Setting_MaintainDeficits Auto Const Mandatory
+	GlobalVariable Property Setting_EnableProductionCap Auto Const Mandatory
 	GlobalVariable Property Setting_BasicConsumptionOnly Auto Const Mandatory
 	{ 1.0.7 - New option so that settlers only consume purified water and vanilla crops, so they leave specialty food and water alone }
 EndGroup
@@ -1375,8 +1376,15 @@ int Function ProduceFood(WorkshopScript akWorkshopRef)
 			iMaxProduceFood = 0
 		endif
 		
-		if(iMaxProduceFood < iProduceFood)
-			iProduceFood = iMaxProduceFood
+		if(Setting_EnableProductionCap.GetValueInt() == 1)
+			if(iMaxProduceFood < iProduceFood)
+				iProduceFood = iMaxProduceFood
+			endif
+		else
+			; Vanilla behavior was that if there was at least one point of storage left, it would produce all surplus - see line 1182 in base game workshopscript, otherwise it just prevents production
+			if(iMaxProduceFood <= 0)
+				iProduceFood = 0
+			endif
 		endif
 		
 		ModTrace("[WSFW]                  Current Stored Food: " + iCurrentStoredFood)
@@ -1437,8 +1445,15 @@ int Function ProduceWater(WorkshopScript akWorkshopRef)
 			iMaxProduceWater = 0
 		endif
 		
-		if(iMaxProduceWater < iProduceWater)
-			iProduceWater = iMaxProduceWater
+		if(Setting_EnableProductionCap.GetValueInt() == 1)
+			if(iMaxProduceWater < iProduceWater)
+				iProduceWater = iMaxProduceWater
+			endif
+		else
+			; Vanilla behavior was that if there was at least one point of storage left, it would produce all surplus - see line 1182 in base game workshopscript, otherwise it just prevents production
+			if(iMaxProduceWater <= 0)
+				iProduceWater = 0
+			endif
 		endif
 		
 		ModTrace("[WSFW]                  Current Stored Water: " + iCurrentStoredWater)
@@ -1525,8 +1540,15 @@ int Function ProduceScavenge(WorkshopScript akWorkshopRef)
 	if(iMaxProduce > 0)
 		if(fScavengeBuildingMaterialsProduction <= 0 && fScavengePartsProduction <= 0 && fScavengeRareProduction <=0)
 			int iProduce = fScavengeGeneralProduction as Int
-			if(iMaxProduce < iProduce)
-				iProduce = iMaxProduce
+			if(Setting_EnableProductionCap.GetValueInt() == 1)
+				if(iMaxProduce < iProduce)
+					iProduce = iMaxProduce
+				endif
+			else
+				; Vanilla behavior was that if there was at least one point of storage left, it would produce all surplus - see line 1182 in base game workshopscript, otherwise it just prevents production
+				if(iMaxProduce <= 0)
+					iProduce = 0
+				endif
 			endif
 			
 			ModTrace("[WSFW]                  Producing: " + iProduce)
@@ -1607,8 +1629,15 @@ int Function ProduceFertilizer(WorkshopScript akWorkshopRef)
 		iMaxProduce = 0
 	endif
 	
-	if(iMaxProduce < iProduce)
-		iProduce = iMaxProduce
+	if(Setting_EnableProductionCap.GetValueInt() == 1)
+		if(iMaxProduce < iProduce)
+			iProduce = iMaxProduce
+		endif
+	else
+		; Vanilla behavior was that if there was at least one point of storage left, it would produce all surplus - see line 1182 in base game workshopscript, otherwise it just prevents production
+		if(iMaxProduce <= 0)
+			iProduce = 0
+		endif
 	endif
 	
 	ModTrace("[WSFW]                  Fertilizer Production Value: " + iProduce)
