@@ -557,6 +557,7 @@ Function PresentPowerToolsMenu(WorkshopScript akWorkshopRef = None)
 EndFunction
 
 Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
+	; get and validate the 4 values as they are stored in the script properties
     float defaultMaxTris  = akWorkshopRef.MaxTriangles
     float defaultMaxDraws = akWorkshopRef.MaxDraws
 
@@ -581,20 +582,41 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         defaultCurDraws = 1
     endif
 
+	; get and validate the 4 values as they are stored through AVs
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
 	
+	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
+	ActorValue WorkshopCurrentDraws = WorkshopParent.WorkshopCurrentDraws
+
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 	
+	float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
+	float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
+
 	if(curMaxTris <= 0)
 		curMaxTris = defaultCurTris
+		; write them back if they were found to be invalid
+		akWorkshopRef.setValue(WorkshopMaxTriangles, curMaxTris)
 	endif
 	
 	if(curMaxDraws <= 0)
 		curMaxDraws = defaultCurDraws
+		akWorkshopRef.setValue(WorkshopMaxDraws, curMaxDraws)
 	endif
 
+	if(currentTris <= 0)
+		currentTris = defaultCurTris
+		akWorkshopRef.setValue(WorkshopCurrentTriangles, currentTris)
+	endif
+
+	if(currentDraws <= 0)
+		currentDraws = defaultCurDraws
+		akWorkshopRef.setValue(WorkshopCurrentDraws, currentDraws)
+	endif
+
+	; Calculate the percentage to display
     float percentTris  = 100 * curMaxTris / defaultMaxTris
     float percentDraws = 100 * curMaxDraws / defaultMaxDraws
     
@@ -603,13 +625,7 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         percentDisplay = percentDraws
     endif
 
-    float newTris  = curMaxTris
-    float newDraws = curMaxDraws
-
-    ; always write the current values back, to prevent weirdness
-    akWorkshopRef.setValue(WorkshopParent.WorkshopCurrentDraws, curMaxDraws)
-    akWorkshopRef.setValue(WorkshopParent.WorkshopCurrentTriangles, curMaxTris)
-
+	; show the menu
     int iChoice = IncreaseLimitsMenu.show(percentDisplay)
     
     if(iChoice == 4)
@@ -636,10 +652,6 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         ; +100%
         factor = 1.0
     endif
-    
-        
-    float currentDraws = akWorkshopRef.getValue(WorkshopParent.WorkshopCurrentDraws)
-    float currentTris  = akWorkshopRef.getValue(WorkshopParent.WorkshopCurrentTriangles)
     
     if(currentDraws > defaultMaxDraws || currentTris > defaultMaxTris)
         ; use percentage of current maximum
