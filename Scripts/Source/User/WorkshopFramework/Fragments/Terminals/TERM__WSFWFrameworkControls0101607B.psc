@@ -180,7 +180,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_23
 Function Fragment_Terminal_23(ObjectReference akTerminalRef)
 ;BEGIN CODE
-WSFW_Setting_PersistWorkshopResourceObjects.SetValueInt(0)
+PersistenceManager.EnablePersistenceManagement(false)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -188,7 +188,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_24
 Function Fragment_Terminal_24(ObjectReference akTerminalRef)
 ;BEGIN CODE
-WSFW_Setting_PersistWorkshopResourceObjects.SetValueInt(1)
+PersistenceManager.EnablePersistenceManagement(true)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -219,3 +219,4 @@ GlobalVariable Property WSFW_Setting_AutoRepairPowerGrids Auto Const Mandatory
 
 GlobalVariable Property WSFW_Setting_AutoResetCorruptPowerGrid Auto Const Mandatory
 GlobalVariable Property WSFW_Setting_PersistWorkshopResourceObjects Auto Const Mandatory
+WorkshopFramework:PersistenceManager Property PersistenceManager Auto Const Mandatory

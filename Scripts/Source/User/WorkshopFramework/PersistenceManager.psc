@@ -14,19 +14,8 @@ EndFunction
 
 
 
-
-
-
-
-
 Import WorkshopFramework:Library:ObjectRefs
 Import WorkshopFramework:Library:UtilityFunctions
-
-
-
-
-
-
 
 ;/
     ===========================================================
@@ -263,9 +252,15 @@ EndFunction
 
 ;; MCM/Terminal/MessageBox should invoke this to fully change the internal state of the Manager
 Function EnablePersistenceManagement( Bool abEnable )
-    If( abEnable == IsPersistenceManagementEnabled() )
+    ;/
+	2.3.18 - Removed this block as by the time MCM runs this, the global is already flipped
+	
+	If( abEnable == IsPersistenceManagementEnabled() )
         Return
     EndIf
+	/;
+	
+	
     Float lfValue = 0.0
     String lsEndMsg
     If( abEnable )
