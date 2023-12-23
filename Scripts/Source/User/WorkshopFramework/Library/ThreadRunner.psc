@@ -77,145 +77,47 @@ Int Property NextStoredArgumentIndex
 EndProperty
 
 Function StoreArguments(Int aiArgumentIndex, Var[] akArgs)
-	int i = 0
-	Var[] StoreHere
 	if(aiArgumentIndex == 1)
-		if( ! StoredArguments1) ; Init
-			StoredArguments1 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments1
+		StoredArguments1 = akArgs
 	elseif(aiArgumentIndex == 2)
-		if( ! StoredArguments2) ; Init
-			StoredArguments2 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments2
+		StoredArguments2 = akArgs
 	elseif(aiArgumentIndex == 3)
-		if( ! StoredArguments3) ; Init
-			StoredArguments3 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments3
+		StoredArguments3 = akArgs
 	elseif(aiArgumentIndex == 4)
-		if( ! StoredArguments4) ; Init
-			StoredArguments4 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments4
+		StoredArguments4 = akArgs
 	elseif(aiArgumentIndex == 5)
-		if( ! StoredArguments5) ; Init
-			StoredArguments5 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments5
+		StoredArguments5 = akArgs
 	elseif(aiArgumentIndex == 6)
-		if( ! StoredArguments6) ; Init
-			StoredArguments6 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments6
+		StoredArguments6 = akArgs
 	elseif(aiArgumentIndex == 7)
-		if( ! StoredArguments7) ; Init
-			StoredArguments7 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments7
+		StoredArguments7 = akArgs
 	elseif(aiArgumentIndex == 8)
-		if( ! StoredArguments8) ; Init
-			StoredArguments8 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments8
+		StoredArguments8 = akArgs
 	elseif(aiArgumentIndex == 9)
-		if( ! StoredArguments9) ; Init
-			StoredArguments9 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments9
+		StoredArguments9 = akArgs
 	elseif(aiArgumentIndex == 10)
-		if( ! StoredArguments10) ; Init
-			StoredArguments10 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments10
+		StoredArguments10 = akArgs
 	elseif(aiArgumentIndex == 11)
-		if( ! StoredArguments11) ; Init
-			StoredArguments11 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments11
+		StoredArguments11 = akArgs
 	elseif(aiArgumentIndex == 12)
-		if( ! StoredArguments12) ; Init
-			StoredArguments12 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments12
+		StoredArguments12 = akArgs
 	elseif(aiArgumentIndex == 13)
-		if( ! StoredArguments13) ; Init
-			StoredArguments13 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments13
+		StoredArguments13 = akArgs
 	elseif(aiArgumentIndex == 14)
-		if( ! StoredArguments14) ; Init
-			StoredArguments14 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments14
+		StoredArguments14 = akArgs
 	elseif(aiArgumentIndex == 15)
-		if( ! StoredArguments15) ; Init
-			StoredArguments15 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments15
+		StoredArguments15 = akArgs
 	elseif(aiArgumentIndex == 16)
-		if( ! StoredArguments16) ; Init
-			StoredArguments16 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments16
+		StoredArguments16 = akArgs
 	elseif(aiArgumentIndex == 17)
-		if( ! StoredArguments17) ; Init
-			StoredArguments17 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments17
+		StoredArguments17 = akArgs
 	elseif(aiArgumentIndex == 18)
-		if( ! StoredArguments18) ; Init
-			StoredArguments18 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments18
+		StoredArguments18 = akArgs
 	elseif(aiArgumentIndex == 19)
-		if( ! StoredArguments19) ; Init
-			StoredArguments19 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments19
+		StoredArguments19 = akArgs
 	elseif(aiArgumentIndex == 20)
-		if( ! StoredArguments20) ; Init
-			StoredArguments20 = new Var[0]
-		endif
-		
-		StoreHere = StoredArguments20
+		StoredArguments20 = akArgs
 	endif
-	
-	; Change the StoredArguments array to be the same length as the sent arguments
-	if(StoreHere.Length > akArgs.Length)
-		StoreHere.Remove(StoreHere.Length - (StoreHere.Length - akArgs.Length), (StoreHere.Length - akArgs.Length))
-	endif
-	
-	i = 0
-	while(i < akArgs.Length)
-		if(StoreHere.Length > i)
-			StoreHere[i] = akArgs[i]
-		else
-			StoreHere.Add(akArgs[i])
-		endif
-		
-		i += 1
-	endWhile
 EndFunction
 
 Var[] Function GetStoredArguments(Int aiArgumentIndex)
