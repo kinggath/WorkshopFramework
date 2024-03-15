@@ -1118,6 +1118,10 @@ Keyword Function GetWorkshopKeyword()
 	return Game.GetFormFromFile(0x00054BA7, "Fallout4.esm") as Keyword
 EndFunction
 
+Keyword Function GetWorkbenchGeneralKeyword()
+	return Game.GetFormFromFile(0x00091FD4, "Fallout4.esm") as Keyword
+EndFunction
+
 ActorValue Function GetWorkshopPowerConnectionAV()
 	return Game.GetFormFromFile(0x000002D0, "Fallout4.esm") as ActorValue
 EndFunction

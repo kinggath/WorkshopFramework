@@ -1183,6 +1183,8 @@ Note that the versions here with locks default to true, while the versions on NP
 
 ; Replacement for WorkshopParent.AddActorToWorkshopPUBLIC
 Function AddActorToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool abResetMode = false) global
+	;Debug.TraceStack("......WorkshopFunctions.AddActorToWorkshop(" + akActorRef + ", akWorkshopRef = " + akWorkshopRef + ", abResetMode = " + abResetMode + ")")
+	
 	WorkshopFramework:NPCManager NPCManager = GetNPCManager()
 	NPCManager.AddNPCToWorkshop(akActorRef, akWorkshopRef, abResetMode)
 endFunction

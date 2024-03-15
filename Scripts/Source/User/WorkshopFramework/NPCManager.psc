@@ -749,7 +749,7 @@ Function AddNPCToWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef, Bool a
 	endIf	
 	
 	if(iOldWorkshopID > -1 && iOldWorkshopID != iNewWorkshopID)
-		RemoveNPCFromWorkshop(akActorRef, akWorkshopRef, abNPCTransfer = true)
+		RemoveNPCFromWorkshop(akActorRef, oldWorkshopRef, abNPCTransfer = true)
 		
 		SetNewSettler(akActorRef, false)
 	endif
@@ -867,6 +867,8 @@ endFunction
 
 ; Alternative to WorkshopParent.RemoveActorFromWorkshopPUBLIC that does not require the WorkshopNPCScript
 Function RemoveNPCFromWorkshop(Actor akActorRef, WorkshopScript akWorkshopRef = None, Bool abNPCTransfer = false)
+	Debug.TraceStack("......RemoveNPCFromWorkshop(" + akActorRef + ", akWorkshopRef = " + akWorkshopRef + ", abNPCTransfer = " + abNPCTransfer + ")")
+	
 	if(akWorkshopRef == None)
 		akWorkshopRef = akActorRef.GetLinkedRef(WorkshopItemKeyword) as WorkshopScript
 		

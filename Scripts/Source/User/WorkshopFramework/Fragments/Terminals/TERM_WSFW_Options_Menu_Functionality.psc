@@ -331,6 +331,22 @@ WSFW_Setting_EnableProductionCap.SetValue(0.0)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_42
+Function Fragment_Terminal_42(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSPlus_Settings_HealRadsInWorkshopMode.SetValueInt(0)
+;END CODE
+EndFunction
+;END FRAGMENT
+
+;BEGIN FRAGMENT Fragment_Terminal_43
+Function Fragment_Terminal_43(ObjectReference akTerminalRef)
+;BEGIN CODE
+WSPlus_Settings_HealRadsInWorkshopMode.SetValueInt(1)
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 GlobalVariable Property Setting_AdjustMaxNPCsByCharisma Auto Const
@@ -356,3 +372,5 @@ GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const
 GlobalVariable Property Setting_CapMaxNPCsByBedCount Auto Const Mandatory
 
 GlobalVariable Property WSFW_Setting_EnableProductionCap Auto Const Mandatory
+
+GlobalVariable Property WSPlus_Settings_HealRadsInWorkshopMode Auto Const Mandatory

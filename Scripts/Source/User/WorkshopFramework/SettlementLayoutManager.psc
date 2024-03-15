@@ -223,27 +223,29 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 		if(kThreadRef.IsBoundGameObjectAvailable())
 			kThreadRef.StartTimer(1.0)
 		endif
-		 
-		LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
 		
-		ModTrace("      PlaceObjectCallback -- Received: " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + ", Awaiting: " + LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
+		if(iCallbackTrackingIndex >= 0)
+			LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
 		
-		if(LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived >=  LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
-			BuildingCompleted(iCallbackTrackingIndex)
-		elseif(bManualImportInProgress)
-			Float fProgress = Math.Floor((LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived as Float/LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks as Float) * 100) ; *100 to get as whole percentage
-			
-			if(bUseHUDProgressModule)
-				HUDFrameworkManager.UpdateProgressBarPercentage(Self, sProgressBarID_Build, fProgress as Int)
-			else
-				; Update every 15%
-				Float fTarget = 15.0 * (iProgressUpdateCounter_Build + 1)
-				if(fProgress > 0 && fProgress >= fTarget)
-					BuildingProgressUpdate.Show(fProgress)
-					iProgressUpdateCounter_Build += 1
+			ModTrace("      PlaceObjectCallback -- Received: " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + ", Awaiting: " + LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
+		
+			if(LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived >=  LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
+				BuildingCompleted(iCallbackTrackingIndex)
+			elseif(bManualImportInProgress)
+				Float fProgress = Math.Floor((LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived as Float/LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks as Float) * 100) ; *100 to get as whole percentage
+				
+				if(bUseHUDProgressModule)
+					HUDFrameworkManager.UpdateProgressBarPercentage(Self, sProgressBarID_Build, fProgress as Int)
+				else
+					; Update every 15%
+					Float fTarget = 15.0 * (iProgressUpdateCounter_Build + 1)
+					if(fProgress > 0 && fProgress >= fTarget)
+						BuildingProgressUpdate.Show(fProgress)
+						iProgressUpdateCounter_Build += 1
+					endif
 				endif
 			endif
-		endif				
+		endif
 	elseif(sCallbackID == sExportCallbackID)
 		iExportCallbacksReceived += 1
 		

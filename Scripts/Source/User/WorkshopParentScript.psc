@@ -1530,6 +1530,7 @@ bool function IsWorkshopValid(WorkshopScript workshop)
         WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": no location!")
         return false
     endif
+	
     int prevWorkshop = WorkshopLocations.Find(workshopLocation)
     if(prevWorkshop > -1)
         WorkshopFramework:Library:UtilityFunctions.ModTrace("ERROR: refusing to register "+workshop+": the location "+workshopLocation+" is already registered for workshop "+Workshops[prevWorkshop])
@@ -2965,6 +2966,8 @@ EndFunction
 
 ; UFO4P 2.0.6, WSFW 1.0.8a, Added new arg, so versioning the function to maintain signatures
 function UnassignActor_PrivateV2(WorkshopNPCScript theActor, bool bRemoveFromWorkshop = false, bool bSendUnassignEvent = true, bool bResetMode = false, bool bNPCTransfer = false)
+	; Debug.TraceStack("......UnassignActor_PrivateV2(" + theActor + ", bRemoveFromWorkshop = " + bRemoveFromWorkshop + ", bSendUnassignEvent = " + bSendUnassignEvent + ", bResetMode = " + bResetMode + ", bNPCTransfer = " + bNPCTransfer + ")")
+	
 	int workshopID = theActor.GetWorkshopID()
 	
 	if(workshopID < 0)

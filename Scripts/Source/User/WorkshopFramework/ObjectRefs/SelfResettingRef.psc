@@ -15,6 +15,10 @@ EndEvent
 
 Event OnCellLoad()
 	if(fResetTime > 0.0 && ! bResetTimerRunning)
+		if( ! IsValidForm(Self))
+			return
+		endif
+		
 		Reset() ; Immediately reset the first time to ensure in correct state
 		StartResetTimer()
 	endif
@@ -22,6 +26,10 @@ EndEvent
 
 
 Event OnTimerGameTime(Int aiTimerID)
+	if( ! IsValidForm(Self))
+		return
+	endif
+	
 	Reset()
 	StartResetTimer()
 EndEvent
