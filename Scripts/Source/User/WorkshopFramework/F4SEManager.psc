@@ -103,13 +103,30 @@ EndFunction
 
 Function F4SERunningCheck()
 	bIsF4SERunning = false
+
+	; change version check to disquaulify latest version of F4SE until WSFWIdentifier.dll can be updated.
+	int iReleaseVersion_Expected = 25	; F4SE plugin version 25 is the last version before FO4 NG Update.
+	int iReleaseVersion_Installed = F4SE.GetVersionRelease()
 	
-	if(F4SE.GetVersion() > 0 || F4SE.GetVersionMinor() > 0)
-		bIsF4SERunning = true
-		iVersion_Major = F4SE.GetVersion()
-		iVersion_Minor = F4SE.GetVersionMinor()
-		iVersion_Release = F4SE.GetVersionRelease()
+	if ( iReleaseVersion_Installed >= 0 || iReleaseVersion_Installed <= iReleaseVersion_Expected )
+		; F4SE installed and is a version that supports the current version of WSFWIdentifier.dll.
+		if ( iReleaseVersion_Installed != F4SE.GetScriptVersionRelease() )
+			; loose pex files are installed properly, install verified.
+			bIsF4SERunning = true
+			iVersion_Major = F4SE.GetVersion()
+			iVersion_Minor = F4SE.GetVersionMinor()
+			iVersion_Release = F4SE.GetVersionRelease()
+		endif
 	endif
+	
+	; original WSFW F4SE check.
+	; if(F4SE.GetVersion() > 0 || F4SE.GetVersionMinor() > 0)
+	; 	bIsF4SERunning = true
+	; 	iVersion_Major = F4SE.GetVersion()
+	; 	iVersion_Minor = F4SE.GetVersionMinor()
+	; 	iVersion_Release = F4SE.GetVersionRelease()
+	; endif
+
 EndFunction
 
 
