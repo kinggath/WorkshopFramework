@@ -487,6 +487,22 @@ EndFunction
 ; Test Plugins
 ;
 
+Function DumpAttachedMods(ObjectReference akRef)
+	ModTrace("======================================")
+	ModTrace("Dumping Attached Mods for " + akRef)
+	
+	ObjectMod[] FoundMods = akRef.GetAllMods()
+	int i = 0
+	while(i < FoundMods.Length)
+		ModTrace("     " + FoundMods[i])
+		i += 1
+	endWhile
+	
+	ModTrace("Completed dump of Attached Mods for " + akRef)
+	ModTrace("======================================")
+	
+EndFunction
+
 
 Function CountPluginsPopup()
 	Debug.MessageBox("Plugins: " + Game.GetInstalledPlugins().Length + "\nLight Plugins: " + Game.GetInstalledLightPlugins().Length)

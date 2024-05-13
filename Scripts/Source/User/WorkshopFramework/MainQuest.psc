@@ -27,6 +27,21 @@ CustomEvent PlayerExitedSettlement
 Int iTimerID_BuildableAreaCheck = 100 Const
 Float fTimerLength_BuildableAreaCheck = 3.0 Const
 
+Int iTimerID_BuildableAreaCheckForEntry = 150 Const
+Float fTimerLength_BuildableAreaCheckForEntry = 3.0 Const 
+
+Int iTimerID_BuildableAreaCheckForExit = 175 Const
+Float fTimerLength_BuildableAreaCheckForExit = 3.0 Const 
+
+Int iTimerID_WaitToSendExitEvent = 200 Const
+Float fTimerLength_WaitToSendExitEvent = 5.0
+
+Int iEntryExitStatus_Clear = 0 Const
+Int iEntryExitStatus_EnterWaitingForBuildArea = 1 Const
+Int iEntryExitStatus_In = 2 Const
+Int iEntryExitStatus_ExitWaitingForBuildArea = 3 Const
+Int iEntryExitStatus_ExitWaitingForTimer = 4 Const
+
 ; ---------------------------------------------
 ; Editor Properties
 ; ---------------------------------------------
@@ -98,14 +113,22 @@ EndGroup
 ; Properties
 ; ---------------------------------------------
 
+Bool Property bUseCBRChange = true Auto
+
 Bool Property bFrameworkReady = false Auto Hidden
 Bool Property bLastSettlementUnloaded = true Auto Hidden
 
 Int Property iSaveFileMonitor Auto Hidden ; Important - only meant to be edited by our Nanny system!
 
+Bool Property bCurrentSettlementNotSetYet = true Auto Hidden ; will be changed to false the first time a player enters a settlement and kCurrentSettlement is set
+
 ; ---------------------------------------------
 ; Vars
 ; ---------------------------------------------
+
+workshopscript kCurrentSettlement = none ; will be set when the enter event is triggered and cleared when the exit event is triggered.
+workshopscript kWaitingForSettlementExit = none  ; stores the workshop of a settlement that is waiting for the exit timer to complete before PlayerExitedSettlement is sent
+workshopscript kInBuildableAreaWorkshop = none ; stores the workshop of the settlement being checked for buildable area before triggering enter or exit events
 
 ; ---------------------------------------------
 ; Events
@@ -126,6 +149,88 @@ Event OnTimer(Int aiTimerID)
 	Parent.OnTimer(aiTimerID)
 
 	if(aiTimerID == LocationChangeTimerID)
+		 ; if bUseCBRChange is set, alternate (experimental) code will be used to trigger enter and exit settlement events.
+		if(bUseCBRChange)
+			Location kPreviousLoc = PreviousLocation.GetLocation()
+			Location kNewLoc = LatestLocation.GetLocation()
+			WorkshopScript enteringWorkshop = None
+			WorkshopScript leavingWorkshop = None
+		
+			if(kNewLoc != None)
+				if(kNewLoc.HasKeyword(LocationTypeWorkshop))
+					enteringWorkshop = WorkshopParent.GetWorkshopFromLocation(kNewLoc)
+					
+					if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
+						if(enteringWorkshop.GetParentCell().IsLoaded())
+							F4SEManager.WSFWID_CheckAndFixPowerGrid(enteringWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+						else
+							RegisterForRemoteEvent(enteringWorkshop, "OnCellLoad")
+						endif
+					endif
+				endif
+			endif
+		
+			if(kPreviousLoc != None)
+				if(kPreviousLoc.HasKeyword(LocationTypeWorkshop))
+					leavingWorkshop = WorkshopParent.GetWorkshopFromLocation(kPreviousLoc)
+				endif
+			endif
+		
+			if(leavingWorkshop != none)
+				 ; don't trigger an exit event if the corresponding enter event hasn't triggered (unless this is the first time using the changed code)
+				if(kCurrentSettlement != none || bCurrentSettlementNotSetYet)
+					 ; Cancel any enter build area timer, as we will not be sending that entered settlement function
+					Self.CancelTimer(iTimerID_BuildableAreaCheckForEntry)
+					kInBuildableAreaWorkshop = none
+					
+					 ; check to see if the player is still in the buildable area of that workshop
+					if(PlayerRef.IsWithinBuildableArea(leavingWorkshop))
+						 ; they are, so don't call exit yet. Start a timer to check if they are out of the area.
+						kInBuildableAreaWorkshop = leavingWorkshop
+						Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
+					else
+						 ; they are not
+						if(enteringWorkshop == none)
+							 ; if the previous settlement is unloaded, run the exit event straight away (they probably fast travelled)
+							 ; otherwise, start the exit timer
+							
+							if(!leavingWorkshop.mylocation.IsLoaded())
+								SendPlayerExitedSettlementEvent(leavingWorkshop)
+							else
+								kWaitingForSettlementExit = leavingWorkshop
+								Self.StartTimer(fTimerLength_WaitToSendExitEvent, iTimerID_WaitToSendExitEvent)
+							endif
+						else
+							 ; the exit event will be run in the block below
+						endif
+					endif
+				endif
+			endif
+		
+			if(enteringWorkshop != none)
+				 ; if the player is still registered as being in another settlement, trigger that exit event
+				if(kCurrentSettlement != none && kCurrentSettlement != enteringWorkshop)
+					SendPlayerExitedSettlementEvent(kCurrentSettlement)
+				else
+					 ; cancel any build area for exit timer (this is done automatically in SendPlayerExitedSettlementEvent if that was run instead
+					Self.CancelTimer(iTimerID_BuildableAreaCheckForExit)
+					kInBuildableAreaWorkshop = none
+				endif
+				
+				 ; do not trigger the enter event if it was already triggered previously and the exit event has not been triggered
+				if(kCurrentSettlement != enteringWorkshop) 
+					 ; check to see if they are in the buildable area yet. If not, start a timer to check for it.
+					if(PlayerRef.IsWithinBuildableArea(enteringWorkshop))
+						 ; run the enter event
+						SendPlayerEnteredSettlementEvent(enteringWorkshop)
+					else
+						kInBuildableAreaWorkshop = enteringWorkshop
+						 ; start the timer
+						Self.StartTimer(fTimerLength_BuildableAreaCheckForEntry, iTimerID_BuildableAreaCheckForEntry) 
+					endif
+				endif
+			endif
+		else
 		Location kPreviousLoc = PreviousLocation.GetLocation()
 		Location kNewLoc = LatestLocation.GetLocation()
 		Bool bEnteringWorkshopLocation = false
@@ -230,6 +335,7 @@ Event OnTimer(Int aiTimerID)
 				bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
 			endif
 		endif
+		endif
 	elseif(aiTimerID == iTimerID_BuildableAreaCheck)
 		WorkshopScript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 		Location PlayerLocation = PlayerRef.GetCurrentLocation()
@@ -249,6 +355,32 @@ Event OnTimer(Int aiTimerID)
 
 			SendCustomEvent("PlayerExitedSettlement", kArgs)
 		endif
+	elseif(aiTimerID == iTimerID_BuildableAreaCheckForEntry)
+		 ; part of CBRGamer code change
+		 ; check to see if the player is in the Buildable area of the settlement. If they are not, repeat the timer. If they are, trigger the entrance event
+		if(PlayerRef.IsWithinBuildableArea(kInBuildableAreaWorkshop))
+			SendPlayerEnteredSettlementEvent(kInBuildableAreaWorkshop)
+		else
+			Self.StartTimer(fTimerLength_BuildableAreaCheckForEntry, iTimerID_BuildableAreaCheckForEntry)
+		endif
+	elseif(aiTimerID == iTimerID_BuildableAreaCheckForExit)
+		 ; part of CBRGamer code change
+		 ; check to see if the player is in the Buildable area of the settlement. If they are not, start the exit timer. If they are repeat this timer.
+		if(PlayerRef.IsWithinBuildableArea(kInBuildableAreaWorkshop))
+			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
+		else
+			StartPlayerExitedSettlementWait(kInBuildableAreaWorkshop)
+		endif
+	elseif(aiTimerID == iTimerID_WaitToSendExitEvent)
+		 ; part of CBRGamer code change
+		 ; make sure the player has not gone back into the build area
+		if(!PlayerRef.IsWithinBuildableArea(kWaitingForSettlementExit)) 
+			SendPlayerExitedSettlementEvent(kWaitingForSettlementExit)
+			kWaitingForSettlementExit = none
+		else
+			 ; restart the build area timer
+			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
+		endif
 	endif
 EndEvent
 
@@ -256,6 +388,20 @@ EndEvent
 Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
     if(asMenuName == "WorkshopMenu")
 		if(abOpening)
+			if(bUseCBRChange)
+				if(kCurrentSettlement == none)
+					 ; They are clearly actually in a settlement as they have entered workshop mode. Probably in a limbo area.
+					Workshopscript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+					 ; make sure this is the correct workshop (it really should be - just to be sure)
+					if(PlayerRef.IsWithinBuildableArea(currentWorkshop))
+						SendPlayerEnteredSettlementEvent(currentWorkshop)
+					endif
+				endif
+				 ; we could also do a check to see if kCurrentSettlement is the build area the player is in, but this not being the case would be a rare edge case and would be corrected soon enough.
+				 ; it could only happen if they player had exited another settlement and entered this build area all in the 5 seconds it takes for the exit to trigger.
+				 ; After that, the next build mode entry, or going into the settlement location would trigger the enter event.
+			
+			else
 			WorkshopScript currentWorkshop = WorkshopParent.CurrentWorkshop.GetRef() as WorkshopScript
 			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
 
@@ -271,6 +417,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 				endif
 			endif
 		endif
+	endif
 	endif
 EndEvent
 
@@ -408,6 +555,63 @@ EndFunction
 ; ---------------------------------------------
 ; Functions
 ; ---------------------------------------------
+
+ ; Part of CBRGamer code change
+Function SendPlayerEnteredSettlementEvent(workshopscript akEnteringWorkshop)
+	kCurrentSettlement = akEnteringWorkshop
+	bCurrentSettlementNotSetYet = false
+	
+	 ; We can now cancel any build area check for entry
+	Self.CancelTimer(iTimerID_BuildableAreaCheckForEntry)
+	kInBuildableAreaWorkshop = none
+	
+	WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
+	bLastSettlementUnloaded = !lastWorkshop.myLocation.IsLoaded()
+	
+	Var[] kArgs = new Var[3]
+	kArgs[0] = akEnteringWorkshop
+	kArgs[1] = lastWorkshop
+	kArgs[2] = bLastSettlementUnloaded 
+	
+	; This comment is in the original : 
+	     ; If lastWorkshop == currentWorkshop && bLastSettlementUnloaded - it means the player traveled far enough to unload the last settlement, but never visited a new one in between
+	; But even in the original, bLastSettlementUnloaded was only set when you entered a settlement - so if currentWorkshop was the same is the last workshop, the last workshop must be loaded because the current one is.
+	
+	SendCustomEvent("PlayerEnteredSettlement", kArgs)
+	bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
+	LastWorkshopAlias.ForceRefTo(akEnteringWorkshop)
+EndFunction
+
+ ; Part of CBRGamer code change
+Function SendPlayerExitedSettlementEvent(workshopscript akLeavingWorkshop)
+	kCurrentSettlement = none
+	
+	 ; We can now cancel any build area check for exit and any wait timer for exit
+	Self.CancelTimer(iTimerID_BuildableAreaCheckForExit)
+	kInBuildableAreaWorkshop = none
+	Self.CancelTimer(iTimerID_WaitToSendExitEvent)
+	kWaitingForSettlementExit = none
+	
+	WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
+	Bool bLastWorkshopLoaded = lastWorkshop.myLocation.IsLoaded()
+	
+	Var[] kArgs = new Var[2]
+	kArgs[0] = akLeavingWorkshop
+	kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
+	
+	SendCustomEvent("PlayerExitedSettlement", kArgs)
+EndFunction
+
+ ; Part of CBRGamer code change
+Function StartPlayerExitedSettlementWait(workshopscript akWaitWorkshop)
+	if(kWaitingForSettlementExit != none && akWaitWorkshop != kWaitingForSettlementExit)
+		 ; while waiting to exit one workshop, another thinks it is exiting. So exit the first, then call the exit wait on the second.
+		 ; This actually shouldn't happen, but just in case.
+		SendPlayerExitedSettlementEvent(kWaitingForSettlementExit) 
+	endif
+	kWaitingForSettlementExit = akWaitWorkshop
+	Self.StartTimer(fTimerLength_WaitToSendExitEvent, iTimerID_WaitToSendExitEvent)
+EndFunction
 
 Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops

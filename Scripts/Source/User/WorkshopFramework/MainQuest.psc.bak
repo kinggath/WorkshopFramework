@@ -368,7 +368,11 @@ EndFunction
 Bool Function StartQuests()
 	ModTrace("[WSFW] >>>>>>>>>>>>>>>>> WSFW MainQuest.StartQuests called.")
 	bFrameworkReady = Parent.StartQuests()
-
+	
+	if(bFrameworkReady)
+		SetStage(10) ; 2.3.16 - Give a stage for other quests to monitor for
+	endif
+	
 	return bFrameworkReady
 EndFunction
 
@@ -556,18 +560,47 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     float defaultMaxTris  = akWorkshopRef.MaxTriangles
     float defaultMaxDraws = akWorkshopRef.MaxDraws
 
+    float defaultCurTris = akWorkshopRef.CurrentTriangles
+    float defaultCurDraws = akWorkshopRef.CurrentDraws
+	
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
+	ActorValue WorkshopCurrentDraws = WorkshopParent.WorkshopCurrentDraws
+	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
+
+	; prevent division by zero: assume Sanctuary values
+	if(defaultMaxTris <= 0)
+		defaultMaxTris = 3000000
+	endif
+
+	if(defaultMaxDraws <= 0)
+		defaultMaxDraws = 3000
+	endif
+
+    ; if we can't know the real value, at least assume something which shouldn't break the system
+    if(defaultCurTris <= 0)
+        defaultCurTris = 1
+		akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
+    endif
+
+    if(defaultCurDraws <= 0)
+        defaultCurDraws = 1
+		akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
+    endif
 	
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 	
 	if(curMaxTris <= 0)
-		curMaxTris = defaultMaxTris
+		curMaxTris = defaultCurTris
+		
+		akWorkshopRef.setValue(WorkshopMaxTriangles, curMaxTris)
 	endif
 	
 	if(curMaxDraws <= 0)
-		curMaxDraws = defaultMaxDraws
+		curMaxDraws = defaultCurDraws
+		
+		akWorkshopRef.setValue(WorkshopMaxDraws, curMaxDraws)
 	endif
 
     float percentTris  = 100 * curMaxTris / defaultMaxTris
@@ -609,8 +642,8 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     endif
     
         
-    float currentDraws = akWorkshopRef.getValue(WorkshopParent.WorkshopCurrentDraws)
-    float currentTris  = akWorkshopRef.getValue(WorkshopParent.WorkshopCurrentTriangles)
+    float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
+    float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
     
     if(currentDraws > defaultMaxDraws || currentTris > defaultMaxTris)
         ; use percentage of current maximum
