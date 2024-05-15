@@ -224,7 +224,18 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 			kThreadRef.StartTimer(1.0)
 		endif
 		
-		if(iCallbackTrackingIndex >= 0)
+		; v2.3.20 - had 3 hours worth of these errors in the log:
+		; error: Array index -1 is out of range (0-127)
+		; stack:
+		;	[WSFW_SettlementLayoutManager (0B012B0D)].workshopframework:settlementlayoutmanager.::remote_WorkshopFramework:Library:ThreadRunner_OnThreadCompleted() - ".\WorkshopFramework\SettlementLayoutManager.psc" Line 227
+		; error: Cannot access a variable of a None struct
+		; stack:
+		;	[WSFW_SettlementLayoutManager (0B012B0D)].workshopframework:settlementlayoutmanager.::remote_WorkshopFramework:Library:ThreadRunner_OnThreadCompleted() - ".\WorkshopFramework\SettlementLayoutManager.psc" Line 227
+		
+		; This seems caused by HQ building room layouts as I built no city plans or WSFW layouts during this time.
+		; Either the power of Todd can destroy LayoutBuildTracking before this Event is called or the HQ room layouts do not setup this information.
+		; Add a check to prevent accessing a none var.
+		if(iCallbackTrackingIndex >= 0 && LayoutBuildTracking != none && LayoutBuildTracking.Length > iCallbackTrackingIndex)
 			LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
 		
 			ModTrace("      PlaceObjectCallback -- Received: " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + ", Awaiting: " + LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)
