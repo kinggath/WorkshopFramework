@@ -127,6 +127,7 @@ Bool Property bCurrentSettlementNotSetYet = true Auto Hidden ; will be changed t
 ; ---------------------------------------------
 
 workshopscript kCurrentSettlement = none ; will be set when the enter event is triggered and cleared when the exit event is triggered.
+location kCurrentSettlementLocation = none ; will be set when the player enters a settlment location and cleared when leaving a settlement location
 workshopscript kWaitingForSettlementExit = none  ; stores the workshop of a settlement that is waiting for the exit timer to complete before PlayerExitedSettlement is sent
 workshopscript kInBuildableAreaWorkshop = none ; stores the workshop of the settlement being checked for buildable area before triggering enter or exit events
 
@@ -177,11 +178,10 @@ Event OnTimer(Int aiTimerID)
 			endif
 		
 			if(leavingWorkshop != none)
-				 ; don't trigger an exit event if the corresponding enter event hasn't triggered (unless this is the first time using the changed code)
+				; don't trigger an exit event if the corresponding enter event hasn't triggered (unless this is the first time using the changed code)
 				if(kCurrentSettlement != none || bCurrentSettlementNotSetYet)
-					 ; Cancel any enter build area timer, as we will not be sending that entered settlement function
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForEntry)
-					kInBuildableAreaWorkshop = none
+					 ; Cancel any enter build area check, as we will not be sending that entered settlement function
+					CancelBuildAreaCheck()
 					
 					 ; check to see if the player is still in the buildable area of that workshop
 					if(PlayerRef.IsWithinBuildableArea(leavingWorkshop))
@@ -212,9 +212,8 @@ Event OnTimer(Int aiTimerID)
 				if(kCurrentSettlement != none && kCurrentSettlement != enteringWorkshop)
 					SendPlayerExitedSettlementEvent(kCurrentSettlement)
 				else
-					 ; cancel any build area for exit timer (this is done automatically in SendPlayerExitedSettlementEvent if that was run instead
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForExit)
-					kInBuildableAreaWorkshop = none
+					 ; cancel any build area check
+					CancelBuildAreaCheck()
 				endif
 				
 				 ; do not trigger the enter event if it was already triggered previously and the exit event has not been triggered
@@ -231,110 +230,110 @@ Event OnTimer(Int aiTimerID)
 				endif
 			endif
 		else
-		Location kPreviousLoc = PreviousLocation.GetLocation()
-		Location kNewLoc = LatestLocation.GetLocation()
-		Bool bEnteringWorkshopLocation = false
-		Bool bLeavingWorkshopLocation = false
-		WorkshopScript currentWorkshop = None
-		
-		if(kNewLoc != None)
-			if(kNewLoc.HasKeyword(LocationTypeWorkshop))
-				bEnteringWorkshopLocation = true
-				currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
-				
-				if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
-					if(currentWorkshop.GetParentCell().IsLoaded())
-						F4SEManager.WSFWID_CheckAndFixPowerGrid(currentWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
-					else
-						RegisterForRemoteEvent(currentWorkshop, "OnCellLoad")
-					endif
-				endif
-			endif
-		endif
-
-		if(kPreviousLoc != None)
-			if(kPreviousLoc.HasKeyword(LocationTypeWorkshop))
-				bLeavingWorkshopLocation = true
-			endif
-		endif
-
-		if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
-			Var[] kArgs
-
-			; 1.0.4 - Added sanity check
-			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
-				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
-				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
-
-				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
-					currentWorkshop = None
-				else
-					if(currentWorkshop != None && currentWorkshop.myLocation != None)
-						; Player is in limbo area - it is not flagged as part of a specific location (likely just the overworld location - ie. Commonwealth) and so another LocationChange event isn't likely to fire - so instead we'll do a 5 second repeating loop to check if they returned to the location tagged part of the settlement or are out of the build area
-						StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
-
-						; Update Latest Location so the next change will correctly be aware the player was previously in a settlement
-						LatestLocation.ForceLocationTo(currentWorkshop.myLocation)
-					else
-						; Player is not in limbo area
-						CancelTimer(iTimerID_BuildableAreaCheck)
-					endif
-				endif
-			endif
-
-			WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
-			Bool bCurrentWorkshopRefFound = true
-			if( ! currentWorkshop)
-				bCurrentWorkshopRefFound = false
-			endif
-
-			Bool bLastWorkshopRefFound = true
-			if( ! lastWorkshop)
-				bLastWorkshopRefFound = false
-			endif
-
-			if( ! bLastWorkshopRefFound && bCurrentWorkshopRefFound) ; This should only happen once, after which there will always be a lastWorkshop stored in the alias
-				LastWorkshopAlias.ForceRefTo(currentWorkshop)
-			endif
-
-			;Debug.Trace(">>>>>>>>>>>>>>>> bLastWorkshopRefFound: " + bLastWorkshopRefFound + ", kPreviousLoc: " + kPreviousLoc + ", kNewLoc: " + kNewLoc + ", lastWorkshop: " + lastWorkshop + ", currentWorkshop: " + currentWorkshop + ", bCurrentWorkshopRefFound: " + bCurrentWorkshopRefFound + ", bLastSettlementUnloaded: " + bLastSettlementUnloaded)
-			if(bLastWorkshopRefFound)
-				Bool bLastWorkshopLoaded = lastWorkshop.myLocation.IsLoaded()
-				kArgs = new Var[2]
-				kArgs[0] = lastWorkshop
-				kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
-
-				if(lastWorkshop != currentWorkshop && (bCurrentWorkshopRefFound || ! bLastSettlementUnloaded))
-					; Workshop changed or they are no longer in a settlement
-					if(bCurrentWorkshopRefFound)
-						; Changed settlement - update our lastWorkshop record to store the currentWorkshop
-						LastWorkshopAlias.ForceRefTo(currentWorkshop)
-					endif
-
-					if( ! bLastWorkshopLoaded)
-						; Our previous settlement is no longer loaded in memory
-						bLastSettlementUnloaded = true
-					endif
-
-					SendCustomEvent("PlayerExitedSettlement", kArgs)
-				else
-					; Player changed location but is still in same settlement - don't send event
-				endif
-			endif
-
-			if(bCurrentWorkshopRefFound && bEnteringWorkshopLocation)
-				; Workshop changed or previous settlement unloaded
-				kArgs = new Var[3]
-				kArgs[0] = currentWorkshop
-				kArgs[1] = lastWorkshop
-				kArgs[2] = bLastSettlementUnloaded ; If lastWorkshop == currentWorkshop && bLastSettlementUnloaded - it means the player traveled far enough to unload the last settlement, but never visited a new one in between
+			Location kPreviousLoc = PreviousLocation.GetLocation()
+			Location kNewLoc = LatestLocation.GetLocation()
+			Bool bEnteringWorkshopLocation = false
+			Bool bLeavingWorkshopLocation = false
+			WorkshopScript currentWorkshop = None
+			
+			if(kNewLoc != None)
+				if(kNewLoc.HasKeyword(LocationTypeWorkshop))
+					bEnteringWorkshopLocation = true
+					currentWorkshop = WorkshopParent.GetWorkshopFromLocation(PlayerRef.GetCurrentLocation())
 					
-				;Debug.MessageBox("WSFW_Main sending PlayerEnteredSettlement event")
-				SendCustomEvent("PlayerEnteredSettlement", kArgs)
-
-				bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
+					if(F4SEManager.IsF4SERunning && Setting_AutoRepairPowerGrids.GetValueInt() == 1)
+						if(currentWorkshop.GetParentCell().IsLoaded())
+							F4SEManager.WSFWID_CheckAndFixPowerGrid(currentWorkshop, abFixAndScan = true, abResetIfFixFails = Setting_AutoResetCorruptPowerGrid.GetValueInt() as Bool)
+						else
+							RegisterForRemoteEvent(currentWorkshop, "OnCellLoad")
+						endif
+					endif
+				endif
 			endif
-		endif
+
+			if(kPreviousLoc != None)
+				if(kPreviousLoc.HasKeyword(LocationTypeWorkshop))
+					bLeavingWorkshopLocation = true
+				endif
+			endif
+
+			if(bEnteringWorkshopLocation || bLeavingWorkshopLocation)
+				Var[] kArgs
+
+				; 1.0.4 - Added sanity check
+				if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+					; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
+					currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
+
+					if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+						currentWorkshop = None
+					else
+						if(currentWorkshop != None && currentWorkshop.myLocation != None)
+							; Player is in limbo area - it is not flagged as part of a specific location (likely just the overworld location - ie. Commonwealth) and so another LocationChange event isn't likely to fire - so instead we'll do a 5 second repeating loop to check if they returned to the location tagged part of the settlement or are out of the build area
+							StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
+
+							; Update Latest Location so the next change will correctly be aware the player was previously in a settlement
+							LatestLocation.ForceLocationTo(currentWorkshop.myLocation)
+						else
+							; Player is not in limbo area
+							CancelTimer(iTimerID_BuildableAreaCheck)
+						endif
+					endif
+				endif
+
+				WorkshopScript lastWorkshop = LastWorkshopAlias.GetRef() as WorkshopScript
+				Bool bCurrentWorkshopRefFound = true
+				if( ! currentWorkshop)
+					bCurrentWorkshopRefFound = false
+				endif
+
+				Bool bLastWorkshopRefFound = true
+				if( ! lastWorkshop)
+					bLastWorkshopRefFound = false
+				endif
+
+				if( ! bLastWorkshopRefFound && bCurrentWorkshopRefFound) ; This should only happen once, after which there will always be a lastWorkshop stored in the alias
+					LastWorkshopAlias.ForceRefTo(currentWorkshop)
+				endif
+
+				;Debug.Trace(">>>>>>>>>>>>>>>> bLastWorkshopRefFound: " + bLastWorkshopRefFound + ", kPreviousLoc: " + kPreviousLoc + ", kNewLoc: " + kNewLoc + ", lastWorkshop: " + lastWorkshop + ", currentWorkshop: " + currentWorkshop + ", bCurrentWorkshopRefFound: " + bCurrentWorkshopRefFound + ", bLastSettlementUnloaded: " + bLastSettlementUnloaded)
+				if(bLastWorkshopRefFound)
+					Bool bLastWorkshopLoaded = lastWorkshop.myLocation.IsLoaded()
+					kArgs = new Var[2]
+					kArgs[0] = lastWorkshop
+					kArgs[1] = bLastWorkshopLoaded ; Scripts can use this to determine if the player has actually left or is maybe just hanging out around the edge of the settlement
+
+					if(lastWorkshop != currentWorkshop && (bCurrentWorkshopRefFound || ! bLastSettlementUnloaded))
+						; Workshop changed or they are no longer in a settlement
+						if(bCurrentWorkshopRefFound)
+							; Changed settlement - update our lastWorkshop record to store the currentWorkshop
+							LastWorkshopAlias.ForceRefTo(currentWorkshop)
+						endif
+
+						if( ! bLastWorkshopLoaded)
+							; Our previous settlement is no longer loaded in memory
+							bLastSettlementUnloaded = true
+						endif
+
+						SendCustomEvent("PlayerExitedSettlement", kArgs)
+					else
+						; Player changed location but is still in same settlement - don't send event
+					endif
+				endif
+
+				if(bCurrentWorkshopRefFound && bEnteringWorkshopLocation)
+					; Workshop changed or previous settlement unloaded
+					kArgs = new Var[3]
+					kArgs[0] = currentWorkshop
+					kArgs[1] = lastWorkshop
+					kArgs[2] = bLastSettlementUnloaded ; If lastWorkshop == currentWorkshop && bLastSettlementUnloaded - it means the player traveled far enough to unload the last settlement, but never visited a new one in between
+						
+					;Debug.MessageBox("WSFW_Main sending PlayerEnteredSettlement event")
+					SendCustomEvent("PlayerEnteredSettlement", kArgs)
+
+					bLastSettlementUnloaded = false ; Since we've entered a settlement, the lastWorkshop is changing
+				endif
+			endif
 		endif
 	elseif(aiTimerID == iTimerID_BuildableAreaCheck)
 		WorkshopScript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
@@ -379,6 +378,7 @@ Event OnTimer(Int aiTimerID)
 			kWaitingForSettlementExit = none
 		else
 			 ; restart the build area timer
+			kInBuildableAreaWorkshop = kWaitingForSettlementExit
 			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
 		endif
 	endif
@@ -612,6 +612,14 @@ Function StartPlayerExitedSettlementWait(workshopscript akWaitWorkshop)
 	kWaitingForSettlementExit = akWaitWorkshop
 	Self.StartTimer(fTimerLength_WaitToSendExitEvent, iTimerID_WaitToSendExitEvent)
 EndFunction
+
+ ; Part of CBRGamer code change
+Function CancelBuildAreaCheck()
+	CancelTimer(iTimerID_BuildableAreaCheckForEntry)
+	CancelTimer(iTimerID_BuildableAreaCheckForExit)
+	kInBuildableAreaWorkshop = None
+EndFunction
+
 
 Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
