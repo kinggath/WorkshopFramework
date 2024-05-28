@@ -453,19 +453,19 @@ Function RunCode()
 			; switch SetValue to Mod in an attempt to prevent race conditions setting these to a negative value.
 			if(bApplyDrawCount)
 				Float fItemDraws = kResult.GetValue(WorkshopCurrentDraws)
-				
-				if(fItemDraws > 0)
-					Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
-					kWorkshopRef.Mod(WorkshopCurrentDraws, (fCurrentDraws + fItemDraws))
+				Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
+					
+				if(fItemDraws > 0.0 && fCurrentDraws + fItemDraws > 0.0)
+					kWorkshopRef.Mod(WorkshopCurrentDraws, (fItemDraws))
 				endif
 			endif
 			
 			if(bApplyTriCount)
 				Float fItemTris = kResult.GetValue(WorkshopCurrentTriangles)
-				
-				if(fItemTris > 0)
-					Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
-					kWorkshopRef.Mod(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
+				Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
+					
+				if(fItemTris > 0.0 && fCurrentTris + fItemTris > 0.0)
+					kWorkshopRef.Mod(WorkshopCurrentTriangles, (fItemTris))
 				endif
 			endif
 			
