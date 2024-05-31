@@ -382,6 +382,14 @@ Bool Function _ObjectNeedsPersistence( ObjectReference akREFR )
     If  ( akREFR.IsDeleted() )
         Return False
     EndIf
+	
+	; 2.4.0 Check for dead actors not linked to a workshop (linked actors are likely turrets)
+	Actor asActor = akREFR as Actor
+	if(asActor != None && asActor.IsDead())
+		if(asActor.GetLinkedRef(kKYWD_WorkshopItemKeyword) == None)
+			Return False
+		endif
+	endif
 
     ;; Some check are against the base object
     Form lkBaseObject = akREFR.GetBaseObject()

@@ -224,7 +224,8 @@ Event WorkshopFramework:Library:ThreadRunner.OnThreadCompleted(WorkshopFramework
 			kThreadRef.StartTimer(1.0)
 		endif
 		
-		if(iCallbackTrackingIndex >= 0)
+		; v2.3.20 - Add a check to prevent accessing a none var.
+		if(iCallbackTrackingIndex >= 0 && LayoutBuildTracking != None && LayoutBuildTracking.Length > iCallbackTrackingIndex)
 			LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived += 1
 		
 			ModTrace("      PlaceObjectCallback -- Received: " + LayoutBuildTracking[iCallbackTrackingIndex].iCallbacksReceived + ", Awaiting: " + LayoutBuildTracking[iCallbackTrackingIndex].iAwaitingCallbacks)

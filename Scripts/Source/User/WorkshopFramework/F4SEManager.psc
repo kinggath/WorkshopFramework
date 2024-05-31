@@ -103,7 +103,7 @@ EndFunction
 
 Function F4SERunningCheck()
 	bIsF4SERunning = false
-	
+		
 	if(F4SE.GetVersion() > 0 || F4SE.GetVersionMinor() > 0)
 		bIsF4SERunning = true
 		iVersion_Major = F4SE.GetVersion()

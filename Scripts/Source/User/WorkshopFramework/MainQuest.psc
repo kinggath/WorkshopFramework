@@ -127,6 +127,8 @@ Bool Property bCurrentSettlementNotSetYet = true Auto Hidden ; will be changed t
 ; ---------------------------------------------
 
 workshopscript kCurrentSettlement = none ; will be set when the enter event is triggered and cleared when the exit event is triggered.
+location kCurrentSettlementLocation = none ; will be set when the player enters a settlment location and cleared when leaving a settlement location
+
 workshopscript kWaitingForSettlementExit = none  ; stores the workshop of a settlement that is waiting for the exit timer to complete before PlayerExitedSettlement is sent
 workshopscript kInBuildableAreaWorkshop = none ; stores the workshop of the settlement being checked for buildable area before triggering enter or exit events
 
@@ -179,9 +181,8 @@ Event OnTimer(Int aiTimerID)
 			if(leavingWorkshop != none)
 				 ; don't trigger an exit event if the corresponding enter event hasn't triggered (unless this is the first time using the changed code)
 				if(kCurrentSettlement != none || bCurrentSettlementNotSetYet)
-					 ; Cancel any enter build area timer, as we will not be sending that entered settlement function
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForEntry)
-					kInBuildableAreaWorkshop = none
+					 ; Cancel any enter build area check, as we will not be sending that entered settlement function
+					CancelBuildAreaCheck()
 					
 					 ; check to see if the player is still in the buildable area of that workshop
 					if(PlayerRef.IsWithinBuildableArea(leavingWorkshop))
@@ -212,9 +213,8 @@ Event OnTimer(Int aiTimerID)
 				if(kCurrentSettlement != none && kCurrentSettlement != enteringWorkshop)
 					SendPlayerExitedSettlementEvent(kCurrentSettlement)
 				else
-					 ; cancel any build area for exit timer (this is done automatically in SendPlayerExitedSettlementEvent if that was run instead
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForExit)
-					kInBuildableAreaWorkshop = none
+					 ; cancel any build area check
+					CancelBuildAreaCheck()
 				endif
 				
 				 ; do not trigger the enter event if it was already triggered previously and the exit event has not been triggered
@@ -379,6 +379,7 @@ Event OnTimer(Int aiTimerID)
 			kWaitingForSettlementExit = none
 		else
 			 ; restart the build area timer
+			kInBuildableAreaWorkshop = kWaitingForSettlementExit
 			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
 		endif
 	endif
@@ -612,6 +613,14 @@ Function StartPlayerExitedSettlementWait(workshopscript akWaitWorkshop)
 	kWaitingForSettlementExit = akWaitWorkshop
 	Self.StartTimer(fTimerLength_WaitToSendExitEvent, iTimerID_WaitToSendExitEvent)
 EndFunction
+
+ ; Part of CBRGamer code change
+Function CancelBuildAreaCheck()
+	CancelTimer(iTimerID_BuildableAreaCheckForEntry)
+	CancelTimer(iTimerID_BuildableAreaCheckForExit)
+	kInBuildableAreaWorkshop = None
+EndFunction
+
 
 Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
