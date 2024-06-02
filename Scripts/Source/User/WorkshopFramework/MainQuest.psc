@@ -808,12 +808,14 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
     ; if we can't know the real value, at least assume something which shouldn't break the system
 	if(defaultCurTris <= 0.0)
 		defaultCurTris = 1.0
-		akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
+		; we already checked AV on L794
+		; akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
 	endif
 
     if(defaultCurDraws <= 0.0)
         defaultCurDraws = 1.0
-		akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
+		; we already checked AV on L789
+		; akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
     endif
 	
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
