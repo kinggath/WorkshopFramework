@@ -127,6 +127,8 @@ Bool Property bCurrentSettlementNotSetYet = true Auto Hidden ; will be changed t
 ; ---------------------------------------------
 
 workshopscript kCurrentSettlement = none ; will be set when the enter event is triggered and cleared when the exit event is triggered.
+location kCurrentSettlementLocation = none ; will be set when the player enters a settlment location and cleared when leaving a settlement location
+
 workshopscript kWaitingForSettlementExit = none  ; stores the workshop of a settlement that is waiting for the exit timer to complete before PlayerExitedSettlement is sent
 workshopscript kInBuildableAreaWorkshop = none ; stores the workshop of the settlement being checked for buildable area before triggering enter or exit events
 
@@ -179,9 +181,8 @@ Event OnTimer(Int aiTimerID)
 			if(leavingWorkshop != none)
 				 ; don't trigger an exit event if the corresponding enter event hasn't triggered (unless this is the first time using the changed code)
 				if(kCurrentSettlement != none || bCurrentSettlementNotSetYet)
-					 ; Cancel any enter build area timer, as we will not be sending that entered settlement function
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForEntry)
-					kInBuildableAreaWorkshop = none
+					 ; Cancel any enter build area check, as we will not be sending that entered settlement function
+					CancelBuildAreaCheck()
 					
 					 ; check to see if the player is still in the buildable area of that workshop
 					if(PlayerRef.IsWithinBuildableArea(leavingWorkshop))
@@ -212,9 +213,8 @@ Event OnTimer(Int aiTimerID)
 				if(kCurrentSettlement != none && kCurrentSettlement != enteringWorkshop)
 					SendPlayerExitedSettlementEvent(kCurrentSettlement)
 				else
-					 ; cancel any build area for exit timer (this is done automatically in SendPlayerExitedSettlementEvent if that was run instead
-					Self.CancelTimer(iTimerID_BuildableAreaCheckForExit)
-					kInBuildableAreaWorkshop = none
+					 ; cancel any build area check
+					CancelBuildAreaCheck()
 				endif
 				
 				 ; do not trigger the enter event if it was already triggered previously and the exit event has not been triggered
@@ -379,6 +379,7 @@ Event OnTimer(Int aiTimerID)
 			kWaitingForSettlementExit = none
 		else
 			 ; restart the build area timer
+			kInBuildableAreaWorkshop = kWaitingForSettlementExit
 			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
 		endif
 	endif
@@ -613,6 +614,14 @@ Function StartPlayerExitedSettlementWait(workshopscript akWaitWorkshop)
 	Self.StartTimer(fTimerLength_WaitToSendExitEvent, iTimerID_WaitToSendExitEvent)
 EndFunction
 
+ ; Part of CBRGamer code change
+Function CancelBuildAreaCheck()
+	CancelTimer(iTimerID_BuildableAreaCheckForEntry)
+	CancelTimer(iTimerID_BuildableAreaCheckForExit)
+	kInBuildableAreaWorkshop = None
+EndFunction
+
+
 Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
 	int i = 0
@@ -761,47 +770,60 @@ Function PresentPowerToolsMenu(WorkshopScript akWorkshopRef = None)
 EndFunction
 
 Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
-    float defaultMaxTris  = akWorkshopRef.MaxTriangles
-    float defaultMaxDraws = akWorkshopRef.MaxDraws
-
-    float defaultCurTris = akWorkshopRef.CurrentTriangles
-    float defaultCurDraws = akWorkshopRef.CurrentDraws
-	
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
 	ActorValue WorkshopCurrentDraws = WorkshopParent.WorkshopCurrentDraws
 	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
 
+	float defaultMaxTris  = akWorkshopRef.MaxTriangles
+    float defaultMaxDraws = akWorkshopRef.MaxDraws
+
+	float defaultCurTris = akWorkshopRef.CurrentTriangles
+	float defaultCurDraws = akWorkshopRef.CurrentDraws
+    
+	float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
+	float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
+	
+	; 2.4.0 - add current value check no matter if player adjusts or not.
+	; something allows WorkshopCurrentDraws to be set to a negative value.
+	if ( currentDraws <= 0.0 )
+		akWorkshopRef.SetValue(WorkshopCurrentDraws, 1.0)
+	endif
+	
+	if ( currentTris <= 0.0 )
+		akWorkshopRef.SetValue(WorkshopCurrentTriangles, 1.0)
+	endif
+	
 	; prevent division by zero: assume Sanctuary values
-	if(defaultMaxTris <= 0)
+	if(defaultMaxTris <= 0.0)
 		defaultMaxTris = 3000000
 	endif
 
-	if(defaultMaxDraws <= 0)
+	if(defaultMaxDraws <= 0.0)
 		defaultMaxDraws = 3000
 	endif
 
     ; if we can't know the real value, at least assume something which shouldn't break the system
-    if(defaultCurTris <= 0)
-        defaultCurTris = 1
+	if(defaultCurTris <= 0.0)
+		defaultCurTris = 1.0
 		akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
-    endif
+	endif
 
-    if(defaultCurDraws <= 0)
-        defaultCurDraws = 1
+    if(defaultCurDraws <= 0.0)
+        defaultCurDraws = 1.0
 		akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
     endif
 	
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 	
-	if(curMaxTris <= 0)
+	if(curMaxTris <= 0.0)
 		curMaxTris = defaultCurTris
 		
 		akWorkshopRef.setValue(WorkshopMaxTriangles, curMaxTris)
 	endif
 	
-	if(curMaxDraws <= 0)
+	if(curMaxDraws <= 0.0)
 		curMaxDraws = defaultCurDraws
 		
 		akWorkshopRef.setValue(WorkshopMaxDraws, curMaxDraws)
@@ -844,10 +866,6 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         ; +100%
         factor = 1.0
     endif
-    
-        
-    float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
-    float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
     
     if(currentDraws > defaultMaxDraws || currentTris > defaultMaxTris)
         ; use percentage of current maximum
