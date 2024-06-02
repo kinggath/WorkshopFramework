@@ -776,7 +776,7 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
 
 	float defaultMaxTris  = akWorkshopRef.MaxTriangles
-    float defaultMaxDraws = akWorkshopRef.MaxDraws
+	float defaultMaxDraws = akWorkshopRef.MaxDraws
 
 	float defaultCurTris = akWorkshopRef.CurrentTriangles
 	float defaultCurDraws = akWorkshopRef.CurrentDraws
@@ -787,11 +787,13 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 	; 2.4.0 - add current value check no matter if player adjusts or not.
 	; something allows WorkshopCurrentDraws to be set to a negative value.
 	if ( currentDraws <= 0.0 )
-		akWorkshopRef.SetValue(WorkshopCurrentDraws, 1.0)
+		currentDraws = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentDraws, currentDraws)
 	endif
 	
 	if ( currentTris <= 0.0 )
-		akWorkshopRef.SetValue(WorkshopCurrentTriangles, 1.0)
+		currentTris = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentTriangles, currentTris)
 	endif
 	
 	; prevent division by zero: assume Sanctuary values
