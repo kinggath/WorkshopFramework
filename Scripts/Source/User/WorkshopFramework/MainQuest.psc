@@ -770,47 +770,64 @@ Function PresentPowerToolsMenu(WorkshopScript akWorkshopRef = None)
 EndFunction
 
 Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
-    float defaultMaxTris  = akWorkshopRef.MaxTriangles
-    float defaultMaxDraws = akWorkshopRef.MaxDraws
-
-    float defaultCurTris = akWorkshopRef.CurrentTriangles
-    float defaultCurDraws = akWorkshopRef.CurrentDraws
-	
 	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
 	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
 	ActorValue WorkshopCurrentDraws = WorkshopParent.WorkshopCurrentDraws
 	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
 
+	float defaultMaxTris  = akWorkshopRef.MaxTriangles
+	float defaultMaxDraws = akWorkshopRef.MaxDraws
+
+	float defaultCurTris = akWorkshopRef.CurrentTriangles
+	float defaultCurDraws = akWorkshopRef.CurrentDraws
+    
+	float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
+	float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
+	
+	; 2.4.0 - add current value check no matter if player adjusts or not.
+	; something allows WorkshopCurrentDraws to be set to a negative value.
+	if ( currentDraws <= 0.0 )
+		currentDraws = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentDraws, currentDraws)
+	endif
+	
+	if ( currentTris <= 0.0 )
+		currentTris = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentTriangles, currentTris)
+	endif
+	
 	; prevent division by zero: assume Sanctuary values
-	if(defaultMaxTris <= 0)
+	if(defaultMaxTris <= 0.0)
 		defaultMaxTris = 3000000
 	endif
 
-	if(defaultMaxDraws <= 0)
+	if(defaultMaxDraws <= 0.0)
 		defaultMaxDraws = 3000
 	endif
 
     ; if we can't know the real value, at least assume something which shouldn't break the system
-    if(defaultCurTris <= 0)
-        defaultCurTris = 1
-		akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
-    endif
+	if(defaultCurTris <= 0.0)
+		defaultCurTris = 1.0
+		; we already checked AV on L794
+		; akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
+	endif
 
-    if(defaultCurDraws <= 0)
-        defaultCurDraws = 1
-		akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
+    if(defaultCurDraws <= 0.0)
+        defaultCurDraws = 1.0
+		; we already checked AV on L789
+		; akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
     endif
 	
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
 	
-	if(curMaxTris <= 0)
+	if(curMaxTris <= 0.0)
 		curMaxTris = defaultCurTris
 		
 		akWorkshopRef.setValue(WorkshopMaxTriangles, curMaxTris)
 	endif
 	
-	if(curMaxDraws <= 0)
+	if(curMaxDraws <= 0.0)
 		curMaxDraws = defaultCurDraws
 		
 		akWorkshopRef.setValue(WorkshopMaxDraws, curMaxDraws)
@@ -853,10 +870,6 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         ; +100%
         factor = 1.0
     endif
-    
-        
-    float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
-    float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
     
     if(currentDraws > defaultMaxDraws || currentTris > defaultMaxTris)
         ; use percentage of current maximum

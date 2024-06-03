@@ -450,21 +450,24 @@ Function RunCode()
 				endWhile
 			endif
 			
+			; 2.4.0 - add check to prevent setting these to a negative value.
 			if(bApplyDrawCount)
-				Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
 				Float fItemDraws = kResult.GetValue(WorkshopCurrentDraws)
-				
-				if(fItemDraws > 0)
-					kWorkshopRef.SetValue(WorkshopCurrentDraws, (fCurrentDraws + fItemDraws))
+				if(fItemDraws > 0.0)
+					Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws) + fItemDraws
+					if (fCurrentDraws > 0.0)
+						kWorkshopRef.SetValue(WorkshopCurrentDraws, (fCurrentDraws)
+					endif
 				endif
 			endif
 			
 			if(bApplyTriCount)
-				Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
 				Float fItemTris = kResult.GetValue(WorkshopCurrentTriangles)
-				
-				if(fItemTris > 0)
-					kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
+				if(fItemTris > 0.0)
+					Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles) + fItemTris
+					if (fCurrentTris > 0.0)
+						kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris))
+					endif
 				endif
 			endif
 			
