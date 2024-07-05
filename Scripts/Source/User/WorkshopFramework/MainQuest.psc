@@ -62,6 +62,12 @@ Group Controllers
 	WorkshopFramework:NPCManager Property NPCManager Auto Const Mandatory
 EndGroup
 
+Group AVs
+	ActorValue Property WorkshopMaxTriangles Auto Const Mandatory
+	ActorValue Property WorkshopMaxDraws Auto Const Mandatory
+	ActorValue Property WorkshopCurrentDraws Auto Const Mandatory
+	ActorValue Property WorkshopCurrentTriangles Auto Const Mandatory
+EndGroup
 
 Group Globals
 	GlobalVariable Property Setting_WorkshopTutorialsEnabled Auto Const Mandatory
@@ -769,17 +775,27 @@ Function PresentPowerToolsMenu(WorkshopScript akWorkshopRef = None)
 	endif
 EndFunction
 
-Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
+Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)	
     float defaultMaxTris  = akWorkshopRef.MaxTriangles
     float defaultMaxDraws = akWorkshopRef.MaxDraws
 
     float defaultCurTris = akWorkshopRef.CurrentTriangles
     float defaultCurDraws = akWorkshopRef.CurrentDraws
 	
-	ActorValue WorkshopMaxTriangles = WorkshopParent.WorkshopMaxTriangles
-	ActorValue WorkshopMaxDraws = WorkshopParent.WorkshopMaxDraws
-	ActorValue WorkshopCurrentDraws = WorkshopParent.WorkshopCurrentDraws
-	ActorValue WorkshopCurrentTriangles = WorkshopParent.WorkshopCurrentTriangles
+	float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
+	float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)	
+	
+	; 2.4.1 - add current value check no matter if player adjusts or not.
+	; something allows WorkshopCurrentDraws to be set to a negative value.
+	if(currentDraws <= 0.0)
+		currentDraws = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentDraws, currentDraws)
+	endif
+
+	if(currentTris <= 0.0)
+		currentTris = 1.0
+		akWorkshopRef.SetValue(WorkshopCurrentTriangles, currentTris)
+	endif
 
 	; prevent division by zero: assume Sanctuary values
 	if(defaultMaxTris <= 0)
@@ -789,17 +805,6 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
 	if(defaultMaxDraws <= 0)
 		defaultMaxDraws = 3000
 	endif
-
-    ; if we can't know the real value, at least assume something which shouldn't break the system
-    if(defaultCurTris <= 0)
-        defaultCurTris = 1
-		akWorkshopRef.SetValue(WorkshopCurrentTriangles, defaultCurDraws)
-    endif
-
-    if(defaultCurDraws <= 0)
-        defaultCurDraws = 1
-		akWorkshopRef.SetValue(WorkshopCurrentDraws, defaultCurDraws)
-    endif
 	
     float curMaxTris  = akWorkshopRef.getValue(WorkshopMaxTriangles)
     float curMaxDraws = akWorkshopRef.getValue(WorkshopMaxDraws)
@@ -854,17 +859,14 @@ Function PresentIncreaseLimitsMenu(WorkshopScript akWorkshopRef)
         factor = 1.0
     endif
     
-        
-    float currentDraws = akWorkshopRef.getValue(WorkshopCurrentDraws)
-    float currentTris  = akWorkshopRef.getValue(WorkshopCurrentTriangles)
     
     if(currentDraws > defaultMaxDraws || currentTris > defaultMaxTris)
         ; use percentage of current maximum
-        akWorkshopRef.SetValue(WorkshopMaxTriangles,     curMaxTris  + Math.floor(curMaxTris * factor))
+        akWorkshopRef.SetValue(WorkshopMaxTriangles, curMaxTris  + Math.floor(curMaxTris * factor))
         akWorkshopRef.SetValue(WorkshopMaxDraws, curMaxDraws + Math.floor(curMaxDraws * factor))
     else
         ; use percentage of default maximum
-        akWorkshopRef.SetValue(WorkshopMaxTriangles,     curMaxTris  + Math.floor(defaultMaxTris * factor))
+        akWorkshopRef.SetValue(WorkshopMaxTriangles, curMaxTris  + Math.floor(defaultMaxTris * factor))
         akWorkshopRef.SetValue(WorkshopMaxDraws, curMaxDraws + Math.floor(defaultMaxDraws * factor))
     endif
 EndFunction

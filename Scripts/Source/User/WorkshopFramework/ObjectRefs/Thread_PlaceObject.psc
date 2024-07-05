@@ -451,20 +451,30 @@ Function RunCode()
 			endif
 			
 			if(bApplyDrawCount)
-				Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
 				Float fItemDraws = kResult.GetValue(WorkshopCurrentDraws)
 				
 				if(fItemDraws > 0)
-					kWorkshopRef.SetValue(WorkshopCurrentDraws, (fCurrentDraws + fItemDraws))
+					Float fCurrentDraws = kWorkshopRef.GetValue(WorkshopCurrentDraws)
+					
+					if(fCurrentDraws + fItemDraws > 0)
+						kWorkshopRef.SetValue(WorkshopCurrentDraws, (fCurrentDraws + fItemDraws))
+					else
+						kWorkshopRef.SetValue(WorkshopCurrentDraws, 1.0)
+					endif
 				endif
 			endif
 			
 			if(bApplyTriCount)
-				Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
 				Float fItemTris = kResult.GetValue(WorkshopCurrentTriangles)
 				
 				if(fItemTris > 0)
-					kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
+					Float fCurrentTris = kWorkshopRef.GetValue(WorkshopCurrentTriangles)
+					
+					if(fCurrentTris + fItemTris > 0)
+						kWorkshopRef.SetValue(WorkshopCurrentTriangles, (fCurrentTris + fItemTris))
+					else
+						kWorkshopRef.SetValue(WorkshopCurrentTriangles, 1.0)
+					endif
 				endif
 			endif
 			
