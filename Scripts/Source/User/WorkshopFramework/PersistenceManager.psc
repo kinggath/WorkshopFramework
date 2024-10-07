@@ -14,8 +14,13 @@ EndFunction
 
 
 
+
 Import WorkshopFramework:Library:ObjectRefs
 Import WorkshopFramework:Library:UtilityFunctions
+Import WorkshopFramework:GoE_Reflection
+
+
+
 
 ;/
     ===========================================================
@@ -55,7 +60,7 @@ Function __CommonInit()
     
     ;; Take the appropriate action
     __UpdatePersistenceState()
-
+    
 EndFunction
 
 
@@ -149,6 +154,13 @@ Function __UpdatePersistenceState()
         
         ;; Delete the shadow link holder
         If( kREFR_PersistentObjects != None )
+            ;; Unlink everything linked to it first, as a precaution
+            ObjectReference[] lkLinks = kREFR_PersistentObjects.GetLinkedRefChildren( kKYWD_PersistentObject )
+            liIndex = lkLinks.Length
+            While( liIndex > 0 )
+                liIndex -= 1
+                lkLinks[ liIndex ].SetLinkedRef( None, kKYWD_PersistentObject )
+            EndWhile
             kREFR_PersistentObjects.Delete()
             kREFR_PersistentObjects = None
         EndIf
@@ -162,6 +174,8 @@ Function __UpdatePersistenceState()
             kAlias_PersistenceQueues[ liIndex ].RemoveAll()
         EndWhile
 
+        ;; Unblock access to the queue should the user re-enable the Manager
+        __bQueueBlock = False
     EndIf
 
 EndFunction
@@ -770,6 +784,37 @@ Int                                 __iQueueBufferActive = 0
 Float                               __fTimerHours_ScanQueue = 1.0                   Const ;; Trigger in one game hour
 
 
+;; Remove the Do Not Persist and add the Must Persist Keywords to the Object Reference, then queue it for a rescan
+Function ForcePersistObject( ObjectReference akReference, Bool abRequeue = True )
+    If( akReference == None )
+        Return
+    EndIf
+    Keyword lkMustPersist  = Game.GetFormFromFile( 0x0004AF68, "Fallout4.esm" ) As Keyword
+    Keyword lkDoNotPersist = Game.GetFormFromFile( 0x0010805B, "Fallout4.esm" ) As Keyword
+    akReference.RemoveKeyword( lkDoNotPersist ) ;; Try to remove, may not work
+    akReference.AddKeyword( lkMustPersist )     ;; Force add, will work
+    If( abRequeue )
+        QueueObjectPersistence( akReference )   ;; Add it to the scan queue
+    EndIf
+EndFunction
+
+
+;; Remove the Must Persist and add the Do Not Persist Keywords to the Object Reference, then queue it for a rescan
+Function ForceUnpersistObject( ObjectReference akReference, Bool abRequeue = True )
+    If( akReference == None )
+        Return
+    EndIf
+    Keyword lkMustPersist  = Game.GetFormFromFile( 0x0004AF68, "Fallout4.esm" ) As Keyword
+    Keyword lkDoNotPersist = Game.GetFormFromFile( 0x0010805B, "Fallout4.esm" ) As Keyword
+    akReference.RemoveKeyword( lkMustPersist )  ;; Try to remove, may not work
+    akReference.AddKeyword( lkDoNotPersist )    ;; Force add, will work
+    If( abRequeue )
+        QueueObjectPersistence( akReference )   ;; Add it to the scan queue
+    EndIf
+EndFunction
+
+
+
 
 ;; Immediately scan an array of objects and persist the ones that need it
 Int Function PersistObjectArray(  \
@@ -841,17 +886,23 @@ Int Function QueueObjectArray( ObjectReference[] akObjects )
         Return SCHEDULE_NO_WORK
     EndIf
     
-    Int liResult = SCHEDULE_SCHEDULED
+    ;; Block the queues from swapping while we add to it
+    If( !__BlockQueue() )
+        Return SCHEDULE_TOO_BUSY
+    EndIf
+    
+    RefCollectionAlias lkAlias = kAlias_PersistenceQueues[ __iQueueBufferActive ]
     
     While( liObjects > 0 )
         liObjects -= 1
-        Int liQueued = QueueObjectPersistence( akObjects[ liObjects ] )
-        If( liQueued != SCHEDULE_SCHEDULED )
-            liResult = liQueued
-        EndIf
+        lkAlias.AddRef( akObjects[ liObjects ] )
     EndWhile
     
-    Return liResult
+    ;; Start the timer for the queue scan
+    __ScheduleQueuedPersistenceScanning()
+    
+    __bQueueBlock = False
+    Return SCHEDULE_SCHEDULED
 EndFunction
 
 
@@ -1107,7 +1158,8 @@ EndEvent
 Event ObjectReference.OnWorkshopObjectDestroyed( ObjectReference akSender, ObjectReference akReference )
     ;;Debug.TraceUser( LogFile(), Self + " :: ObjectReference.OnWorkshopObjectDestroyed()" )
     If( akReference != None )
-        QueueObjectPersistence( akReference )
+        ;; Forcibly set the destroyed object to not persist
+        ForceUnpersistObject( akReference )
     EndIf
 EndEvent
 
@@ -1134,7 +1186,8 @@ Event WorkshopParentScript.WorkshopObjectDestroyed( WorkshopParentScript akSende
     ;;Debug.TraceUser( LogFile(), Self + " :: WorkshopParentScript.WorkshopObjectDestroyed()" )
     ObjectReference lkREFR = akArgs[ 0 ] As ObjectReference
     If( lkREFR != None )
-        QueueObjectPersistence( lkREFR )
+        ;; Forcibly set the destroyed object to not persist
+        ForceUnpersistObject( lkREFR )
     EndIf
 EndEvent
 
@@ -1255,6 +1308,46 @@ EndEvent
 /;
 
 
+;; Test a single reference and write the result to the log file
+;; cqf WSFW_PersistenceManager TestObjectPersistence RefID
+Function TestObjectPersistence( ObjectReference akREFR )
+    String lsDump = Self + " :: TestObjectPersistence()\n\takREFR = " + akREFR
+    
+    If( akREFR != None )
+        
+        Form lkBaseObject = akREFR.GetBaseObject()
+        If( lkBaseObject != None )
+            lsDump += "\n\tlkBaseObject = " + lkBaseObject
+        EndIf
+        
+        ObjectReference lkWorkshop = akREFR.GetLinkedRef( kKYWD_WorkshopItemKeyword )
+        If( lkWorkshop != None )
+            lsDump += "\n\tlkWorkshop = " + lkWorkshop
+        EndIf
+        
+        ActorValue[] lkActorValues  = Get_PersistReference_ActorValues()
+        Form[]       lkBaseObjects  = Get_PersistReference_BaseObjects()
+        Keyword[]    lkKeywords     = Get_PersistReference_Keywords()
+        Keyword      lkMustPersist  = Game.GetFormFromFile( 0x0004AF68, "Fallout4.esm" ) As Keyword
+        Keyword      lkDoNotPersist = Game.GetFormFromFile( 0x0010805B, "Fallout4.esm" ) As Keyword
+        ObjectReference lkReference = Game.GetFormFromFile( 0x00004CEA, "WorkshopFramework.esm" ) As ObjectReference ;; The WSFW spawn marker shall be our reference object for AVIFs
+        Bool lbGoE_Debug = GoE_VersionTest( 184 )
+        
+        lsDump = lsDump + __FindReasonForPersistence( akREFR, lkActorValues, lkBaseObjects, lkKeywords, lkMustPersist, lkDoNotPersist, lkReference )
+        If( lbGoE_Debug )
+            lsDump = lsDump + __ParsePersistentPromoters( akREFR )
+        EndIf
+        
+    EndIf
+    
+    Debug.TraceUser( LogFile(), lsDump )
+EndFunction
+
+
+
+
+;; Very heavy output, may take a while to complete
+;; cqf WSFW_PersistenceManager DumpPersistedRefs
 Function DumpPersistedRefs()
 
     String lsLogFile = LogFile()
@@ -1277,6 +1370,7 @@ Function DumpPersistedRefs()
     Keyword      lkMustPersist  = Game.GetFormFromFile( 0x0004AF68, "Fallout4.esm" ) As Keyword
     Keyword      lkDoNotPersist = Game.GetFormFromFile( 0x0010805B, "Fallout4.esm" ) As Keyword
     ObjectReference lkReference = Game.GetFormFromFile( 0x00004CEA, "WorkshopFramework.esm" ) As ObjectReference ;; The WSFW spawn marker shall be our reference object for AVIFs
+    Bool lbGoE_Debug = GoE_VersionTest( 184 )
 
     ;; This will work backwards to try and stay ahead of any cleaning that may be running at the same time
     While( liIndex > 0 )
@@ -1298,6 +1392,9 @@ Function DumpPersistedRefs()
             EndIf
             
             lsDump = lsDump + __FindReasonForPersistence( lkObject, lkActorValues, lkBaseObjects, lkKeywords, lkMustPersist, lkDoNotPersist, lkReference )
+            If( lbGoE_Debug )
+                lsDump = lsDump + __ParsePersistentPromoters( lkObject )
+            EndIf
             
         EndIf
         
@@ -1377,10 +1474,11 @@ String Function __FindReasonForPersistence( \
     EndIf
     
     ;; Super fast test for WorkshopObjectScript
-    WorkshopObjectScript lkWSObject = akREFR As WorkshopObjectScript
-    If( lkWSObject != None )
-        Return __GenerateReasonString( True, "WorkshopObjectScript" )
-    EndIf
+    ;; 04/10/2024 Not all WorkshopObjectScript objects need persisting and those that do will have other indicators (keywords, actor values)
+    ;;WorkshopObjectScript lkWSObject = akREFR As WorkshopObjectScript
+    ;;If( lkWSObject != None )
+    ;;    Return __GenerateReasonString( True, "WorkshopObjectScript" )
+    ;;EndIf
     
     ;; Fast test the base object being in the array
     If( __BaseObjectRequiresPersistence( lkBaseObject, akBaseObjects ) )
@@ -1402,6 +1500,27 @@ String Function __FindReasonForPersistence( \
     ;; After all that, we don't need to be persisted
     Return __GenerateReasonString( False, "No persistence required" )
 EndFunction
+
+String Function __ParsePersistentPromoters( ObjectReference akReference )
+    If( akReference == None )
+        Return ""
+    EndIf
+    String lsResult = ""
+    
+    String[] lsReasons = GoE_GetPersistentPromoters( akReference, True, True )
+    Int liCount = lsReasons.Length
+    If( liCount > 0 )
+        Int liIndex = 0
+        lsResult = "\n\tGarden of Eden :: GetPersistentPromoters()"
+        While( liIndex < liCount )
+            lsResult = lsResult + "\n\t\t" + lsReasons[ liIndex ]
+            liIndex += 1
+        EndWhile
+    EndIf
+    
+    Return lsResult
+EndFunction
+
 
 
 
