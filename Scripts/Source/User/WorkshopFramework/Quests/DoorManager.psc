@@ -55,6 +55,8 @@ Group Keywords
 	Keyword Property AutoCloseUnlinkedDoor Auto Const Mandatory
 	{ Vanilla LinkTerminalDoor keyword so doors not connected via WorkshopItemKeyword can be picked up by our system. (Not directly used in this script, but held so other mods can fetch the property for applying the keyword at runtime.) }
 	Keyword Property EventKeyword_DoorFinder Auto Const Mandatory
+	
+	Keyword Property RecentDoorRegistrationCompleteTag Auto Const Mandatory	
 EndGroup
 
 ; ------------------------------------------
@@ -83,9 +85,6 @@ ObjectReference[] Property DoorsToClose04 Auto Hidden ; Up to 512
 Bool bAllDoorTogglingInProgress = false
 Bool bOpeningAllDoors = false
 
-Bool[] bDoorRegistrationInProgress
-Bool[] bDoorRegistrationCompleted
-
 ; ------------------------------------------
 ; Events
 ; ------------------------------------------
@@ -96,17 +95,10 @@ Event OnTimer(Int aiTimerID)
 EndEvent
 
 
-Event OnTimerGameTime(Int aiTimerID)
-	if(aiTimerID == iTimerID_CleanupDoorRegistration)
-		bDoorRegistrationCompleted = new Bool[128] ; Reset so cleanup will occur upon arrival at a settlement
-		
-		StartCleanupDoorRegistrationTimer()
-	endif
-EndEvent
-
-
 Event ObjectReference.OnOpen(ObjectReference akRef, ObjectReference akOpenedBy)
 	if(Setting_DoorManagement.GetValue() == 0 || (akOpenedBy == PlayerRef && Setting_AutoCloseDoorsOpenedByPlayer.GetValue() == 0) || (akOpenedBy != PlayerRef && Setting_AutoCloseDoorsOpenedByNPCs.GetValue() == 0) || akRef.HasKeyword(DoNotAutoCloseMe))
+		ModTrace("[DoorManager] Door " + akRef + " open event received, but settings dictate it should not autoclose.")
+		
 		return
 	endif
 	
@@ -138,6 +130,8 @@ Event WorkshopFramework:MainQuest.PlayerEnteredSettlement(WorkshopFramework:Main
 	Bool bPreviouslyUnloaded = akArgs[1] as Bool
 	
 	if(bPreviouslyUnloaded)
+			; If settlement had previously unloaded, let's remove the keyword so the check will run again
+		kWorkshopRef.RemoveKeyword(RecentDoorRegistrationCompleteTag)
 		HandlePlayerEnteredSettlement(kWorkshopRef)
 	endif
 EndEvent
@@ -152,6 +146,9 @@ Event WorkshopFramework:SettlementLayoutManager.SettlementLayoutBuilt(WorkshopFr
 	WorkshopScript thisWorkshop = akArgs[0] as WorkshopScript
 	
 	if(thisWorkshop != None)
+		; Allow new doors to be registered
+		thisWorkshop.RemoveKeyword(RecentDoorRegistrationCompleteTag)
+		
 		RegisterAllDoors(thisWorkshop)
 	endif
 EndEvent
@@ -174,15 +171,9 @@ EndEvent
 ; Functions
 ; ------------------------------------------
 
-Function HandleQuestInit()
-	; Init arrays
-	bDoorRegistrationInProgress = new Bool[128]
-	bDoorRegistrationCompleted = new Bool[128]
-	
+Function HandleQuestInit()	
 	RegisterForEvents()
-	
-	StartCleanupDoorRegistrationTimer()
-	
+		
 	WorkshopScript kWorkshopRef = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 	
 	if(kWorkshopRef && kWorkshopRef.Is3dLoaded())
@@ -196,8 +187,7 @@ Function HandlePlayerEnteredSettlement(WorkshopScript akWorkshopRef)
 		return
 	endif
 	
-	int iWorkshopID = akWorkshopRef.GetWorkshopID()
-	if( ! bDoorRegistrationCompleted[iWorkshopID])
+	if( ! akWorkshopRef.HasKeyword(RecentDoorRegistrationCompleteTag))
 		RegisterAllDoors(akWorkshopRef)
 	endif
 	
@@ -210,11 +200,13 @@ EndFunction
 Function HandleGameLoaded()
 	RegisterForEvents()
 	
-	Float fCurrentGameTime = Utility.GetCurrentGameTime()
-	
-	if(fLastTimerStart_CleanupDoorRegistration < fCurrentGameTime - (fTimerLength_CleanupDoorRegistration/24.0))
-		StartCleanupDoorRegistrationTimer()
-	endif
+	; Make sure all door finder's correctly shut down
+	int iQuestIndex = 0
+	while(iQuestIndex < DoorFinders.Length)
+		DoorFinders[iQuestIndex].Stop()
+
+		iQuestIndex += 1
+	endWhile
 EndFunction
 
 
@@ -222,12 +214,6 @@ Function RegisterForEvents()
 	RegisterForCustomEvent(WSFW_Main, "PlayerEnteredSettlement")
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 	RegisterForCustomEvent(SettlementLayoutManager, "SettlementLayoutBuilt")
-EndFunction
-
-
-Function StartCleanupDoorRegistrationTimer()
-	fLastTimerStart_CleanupDoorRegistration = Utility.GetCurrentGameTime()
-	StartTimerGameTime(fTimerLength_CleanupDoorRegistration, iTimerID_CleanupDoorRegistration)
 EndFunction
 
 
@@ -374,8 +360,11 @@ EndFunction
 
 
 Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
+	ModTrace("[DoorManager] ToggleAllDoors(" + akWorkshopRef + ", abOpen = " + abOpen + ")")
 	if(bAllDoorTogglingInProgress)
 		if(bOpeningAllDoors == abOpen) ; Already processing request
+			ModTrace("    ToggleAllDoors request returning: bAllDoorTogglingInProgress = " + bAllDoorTogglingInProgress + ", bOpeningAllDoors = " + bOpeningAllDoors + ", abOpen = " + abOpen)
+			
 			return
 		else
 			int iWaitCount = 0
@@ -384,6 +373,7 @@ Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
 				Utility.Wait(1.0)
 				
 				if(iWaitCount > 10 && bAllDoorTogglingInProgress)
+					ModTrace("    ToggleAllDoors request returning: hit max wait count.")
 					return
 				endif
 			endWhile
@@ -396,22 +386,27 @@ Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
 	WorkshopFramework:Quests:DoorFinder DoorFinder = GetDoorFinder(akWorkshopRef)
 		
 	if(DoorFinder != None)
+		ModTrace("[DoorManager] ToggleAllDoors found DoorFinder quest " + DoorFinder + ".")
 		int i = 0
 		RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
 		
+		ModTrace("[DoorManager] bOpeningAllDoors = " + bOpeningAllDoors + ", found " + FoundDoors.GetCount() + " doors to toggle.")
 		while(i < FoundDoors.GetCount())
 			ObjectReference thisDoor = FoundDoors.GetAt(i)
 			if( ! thisDoor.IsDisabled())
 				if( ! abOpen)
 					if( ! thisDoor.HasKeyword(DoNotAutoCloseMe))
 						thisDoor.SetOpen(false)
+					else
+						ModTrace("     Door " + thisDoor + " has DoNotAutoCloseMe keyword. Skipping.")
 					endif
 				else
 					; Unregister temporarily to avoid a bunch of event spam
 					UnregisterDoor(thisDoor)
 					
 					thisDoor.SetOpen(true)
-					
+										
+					; Reregister for future events
 					RegisterDoor(thisDoor)
 				endif
 			endif
@@ -420,6 +415,8 @@ Function ToggleAllDoors(WorkshopScript akWorkshopRef, Bool abOpen = true)
 		endWhile
 		
 		DoorFinder.Stop()
+	else
+		ModTrace("[DoorManager] Failed to receive DoorFinder quest. Unable to toggle doors.")
 	endif
 	
 	bAllDoorTogglingInProgress = false	
@@ -428,19 +425,21 @@ EndFunction
 
 
 Function RegisterAllDoors(WorkshopScript akWorkshopRef)
+	ModTrace("[DoorManager] RegisterAllDoors("+ akWorkshopRef + ")")
 	if( ! akWorkshopRef)
 		return
 	endif
 	
-	int iWorkshopID = akWorkshopRef.GetWorkshopID()
-	if(bDoorRegistrationInProgress[iWorkshopID])
+	if(akWorkshopRef.HasKeyword(RecentDoorRegistrationCompleteTag))
+		ModTrace("[DoorManager] Registration already in progress or was completed recently for " + akWorkshopRef + ".")
 		return
 	endif
 	
-	bDoorRegistrationInProgress[iWorkshopID] = true
+	; Tag it so the registration doesn't run multiple times
+	akWorkshopRef.AddKeyword(RecentDoorRegistrationCompleteTag)
 	
 	WorkshopFramework:Quests:DoorFinder DoorFinder = GetDoorFinder(akWorkshopRef)
-		
+	ModTrace("[DoorManager] RegisterAllDoors found DoorFinder quest " + DoorFinder + ".")
 	if(DoorFinder != None)		
 		int i = 0
 		RefCollectionAlias FoundDoors = DoorFinder.SettlementDoors
@@ -469,10 +468,9 @@ Function RegisterAllDoors(WorkshopScript akWorkshopRef)
 		endWhile
 		
 		DoorFinder.Stop()
+	else
+		ModTrace("[DoorManager] Failed to find DoorFinder quest.")
 	endif
-	
-	bDoorRegistrationInProgress[iWorkshopID] = false
-	bDoorRegistrationCompleted[iWorkshopID] = true
 EndFunction
 
 
@@ -488,6 +486,7 @@ EndFunction
 
 
 WorkshopFramework:Quests:DoorFinder Function GetDoorFinder(WorkshopScript akWorkshopRef)
+	ModTrace("[DoorManager] GetDoorFinder(" + akWorkshopRef + ")")
 	if ( akWorkshopRef == none )
 		return none
 	endif
@@ -495,17 +494,29 @@ WorkshopFramework:Quests:DoorFinder Function GetDoorFinder(WorkshopScript akWork
 	; Use an event to find all doors linked to the ref
 	int iCallerID = Utility.RandomInt(0, 999999)
 	WorkshopFramework:Quests:DoorFinder DoorFinder = None
-
-	if ( EventKeyword_DoorFinder.SendStoryEventAndWait(akWorkshopRef.myLocation, aiValue1 = iCallerID) )
+	
+	ModTrace("[DoorManager] Calling EventKeyword_DoorFinder.SendStoryEventAndWait...")
+	if( EventKeyword_DoorFinder.SendStoryEventAndWait(akWorkshopRef.myLocation, aiValue1 = iCallerID) )
+		ModTrace("[DoorManager]    Event returned.")
+		
 		Utility.Wait(0.1) ; Give finder a moment to configure it's caller ID variable
 		int iQuestIndex = 0
+		ModTrace("     Searching for caller ID " + iCallerID)
 		while(iQuestIndex < DoorFinders.Length && DoorFinder == None)
+			if(DoorFinders[iQuestIndex].IsStarting())
+				while(DoorFinders[iQuestIndex].IsStarting())
+					Utility.Wait(0.1)
+				endWhile
+			endif
+			
 			if(DoorFinders[iQuestIndex].iCallerID == iCallerID)
 				DoorFinder = DoorFinders[iQuestIndex]
 			endif
 
 			iQuestIndex += 1
 		endWhile
+	else
+		ModTrace("[DoorManager]    SendStoryEventAndWait returned false.")
 	endif
 
 	return DoorFinder
@@ -519,7 +530,8 @@ Function ForceRegisterAllDoors() DebugOnly
 		return
 	endif
 
-	int iWorkshopID = kWorkshopRef.GetWorkshopID()
-	bDoorRegistrationInProgress[iWorkshopID] = false	; make sure this is false so we do not return early when calling RegisterAllDoors
+	; Remove the tag so RegisterAllDoors doesn't immediately return
+	kWorkshopRef.RemoveKeyword(RecentDoorRegistrationCompleteTag)
+	
 	RegisterAllDoors(kWorkshopRef)
 EndFunction

@@ -35,11 +35,11 @@ Group ImportantStuff
     
     Keyword             Property    kKYWD_MustPersist                               Auto Const Mandatory
     { Core keyword on the base object forcing engine level persistence.
-NOTE: MustPersist supercedes DoNotPersist }
+NOTE: DoNotPersist supersedes MustPersist }
     
     Keyword             Property    kKYWD_DoNotPersist                              Auto Const Mandatory
     { Keyword on the base object to ignore persistence.
-NOTE: MustPersist supercedes DoNotPersist }
+NOTE: DoNotPersist supersedes MustPersist }
     
     Keyword             Property    kKYWD_WorkshopItemKeyword                       Auto Const Mandatory
     { Fallout 4 keyword linking objects to workshops }
@@ -379,38 +379,37 @@ Bool Function _ObjectNeedsPersistence( ObjectReference akREFR )
     ;; Do fast fails...
     
     ;; Required test (native remote call) regardless of anything else
-    If  ( akREFR.IsDeleted() )
-        Return False
-    EndIf
-	
-	; 2.4.0 Check for dead actors not linked to a workshop (linked actors are likely turrets)
-	Actor asActor = akREFR as Actor
-	if(asActor != None && asActor.IsDead())
-		if(asActor.GetLinkedRef(kKYWD_WorkshopItemKeyword) == None)
-			Return False
-		endif
-	endif
-
-    ;; Some check are against the base object
-    Form lkBaseObject = akREFR.GetBaseObject()
-
-    ;; Engine level forced persistence
-    If( lkBaseObject.HasKeyword( kKYWD_MustPersist ) )\
-    ||( akREFR.HasKeyword( kKYWD_MustPersist ) )
-        Return True
-    EndIf
-
-    ;; Our override to prevent non-engine forced persistence
-    If( lkBaseObject.HasKeyword( kKYWD_DoNotPersist ) )\
-    ||( akREFR.HasKeyword( kKYWD_DoNotPersist ) )
+    If( akREFR.IsDeleted() )
         Return False
     EndIf
     
-    ;; Super fast test for WorkshopObjectScript
-    WorkshopObjectScript lkWSObject = akREFR As WorkshopObjectScript
-    If( lkWSObject != None )
+    ; 2.4.0 Check for dead actors not linked to a workshop (linked actors are likely turrets)
+    Actor lkActor = akREFR As Actor
+    If( lkActor != None )&&( lkActor.IsDead() )
+        If( lkActor.GetLinkedRef( kKYWD_WorkshopItemKeyword ) == None )
+            Return False
+        EndIf
+    EndIf
+    
+    ;; Our override to prevent non-engine forced persistence
+    If( akREFR.HasKeyword( kKYWD_DoNotPersist ) )
+        Return False
+    EndIf
+    
+    ;; Engine level forced persistence
+    If( akREFR.HasKeyword( kKYWD_MustPersist ) )
         Return True
     EndIf
+    
+    ;; Super fast test for WorkshopObjectScript
+    ;; 04/10/2024 Not all WorkshopObjectScript objects need persisting and those that do will have other indicators (keywords, actor values)
+    ;;WorkshopObjectScript lkWSObject = akREFR As WorkshopObjectScript
+    ;;If( lkWSObject != None )
+    ;;    Return True
+    ;;EndIf
+    
+    ;; Some check are against the base object
+    Form lkBaseObject = akREFR.GetBaseObject()
     
     ;; Fast test the base object being in the array
     If( _BaseObjectRequiresPersistence( lkBaseObject ) )
