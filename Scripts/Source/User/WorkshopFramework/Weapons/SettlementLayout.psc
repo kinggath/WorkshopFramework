@@ -18,6 +18,8 @@ import WorkshopFramework:Library:UtilityFunctions
 
 Float fExtraDataFlag_SkipWorkshopItemLink = 1.0 Const
 
+Int HIGH_INT = 9999999 Const
+
 ; Below were copied from SettlementLayoutManager and then converted to properties so extended classes can use them
 String Property sRestoreObjectCallbackID = "WSFW_RestoreObject" Auto Const 
 String Property sPlaceObjectCallbackID = "WSFW_PlaceObject" Auto Const 
@@ -175,364 +177,1224 @@ Int Function PlaceNonResourceObjects(WorkshopScript akWorkshopRef, Int aiCustomC
 EndFunction
 
 
-Int[] Function UpdateExtraDataIndexes(Int[] aiExtraDataIndexes = None, Int aiCurrentIndex = -1)
-	if(aiExtraDataIndexes == None)
-		aiExtraDataIndexes = new Int[25]
+Int iExtraDataIndex_NextObjectIndex = 0 Const
+Int iExtraDataIndex_Forms01_NextObjectIndex = 1 Const
+Int iExtraDataIndex_Forms01_ExtraDataArrayIndex = 2 Const
+Int iExtraDataIndex_Forms02_NextObjectIndex = 3 Const
+Int iExtraDataIndex_Forms02_ExtraDataArrayIndex = 4 Const
+Int iExtraDataIndex_Forms03_NextObjectIndex = 5 Const
+Int iExtraDataIndex_Forms03_ExtraDataArrayIndex = 6 Const
+Int iExtraDataIndex_Numbers01_NextObjectIndex = 7 Const
+Int iExtraDataIndex_Numbers01_ExtraDataArrayIndex = 8 Const
+Int iExtraDataIndex_Numbers02_NextObjectIndex = 9 Const
+Int iExtraDataIndex_Numbers02_ExtraDataArrayIndex = 10 Const
+Int iExtraDataIndex_Numbers03_NextObjectIndex = 11 Const
+Int iExtraDataIndex_Numbers03_ExtraDataArrayIndex = 12 Const
+Int iExtraDataIndex_Strings01_NextObjectIndex = 13 Const
+Int iExtraDataIndex_Strings01_ExtraDataArrayIndex = 14 Const
+Int iExtraDataIndex_Strings02_NextObjectIndex = 15 Const
+Int iExtraDataIndex_Strings02_ExtraDataArrayIndex = 16 Const
+Int iExtraDataIndex_Strings03_NextObjectIndex = 17 Const
+Int iExtraDataIndex_Strings03_ExtraDataArrayIndex = 18 Const
+Int iExtraDataIndex_Bools01_NextObjectIndex = 19 Const
+Int iExtraDataIndex_Bools01_ExtraDataArrayIndex = 20 Const
+Int iExtraDataIndex_Bools02_NextObjectIndex = 21 Const
+Int iExtraDataIndex_Bools02_ExtraDataArrayIndex = 22 Const
+Int iExtraDataIndex_Bools03_NextObjectIndex = 23 Const
+Int iExtraDataIndex_Bools03_ExtraDataArrayIndex = 24 Const
+
+Int iExtraDataValues_OutOfSequence = -1 Const
+Int iExtraDataValues_AllDistributed = -2 Const
+Int iExtraDataValues_NoExtraDataFound = -3 Const
+
+Function InitializeExtraDataIndexes(Int[] aiExtraDataIndexes)
+	if(ExtraData_Forms01 == None && ExtraData_Forms02 == None && ExtraData_Forms03 == None && ExtraData_Numbers01 == None && ExtraData_Numbers02 == None && ExtraData_Numbers03 == None && ExtraData_Strings01 == None && ExtraData_Strings02 == None && ExtraData_Strings03 == None && ExtraData_Bools01 == None && ExtraData_Bools02 == None && ExtraData_Bools03 == None)
+		aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iExtraDataValues_NoExtraDataFound
 		
-		int i = 1
-		while(i < aiExtraDataIndexes.Length)
-			; Alternate entries - the first will represent the object index found in extra data in the iIndex field, and the second will be the actual index from the extra data array it was found
-			if(Mod(i, 2) == 1)
-				aiExtraDataIndexes[i] = -1
-			else
-				aiExtraDataIndexes[i] = 0
+		return
+	endif
+	
+	int iFirstFoundObjectIndex = iExtraDataValues_OutOfSequence
+	Bool bExtraDataFound = false
+	
+	if(ExtraData_Forms01 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Forms01.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Forms01[i].iIndex < ExtraData_Forms01[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Forms01 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Forms01_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Forms01[i].iIndex <= iThisLowest)
+				if(ExtraData_Forms01[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Forms01 " + i + " is " + ExtraData_Forms01[i].iIndex)			
+				endif
+				
+				;Debug.MessageBox("Setting iThisLowest for ExtraData_Forms01 to " + ExtraData_Forms01[i].iIndex)
+				iThisLowest = ExtraData_Forms01[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Forms01_ExtraDataArrayIndex] = i
 			endif
 			
 			i += 1
 		endWhile
-	endif
-	
-	; Update called - we need to recalculate the lowest index
-	aiExtraDataIndexes[0] = 100000
-	
-	if(ExtraData_Forms01 != None && aiExtraDataIndexes[2] < ExtraData_Forms01.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex && aiExtraDataIndexes[2] < ExtraData_Forms01.Length - 1)
-				; The current iterator is already past the index we were at, so increment this extra data counter so in the next chunk we grab the next IndexMapped iIndex field for testing against
-				aiExtraDataIndexes[2] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			; Our extra data counter is still within our length - update the iIndex we're storing
-			aiExtraDataIndexes[1] = ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Forms02 != None && aiExtraDataIndexes[4] < ExtraData_Forms02.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex && aiExtraDataIndexes[4] < ExtraData_Forms02.Length - 1)
-				aiExtraDataIndexes[4] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[3] = ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Forms03 != None && aiExtraDataIndexes[6] < ExtraData_Forms03.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex && aiExtraDataIndexes[6] < ExtraData_Forms03.Length - 1)
-				aiExtraDataIndexes[6] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[5] = ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Numbers01 != None && aiExtraDataIndexes[8] < ExtraData_Numbers01.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex && aiExtraDataIndexes[8] < ExtraData_Numbers01.Length - 1)
-				aiExtraDataIndexes[8] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[7] = ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Numbers02 != None && aiExtraDataIndexes[10] < ExtraData_Numbers02.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex && aiExtraDataIndexes[10] < ExtraData_Numbers02.Length - 1)
-				aiExtraDataIndexes[10] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[9] = ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Numbers03 != None && aiExtraDataIndexes[12] < ExtraData_Numbers03.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex && aiExtraDataIndexes[12] < ExtraData_Numbers03.Length - 1)
-				aiExtraDataIndexes[12] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[11] = ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Strings01 != None && aiExtraDataIndexes[14] < ExtraData_Strings01.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex && aiExtraDataIndexes[14] < ExtraData_Strings01.Length - 1)
-				aiExtraDataIndexes[14] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[13] = ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Strings02 != None && aiExtraDataIndexes[16] < ExtraData_Strings02.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex && aiExtraDataIndexes[16] < ExtraData_Strings02.Length - 1)
-				aiExtraDataIndexes[16] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[15] = ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Strings03 != None && aiExtraDataIndexes[18] < ExtraData_Strings03.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex && aiExtraDataIndexes[18] < ExtraData_Strings03.Length - 1)
-				aiExtraDataIndexes[18] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[17] = ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Bools01 != None && aiExtraDataIndexes[20] < ExtraData_Bools01.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex && aiExtraDataIndexes[20] < ExtraData_Bools01.Length - 1)
-				aiExtraDataIndexes[20] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[19] = ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Bools02 != None && aiExtraDataIndexes[22] < ExtraData_Bools02.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex && aiExtraDataIndexes[22] < ExtraData_Bools02.Length - 1)
-				aiExtraDataIndexes[22] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[21] = ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex
-		endWhile
-	endif
-	
-	if(ExtraData_Bools03 != None && aiExtraDataIndexes[24] < ExtraData_Bools03.Length)
-		Bool bContinue = false
-		
-		while( ! bContinue)
-			if(aiCurrentIndex > ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex && aiExtraDataIndexes[24] < ExtraData_Bools03.Length - 1)
-				aiExtraDataIndexes[24] += 1
-			else
-				bContinue = true ; We have the next index queued or are at the end of the array
-			endif
-			
-			aiExtraDataIndexes[23] = ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex
-		endWhile
-	endif
-	
-	; aiExtraDataIndexes[0] holds our lowest iIndex across the entire array, this will let us skip constantly checking every single item against the entire array of aiExtraDataIndexes
-	; Find lowest index
-	int i = 1
-	while(i < aiExtraDataIndexes.Length)
-		if(Mod(i, 2) == 1 && aiExtraDataIndexes[i] >= 0 && aiExtraDataIndexes[i] < aiExtraDataIndexes[0])
-			aiExtraDataIndexes[0] = aiExtraDataIndexes[i]
-		endif
-		
-		i += 1
-	endWhile
-	
-	return aiExtraDataIndexes
-EndFunction
 
-
-Int[] Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadRef, Int[] aiExtraDataIndexes, Int aiCurrentIndex)
-	if(aiCurrentIndex > aiExtraDataIndexes[0])
-		aiExtraDataIndexes = UpdateExtraDataIndexes(aiExtraDataIndexes, aiCurrentIndex)
-	endif	
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Forms01 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Forms01 == None")
+	endif
 	
-	if(aiCurrentIndex == aiExtraDataIndexes[0])		
-		aiExtraDataIndexes[0] = 100000 ; We're going to need to update this again
+	if(ExtraData_Forms02 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
 		
-		if(aiExtraDataIndexes[1] == aiCurrentIndex && ExtraData_Forms01 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Form01 = GetIndexMappedUniversalForm(ExtraData_Forms01[aiExtraDataIndexes[2]])
-			akThreadRef.ExtraData_Form01Set = true
-			
-			if(aiExtraDataIndexes[2] < ExtraData_Forms01.Length - 1)
-				aiExtraDataIndexes[2] += 1
-				aiExtraDataIndexes[1] = ExtraData_Forms01[aiExtraDataIndexes[2]].iIndex
+		int i = 0
+		while(i < ExtraData_Forms02.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Forms02[i].iIndex < ExtraData_Forms02[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Forms02 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Forms02_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
 			endif
-		endif
-		
-		if(aiExtraDataIndexes[3] == aiCurrentIndex && ExtraData_Forms02 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Form02 = GetIndexMappedUniversalForm(ExtraData_Forms02[aiExtraDataIndexes[4]])
-			akThreadRef.ExtraData_Form02Set = true
 			
-			if(aiExtraDataIndexes[4] < ExtraData_Forms02.Length - 1)
-				aiExtraDataIndexes[4] += 1
-				aiExtraDataIndexes[3] = ExtraData_Forms02[aiExtraDataIndexes[4]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[5] == aiCurrentIndex && ExtraData_Forms03 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Form03 = GetIndexMappedUniversalForm(ExtraData_Forms03[aiExtraDataIndexes[6]])
-			akThreadRef.ExtraData_Form03Set = true
+			if(bIndexSequential && ExtraData_Forms02[i].iIndex <= iThisLowest)
+				if(ExtraData_Forms02[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Forms02 " + i + " is " + ExtraData_Forms02[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Forms02[i].iIndex
 			
-			if(aiExtraDataIndexes[6] < ExtraData_Forms03.Length - 1)
-				aiExtraDataIndexes[6] += 1
-				aiExtraDataIndexes[5] = ExtraData_Forms03[aiExtraDataIndexes[6]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[7] == aiCurrentIndex && ExtraData_Numbers01 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Number01 = ExtraData_Numbers01[aiExtraDataIndexes[8]].fNumber
-			akThreadRef.ExtraData_Number01Set = true
-			
-			if(aiExtraDataIndexes[8] < ExtraData_Numbers01.Length - 1)
-				aiExtraDataIndexes[8] += 1
-				aiExtraDataIndexes[7] = ExtraData_Numbers01[aiExtraDataIndexes[8]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[9] == aiCurrentIndex && ExtraData_Numbers02 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Number02 = ExtraData_Numbers02[aiExtraDataIndexes[10]].fNumber
-			akThreadRef.ExtraData_Number02Set = true
-			
-			if(aiExtraDataIndexes[10] < ExtraData_Numbers02.Length - 1)
-				aiExtraDataIndexes[10] += 1
-				aiExtraDataIndexes[9] = ExtraData_Numbers02[aiExtraDataIndexes[10]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[11] == aiCurrentIndex && ExtraData_Numbers03 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Number03 = ExtraData_Numbers03[aiExtraDataIndexes[12]].fNumber
-			akThreadRef.ExtraData_Number03Set = true
-			
-			if(aiExtraDataIndexes[12] < ExtraData_Numbers03.Length - 1)
-				aiExtraDataIndexes[12] += 1
-				aiExtraDataIndexes[11] = ExtraData_Numbers03[aiExtraDataIndexes[12]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[13] == aiCurrentIndex && ExtraData_Strings01 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_String01 = ExtraData_Strings01[aiExtraDataIndexes[14]].sString
-			akThreadRef.ExtraData_String01Set = true
-			
-			if(aiExtraDataIndexes[14] < ExtraData_Strings01.Length - 1)
-				aiExtraDataIndexes[14] += 1
-				aiExtraDataIndexes[13] = ExtraData_Strings01[aiExtraDataIndexes[14]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[15] == aiCurrentIndex && ExtraData_Strings02 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_String02 = ExtraData_Strings02[aiExtraDataIndexes[16]].sString
-			akThreadRef.ExtraData_String02Set = true
-			
-			if(aiExtraDataIndexes[16] < ExtraData_Strings02.Length - 1)
-				aiExtraDataIndexes[16] += 1
-				aiExtraDataIndexes[15] = ExtraData_Strings02[aiExtraDataIndexes[16]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[17] == aiCurrentIndex && ExtraData_Strings03 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_String03 = ExtraData_Strings03[aiExtraDataIndexes[18]].sString
-			akThreadRef.ExtraData_String03Set = true
-			
-			if(aiExtraDataIndexes[18] < ExtraData_Strings03.Length - 1)
-				aiExtraDataIndexes[18] += 1
-				aiExtraDataIndexes[17] = ExtraData_Strings03[aiExtraDataIndexes[18]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[19] == aiCurrentIndex && ExtraData_Bools01 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Bool01 = ExtraData_Bools01[aiExtraDataIndexes[20]].bBool
-			akThreadRef.ExtraData_Bool01Set = true
-			
-			if(aiExtraDataIndexes[20] < ExtraData_Bools01.Length - 1)
-				aiExtraDataIndexes[20] += 1
-				aiExtraDataIndexes[19] = ExtraData_Bools01[aiExtraDataIndexes[20]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[21] == aiCurrentIndex && ExtraData_Bools02 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Bool02 = ExtraData_Bools02[aiExtraDataIndexes[22]].bBool
-			akThreadRef.ExtraData_Bool02Set = true
-			
-			if(aiExtraDataIndexes[22] < ExtraData_Bools02.Length - 1)
-				aiExtraDataIndexes[22] += 1
-				aiExtraDataIndexes[21] = ExtraData_Bools02[aiExtraDataIndexes[22]].iIndex
-			endif
-		endif
-		
-		if(aiExtraDataIndexes[23] == aiCurrentIndex && ExtraData_Bools03 != None)
-			; Match found, send to thread
-			akThreadRef.ExtraData_Bool03 = ExtraData_Bools03[aiExtraDataIndexes[24]].bBool
-			akThreadRef.ExtraData_Bool03Set = true
-			
-			if(aiExtraDataIndexes[24] < ExtraData_Bools03.Length - 1)
-				aiExtraDataIndexes[24] += 1
-				aiExtraDataIndexes[23] = ExtraData_Bools03[aiExtraDataIndexes[24]].iIndex
-			endif
-		endif
-		
-		; Find lowest index
-		int i = 1
-		while(i < aiExtraDataIndexes.Length)
-			if(Mod(i, 2) == 1 && aiExtraDataIndexes[i] >= 0 && aiExtraDataIndexes[i] < aiExtraDataIndexes[0])
-				aiExtraDataIndexes[0] = aiExtraDataIndexes[i]
+				aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Forms02_ExtraDataArrayIndex] = i
 			endif
 			
 			i += 1
 		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Forms02 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Forms02 == None")
 	endif
 	
-	return aiExtraDataIndexes
+	if(ExtraData_Forms03 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Forms03.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Forms03[i].iIndex < ExtraData_Forms03[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Forms03 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Forms03_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Forms03[i].iIndex <= iThisLowest)
+				if(ExtraData_Forms03[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Forms03 " + i + " is " + ExtraData_Forms03[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Forms03[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Forms03_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Forms03 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Forms03 == None")
+	endif
+	
+	if(ExtraData_Numbers01 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Numbers01.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Numbers01[i].iIndex < ExtraData_Numbers01[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Numbers01 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Numbers01_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Numbers01[i].iIndex <= iThisLowest)
+				if(ExtraData_Numbers01[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Numbers01 " + i + " is " + ExtraData_Numbers01[i].iIndex)			
+				endif
+				
+				;Debug.MessageBox("Setting iThisLowest for ExtraData_Numbers01 to " + ExtraData_Numbers01[i].iIndex)
+				iThisLowest = ExtraData_Numbers01[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Numbers01_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Numbers01 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Numbers01 == None")
+	endif
+	
+	if(ExtraData_Numbers02 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Numbers02.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Numbers02[i].iIndex < ExtraData_Numbers02[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Numbers02 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Numbers02_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Numbers02[i].iIndex <= iThisLowest)
+				if(ExtraData_Numbers02[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Numbers02 " + i + " is " + ExtraData_Numbers02[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Numbers02[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Numbers02_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Numbers02 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Numbers01 == None")
+	endif
+	
+	if(ExtraData_Numbers03 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Numbers03.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Numbers03[i].iIndex < ExtraData_Numbers03[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Numbers03 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Numbers03_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Numbers03[i].iIndex <= iThisLowest)
+				if(ExtraData_Numbers03[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Numbers03 " + i + " is " + ExtraData_Numbers03[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Numbers03[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Numbers03_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Numbers03 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Numbers03 == None")
+	endif
+	
+	
+	if(ExtraData_Strings01 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Strings01.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Strings01[i].iIndex < ExtraData_Strings01[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Strings01 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Strings01_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Strings01[i].iIndex <= iThisLowest)
+				if(ExtraData_Strings01[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Strings01 " + i + " is " + ExtraData_Strings01[i].iIndex)			
+				endif
+				
+				;Debug.MessageBox("Setting iThisLowest for ExtraData_Strings01 to " + ExtraData_Strings01[i].iIndex)
+				iThisLowest = ExtraData_Strings01[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Strings01_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Strings01 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Strings01 == None")
+	endif
+	
+	if(ExtraData_Strings02 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Strings02.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Strings02[i].iIndex < ExtraData_Strings02[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Strings02 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Strings02_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Strings02[i].iIndex <= iThisLowest)
+				if(ExtraData_Strings02[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Strings02 " + i + " is " + ExtraData_Strings02[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Strings02[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Strings02_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Strings02 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Strings01 == None")
+	endif
+	
+	if(ExtraData_Strings03 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Strings03.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Strings03[i].iIndex < ExtraData_Strings03[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Strings03 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Strings03_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Strings03[i].iIndex <= iThisLowest)
+				if(ExtraData_Strings03[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Strings03 " + i + " is " + ExtraData_Strings03[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Strings03[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Strings03_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Strings03 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Strings03 == None")
+	endif
+	
+	
+	if(ExtraData_Bools01 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Bools01.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Bools01[i].iIndex < ExtraData_Bools01[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Bools01 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Bools01_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Bools01[i].iIndex <= iThisLowest)
+				if(ExtraData_Bools01[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Bools01 " + i + " is " + ExtraData_Bools01[i].iIndex)			
+				endif
+				
+				;Debug.MessageBox("Setting iThisLowest for ExtraData_Bools01 to " + ExtraData_Bools01[i].iIndex)
+				iThisLowest = ExtraData_Bools01[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Bools01_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Bools01 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Bools01 == None")
+	endif
+	
+	if(ExtraData_Bools02 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Bools02.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Bools02[i].iIndex < ExtraData_Bools02[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Bools02 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Bools02_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Bools02[i].iIndex <= iThisLowest)
+				if(ExtraData_Bools02[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Bools02 " + i + " is " + ExtraData_Bools02[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Bools02[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Bools02_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Bools02 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Bools01 == None")
+	endif
+	
+	if(ExtraData_Bools03 != None)
+		bExtraDataFound = true
+		int iThisLowest = HIGH_INT
+		bool bIndexSequential = true
+		
+		int i = 0
+		while(i < ExtraData_Bools03.Length && bIndexSequential)			
+			if(i > 0)
+				; We expect extra data to be in order from lowest index to highest, so if we find one out of order, we will have to search via FindStruct later instead of assuming an index
+				if(ExtraData_Bools03[i].iIndex < ExtraData_Bools03[(i-1)].iIndex)
+					;Debug.MessageBox("ExtraData_Bools03 are non-sequential")
+					bIndexSequential = false
+					
+					; -1 will indicate the data has to be checked with FindStruct
+					aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					aiExtraDataIndexes[iExtraDataIndex_Bools03_ExtraDataArrayIndex] = iExtraDataValues_OutOfSequence
+				endif
+			endif
+			
+			if(bIndexSequential && ExtraData_Bools03[i].iIndex <= iThisLowest)
+				if(ExtraData_Bools03[i].iIndex < 0)
+					;Debug.MessageBox("iIndex for ExtraData_Bools03 " + i + " is " + ExtraData_Bools03[i].iIndex)
+				endif
+				
+				iThisLowest = ExtraData_Bools03[i].iIndex
+			
+				aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex] = iThisLowest
+				aiExtraDataIndexes[iExtraDataIndex_Bools03_ExtraDataArrayIndex] = i
+			endif
+			
+			i += 1
+		endWhile
+		
+		if(bIndexSequential)
+			if(iThisLowest != HIGH_INT && (iFirstFoundObjectIndex < 0 || iThisLowest < iFirstFoundObjectIndex))
+				;Debug.MessageBox("Setting iFirstFoundObjectIndex to " + iThisLowest)
+				iFirstFoundObjectIndex = iThisLowest
+			endif
+		else
+			;Debug.MessageBox("ExtraData_Bools03 are non-sequential")
+		endif
+	else
+		;Debug.MessageBox("ExtraData_Bools03 == None")
+	endif
+	
+	;Debug.MessageBox("iFirstFoundObjectIndex = " + iFirstFoundObjectIndex)
+	
+	if(iFirstFoundObjectIndex < HIGH_INT && iFirstFoundObjectIndex >= 0)
+		aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iFirstFoundObjectIndex
+	elseif(bExtraDataFound)
+		aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iExtraDataValues_OutOfSequence
+	else
+		aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iExtraDataValues_NoExtraDataFound
+	endif
 EndFunction
+
+
+
+Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadRef, Int[] aiExtraDataIndexes, Int aiCurrentIndex)
+	Bool bSS2PlotFound = false
+	Keyword PlotKeyword = Game.GetFormFromFile(0x000149A4, "SS2.esm") as Keyword
+	if(PlotKeyword != None && akThreadRef.SpawnMe.HasKeyword(PlotKeyword))
+		ModTrace("    FillExtraData called for a thread that's going to spawn an SS2 plot, expecting building plan data...")
+		bSS2PlotFound = true
+	endif
+	
+	int iNewLowest = HIGH_INT
+	
+	if(ExtraData_Forms01 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Forms01 entries. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex])
+			ModTrace("             Other aiExtraDataIndexes:")
+			int x = 0
+			while(x < aiExtraDataIndexes.Length)
+				ModTrace("               " + x + ": " + aiExtraDataIndexes[x])
+				x += 1
+			endWhile
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Forms01_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Forms01_ExtraDataArrayIndex
+		
+		Form FoundForm = None
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms01[aiExtraDataIndexes[iThisArrayIndex]])
+			
+			if(ExtraData_Forms01.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Forms01.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms01[iIndex])
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundForm != None)
+			ModTrace("    ExtraData_Forms01 entry " + FoundForm + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Form01 = FoundForm
+			akThreadRef.ExtraData_Form01Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Forms01 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Forms01[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Forms01[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Forms01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Forms02 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Forms02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Forms02_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Forms02_ExtraDataArrayIndex
+		
+		Form FoundForm = None
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms02[aiExtraDataIndexes[iThisArrayIndex]])
+			
+			if(ExtraData_Forms02.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Forms02.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms02[iIndex])
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundForm != None)
+			ModTrace("    ExtraData_Forms02 entry " + FoundForm + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Form02 = FoundForm
+			akThreadRef.ExtraData_Form02Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Forms02 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Forms02[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Forms02[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Forms02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Forms03 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Forms03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Forms03_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Forms03_ExtraDataArrayIndex
+		
+		Form FoundForm = None
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms03[aiExtraDataIndexes[iThisArrayIndex]])
+			
+			if(ExtraData_Forms03.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Forms03.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms03[iIndex])
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundForm != None)
+			ModTrace("    ExtraData_Forms03 entry " + FoundForm + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Form03 = FoundForm
+			akThreadRef.ExtraData_Form03Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Forms03 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Forms03[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Forms03[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Forms03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Numbers01 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Numbers01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Numbers01_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Numbers01_ExtraDataArrayIndex
+		
+		Float FoundValue = HIGH_INT
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundValue = ExtraData_Numbers01[aiExtraDataIndexes[iThisArrayIndex]].fNumber
+			
+			if(ExtraData_Numbers01.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Numbers01.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundValue = ExtraData_Numbers01[iIndex].fNumber
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundValue != HIGH_INT)
+			ModTrace("    ExtraData_Numbers01 entry " + FoundValue + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Number01 = FoundValue
+			akThreadRef.ExtraData_Number01Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Numbers01 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Numbers01[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Numbers01[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Numbers01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Numbers02 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Numbers02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Numbers02_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Numbers02_ExtraDataArrayIndex
+		
+		Float FoundValue = HIGH_INT
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundValue = ExtraData_Numbers02[aiExtraDataIndexes[iThisArrayIndex]].fNumber
+			
+			if(ExtraData_Numbers02.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Numbers02.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundValue = ExtraData_Numbers02[iIndex].fNumber
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundValue != HIGH_INT)
+			ModTrace("    ExtraData_Numbers02 entry " + FoundValue + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Number02 = FoundValue
+			akThreadRef.ExtraData_Number02Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Numbers02 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Numbers02[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Numbers02[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Numbers02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Numbers03 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Numbers03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Numbers03_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Numbers03_ExtraDataArrayIndex
+		
+		Float FoundValue = HIGH_INT
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundValue = ExtraData_Numbers03[aiExtraDataIndexes[iThisArrayIndex]].fNumber
+			
+			if(ExtraData_Numbers03.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Numbers03.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundValue = ExtraData_Numbers03[iIndex].fNumber
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundValue != HIGH_INT)
+			ModTrace("    ExtraData_Numbers03 entry " + FoundValue + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Number03 = FoundValue
+			akThreadRef.ExtraData_Number03Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Numbers03 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Numbers03[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Numbers03[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Numbers03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Strings01 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Strings01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Strings01_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Strings01_ExtraDataArrayIndex
+		
+		String FoundString = ""
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundString = ExtraData_Strings01[aiExtraDataIndexes[iThisArrayIndex]].sString
+			
+			if(ExtraData_Strings01.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Strings01.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundString = ExtraData_Strings01[iIndex].sString
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundString != "")
+			ModTrace("    ExtraData_Strings01 entry " + FoundString + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_String01 = FoundString
+			akThreadRef.ExtraData_String01Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Strings01 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Strings01[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Strings01[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Strings01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Strings02 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Strings02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Strings02_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Strings02_ExtraDataArrayIndex
+		
+		String FoundString = ""
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundString = ExtraData_Strings02[aiExtraDataIndexes[iThisArrayIndex]].sString
+			
+			if(ExtraData_Strings02.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Strings02.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundString = ExtraData_Strings02[iIndex].sString
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundString != "")
+			ModTrace("    ExtraData_Strings02 entry " + FoundString + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_String02 = FoundString
+			akThreadRef.ExtraData_String02Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Strings02 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Strings02[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Strings02[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Strings02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Strings03 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Strings03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Strings03_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Strings03_ExtraDataArrayIndex
+		
+		String FoundString = ""
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundString = ExtraData_Strings03[aiExtraDataIndexes[iThisArrayIndex]].sString
+			
+			if(ExtraData_Strings03.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Strings03.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundString = ExtraData_Strings03[iIndex].sString
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundString != "")
+			ModTrace("    ExtraData_Strings03 entry " + FoundString + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_String03 = FoundString
+			akThreadRef.ExtraData_String03Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Strings03 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Strings03[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Strings03[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Strings03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Bools01 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Bools01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Bools01_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Bools01_ExtraDataArrayIndex
+		
+		Int FoundBoolTest = -1
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundBoolTest = ExtraData_Bools01[aiExtraDataIndexes[iThisArrayIndex]].bBool as Int
+			
+			if(ExtraData_Bools01.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Bools01.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundBoolTest = ExtraData_Bools01[iIndex].bBool as Int
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundBoolTest != -1)
+			ModTrace("    ExtraData_Bools01 entry " + FoundBoolTest + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Bool01 = FoundBoolTest as Bool
+			akThreadRef.ExtraData_Bool01Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Bools01 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Bools01[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Bools01[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Bools01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Bools02 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Bools02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Bools02_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Bools02_ExtraDataArrayIndex
+		
+		Int FoundBoolTest = -1
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundBoolTest = ExtraData_Bools02[aiExtraDataIndexes[iThisArrayIndex]].bBool as Int
+			
+			if(ExtraData_Bools02.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Bools02.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundBoolTest = ExtraData_Bools02[iIndex].bBool as Int
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundBoolTest != -1)
+			ModTrace("    ExtraData_Bools02 entry " + FoundBoolTest + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Bool02 = FoundBoolTest as Bool
+			akThreadRef.ExtraData_Bool02Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Bools02 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Bools02[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Bools02[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Bools02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	if(ExtraData_Bools03 != None)
+		if(bSS2PlotFound)
+			ModTrace("         Found ExtraData_Bools03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex])
+		endif
+		
+		int iThisObjectIndex = iExtraDataIndex_Bools03_NextObjectIndex
+		int iThisArrayIndex = iExtraDataIndex_Bools03_ExtraDataArrayIndex
+		
+		Int FoundBoolTest = -1
+		Bool bMatchingEntryFound = false
+		if(aiExtraDataIndexes[iThisObjectIndex] == aiCurrentIndex)
+			; Match found
+			bMatchingEntryFound = true
+			FoundBoolTest = ExtraData_Bools03[aiExtraDataIndexes[iThisArrayIndex]].bBool as Int
+			
+			if(ExtraData_Bools03.Length > aiExtraDataIndexes[iThisArrayIndex] + 1)
+				aiExtraDataIndexes[iThisArrayIndex] += 1
+				aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+				
+				iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+			else
+				; Flag as finished
+				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+			endif			
+		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+			; Entries are out of order, so we need to use findstruct
+			int iIndex = ExtraData_Bools03.FindStruct("iIndex", aiCurrentIndex)
+			if(iIndex >= 0)
+				FoundBoolTest = ExtraData_Bools03[iIndex].bBool as Int
+				bMatchingEntryFound = true
+			endif
+			
+			iNewLowest = iExtraDataValues_OutOfSequence
+		endif
+		
+		if(FoundBoolTest != -1)
+			ModTrace("    ExtraData_Bools03 entry " + FoundBoolTest + " found for spawn thread " + aiCurrentIndex)
+			akThreadRef.ExtraData_Bool03 = FoundBoolTest as Bool
+			akThreadRef.ExtraData_Bool03Set = true			
+		else
+			if(bSS2PlotFound && bMatchingEntryFound)
+				ModTrace("         ExtraData_Bools03 index " + aiExtraDataIndexes[iThisArrayIndex] + " failed to return valid form via GetIndexMappedUniversalForm. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[" + iThisArrayIndex + "] = " + aiExtraDataIndexes[iThisArrayIndex] + ", ExtraData_Bools03[aiExtraDataIndexes[" + iThisArrayIndex + "]] = " + ExtraData_Bools03[aiExtraDataIndexes[iThisArrayIndex]])
+			endif
+		endif
+	else
+		if(bSS2PlotFound)
+			ModTrace("         Failed to find ExtraData_Bools03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+		endif
+	endif
+	
+	aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iNewLowest
+EndFunction
+
 
 
 Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, Int aiCustomCallbackID = -1, Bool abProtectFromScrapPhase = false)
@@ -576,7 +1438,11 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 	
 	int iThreadsStarted = 0
 	
-	int[] iExtraDataIndexes = UpdateExtraDataIndexes()
+	int[] iExtraDataIndexes = new Int[25]
+	
+	InitializeExtraDataIndexes(iExtraDataIndexes)
+	
+		;int[] iExtraDataIndexes = UpdateExtraDataIndexes() ; Generate fresh extra data array with trackers for where we are at in iterating over arrays index-wise for both the overall layout and the various ExtraData_* arrays - this is done to speed up processing so we don't have to keep iterating over the entire collection each time. Instead, we track the last index we found, and assume that we can start from that point going forward as the data is stored in indexed order (ie the extra data array order will be stacked from item 0 to item X, so for example - once you reach item 10, you are done with all extra data for previous indexes 0 through 9 and can skip those).
 	
 	i = 0
 	while(i < aObjectsToPlace.Length)
@@ -673,8 +1539,19 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				endif
 				
 				; Handle extra data indexes
-				if(aiObjectsGroupType == iGroupType_WorkshopResources && i >= iExtraDataIndexes[0])
-					iExtraDataIndexes = FillExtraData(kThread, iExtraDataIndexes, aiCurrentIndex = i)
+				if(aiObjectsGroupType == iGroupType_WorkshopResources)
+					; We store the next object index in iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] to avoid having to check every ExtraData_ array for each item when only a small percentage have any extra data at all
+					if(i == iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] || iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence)
+						FillExtraData(kThread, iExtraDataIndexes, aiCurrentIndex = i)
+					else
+						Bool bSS2Plot = false
+						Keyword PlotKeyword = Game.GetFormFromFile(0x000149A4, "SS2.esm") as Keyword
+						
+						if(PlotKeyword != None && FormToPlace.HasKeyword(PlotKeyword))
+							ModTrace("        Skipping FillExtraData for Workshop object.")
+							ModTrace("              i = " + i + ", iExtraDataIndexes[0] = " + iExtraDataIndexes[iExtraDataIndex_NextObjectIndex])
+						endif
+					endif
 				endif
 				
 				; Check for Sim Settlements data
@@ -932,7 +1809,7 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 				i += 1
 			endWhile
 			
-			;Debug.MessageBox("Found "+ iPoweredConnectableCounter + " items w/ connectors and " + iPowerDataFoundFor + " items with stored connection data. Trace dumping list of refs.")
+			;;Debug.MessageBox("Found "+ iPoweredConnectableCounter + " items w/ connectors and " + iPowerDataFoundFor + " items with stored connection data. Trace dumping list of refs.")
 			
 			;i = 0
 			;while(i < Group01.Length)

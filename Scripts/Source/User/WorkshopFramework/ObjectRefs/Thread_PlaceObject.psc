@@ -591,6 +591,8 @@ Function SendExtraData(ObjectReference akRef)
 	if(ExtraData_Form01Set || ExtraData_Form02Set || ExtraData_Form03Set || ExtraData_Number01Set || ExtraData_Number02Set || ExtraData_Number03Set || ExtraData_String01Set || ExtraData_String02Set || ExtraData_String03Set || ExtraData_Bool01Set || ExtraData_Bool02Set || ExtraData_Bool03Set)
 		; Users should grab this data with GetExtraData and then trigger a timer or a CallFunctionNoWait to ensure this thread isn't held up while they process the data
 		
+		ModTrace("    Found extra data for ref: " + akRef)
+		
 		akRef.OnTriggerEnter(Self) ; Send import notice - objects can define this vanilla event to be treated like a function so they grab the ExtraData stored on this thread
 	endif
 EndFunction
