@@ -20,6 +20,36 @@ Float fExtraDataFlag_SkipWorkshopItemLink = 1.0 Const
 
 Int HIGH_INT = 9999999 Const
 
+Int iExtraDataIndex_NextObjectIndex = 0 Const
+Int iExtraDataIndex_Forms01_NextObjectIndex = 1 Const
+Int iExtraDataIndex_Forms01_ExtraDataArrayIndex = 2 Const
+Int iExtraDataIndex_Forms02_NextObjectIndex = 3 Const
+Int iExtraDataIndex_Forms02_ExtraDataArrayIndex = 4 Const
+Int iExtraDataIndex_Forms03_NextObjectIndex = 5 Const
+Int iExtraDataIndex_Forms03_ExtraDataArrayIndex = 6 Const
+Int iExtraDataIndex_Numbers01_NextObjectIndex = 7 Const
+Int iExtraDataIndex_Numbers01_ExtraDataArrayIndex = 8 Const
+Int iExtraDataIndex_Numbers02_NextObjectIndex = 9 Const
+Int iExtraDataIndex_Numbers02_ExtraDataArrayIndex = 10 Const
+Int iExtraDataIndex_Numbers03_NextObjectIndex = 11 Const
+Int iExtraDataIndex_Numbers03_ExtraDataArrayIndex = 12 Const
+Int iExtraDataIndex_Strings01_NextObjectIndex = 13 Const
+Int iExtraDataIndex_Strings01_ExtraDataArrayIndex = 14 Const
+Int iExtraDataIndex_Strings02_NextObjectIndex = 15 Const
+Int iExtraDataIndex_Strings02_ExtraDataArrayIndex = 16 Const
+Int iExtraDataIndex_Strings03_NextObjectIndex = 17 Const
+Int iExtraDataIndex_Strings03_ExtraDataArrayIndex = 18 Const
+Int iExtraDataIndex_Bools01_NextObjectIndex = 19 Const
+Int iExtraDataIndex_Bools01_ExtraDataArrayIndex = 20 Const
+Int iExtraDataIndex_Bools02_NextObjectIndex = 21 Const
+Int iExtraDataIndex_Bools02_ExtraDataArrayIndex = 22 Const
+Int iExtraDataIndex_Bools03_NextObjectIndex = 23 Const
+Int iExtraDataIndex_Bools03_ExtraDataArrayIndex = 24 Const
+
+Int iExtraDataValues_OutOfSequence = -1 Const
+Int iExtraDataValues_AllDistributed = -2 Const
+Int iExtraDataValues_NoExtraDataFound = -3 Const
+
 ; Below were copied from SettlementLayoutManager and then converted to properties so extended classes can use them
 String Property sRestoreObjectCallbackID = "WSFW_RestoreObject" Auto Const 
 String Property sPlaceObjectCallbackID = "WSFW_PlaceObject" Auto Const 
@@ -176,36 +206,6 @@ Int Function PlaceNonResourceObjects(WorkshopScript akWorkshopRef, Int aiCustomC
 	return PlaceObjects(akWorkshopRef, iGroupType_NonResources, aiCustomCallbackID, abProtectFromScrapPhase)
 EndFunction
 
-
-Int iExtraDataIndex_NextObjectIndex = 0 Const
-Int iExtraDataIndex_Forms01_NextObjectIndex = 1 Const
-Int iExtraDataIndex_Forms01_ExtraDataArrayIndex = 2 Const
-Int iExtraDataIndex_Forms02_NextObjectIndex = 3 Const
-Int iExtraDataIndex_Forms02_ExtraDataArrayIndex = 4 Const
-Int iExtraDataIndex_Forms03_NextObjectIndex = 5 Const
-Int iExtraDataIndex_Forms03_ExtraDataArrayIndex = 6 Const
-Int iExtraDataIndex_Numbers01_NextObjectIndex = 7 Const
-Int iExtraDataIndex_Numbers01_ExtraDataArrayIndex = 8 Const
-Int iExtraDataIndex_Numbers02_NextObjectIndex = 9 Const
-Int iExtraDataIndex_Numbers02_ExtraDataArrayIndex = 10 Const
-Int iExtraDataIndex_Numbers03_NextObjectIndex = 11 Const
-Int iExtraDataIndex_Numbers03_ExtraDataArrayIndex = 12 Const
-Int iExtraDataIndex_Strings01_NextObjectIndex = 13 Const
-Int iExtraDataIndex_Strings01_ExtraDataArrayIndex = 14 Const
-Int iExtraDataIndex_Strings02_NextObjectIndex = 15 Const
-Int iExtraDataIndex_Strings02_ExtraDataArrayIndex = 16 Const
-Int iExtraDataIndex_Strings03_NextObjectIndex = 17 Const
-Int iExtraDataIndex_Strings03_ExtraDataArrayIndex = 18 Const
-Int iExtraDataIndex_Bools01_NextObjectIndex = 19 Const
-Int iExtraDataIndex_Bools01_ExtraDataArrayIndex = 20 Const
-Int iExtraDataIndex_Bools02_NextObjectIndex = 21 Const
-Int iExtraDataIndex_Bools02_ExtraDataArrayIndex = 22 Const
-Int iExtraDataIndex_Bools03_NextObjectIndex = 23 Const
-Int iExtraDataIndex_Bools03_ExtraDataArrayIndex = 24 Const
-
-Int iExtraDataValues_OutOfSequence = -1 Const
-Int iExtraDataValues_AllDistributed = -2 Const
-Int iExtraDataValues_NoExtraDataFound = -3 Const
 
 Function InitializeExtraDataIndexes(Int[] aiExtraDataIndexes)
 	if(ExtraData_Forms01 == None && ExtraData_Forms02 == None && ExtraData_Forms03 == None && ExtraData_Numbers01 == None && ExtraData_Numbers02 == None && ExtraData_Numbers03 == None && ExtraData_Strings01 == None && ExtraData_Strings02 == None && ExtraData_Strings03 == None && ExtraData_Bools01 == None && ExtraData_Bools02 == None && ExtraData_Bools03 == None)
@@ -780,7 +780,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 	Bool bSS2PlotFound = false
 	Keyword PlotKeyword = Game.GetFormFromFile(0x000149A4, "SS2.esm") as Keyword
 	if(PlotKeyword != None && akThreadRef.SpawnMe.HasKeyword(PlotKeyword))
-		ModTrace("    FillExtraData called for a thread that's going to spawn an SS2 plot, expecting building plan data...")
+		ModTrace("    FillExtraData called (aiCurrentIndex = " + aiCurrentIndex + ") for a thread (" + akThreadRef + ") that's going to spawn an SS2 plot (" + akThreadRef.SpawnMe + "), expecting building plan data...")
 		bSS2PlotFound = true
 	endif
 	
@@ -789,12 +789,14 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 	if(ExtraData_Forms01 != None)
 		if(bSS2PlotFound)
 			ModTrace("         Found ExtraData_Forms01 entries. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex])
+			;/
 			ModTrace("             Other aiExtraDataIndexes:")
 			int x = 0
 			while(x < aiExtraDataIndexes.Length)
 				ModTrace("               " + x + ": " + aiExtraDataIndexes[x])
 				x += 1
 			endWhile
+			/;
 		endif
 		
 		int iThisObjectIndex = iExtraDataIndex_Forms01_NextObjectIndex
@@ -816,15 +818,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Forms01.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms01[iIndex])
+			int iStructArrayIndex = ExtraData_Forms01.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms01[iStructArrayIndex])
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Forms01.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Forms01 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundForm != None)
@@ -838,7 +853,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Forms01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Forms01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms01_NextObjectIndex])
 		endif
 	endif
 	
@@ -866,15 +881,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Forms02.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms02[iIndex])
+			int iStructArrayIndex = ExtraData_Forms02.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms02[iStructArrayIndex])
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Forms02.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Forms02 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundForm != None)
@@ -888,7 +916,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Forms02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Forms02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms02_NextObjectIndex])
 		endif
 	endif
 	
@@ -916,15 +944,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Forms03.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms03[iIndex])
+			int iStructArrayIndex = ExtraData_Forms03.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundForm = GetIndexMappedUniversalForm(ExtraData_Forms03[iStructArrayIndex])
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Forms03.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Forms03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Forms03 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundForm != None)
@@ -938,7 +979,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Forms03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Forms03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Forms03_NextObjectIndex])
 		endif
 	endif
 	
@@ -966,15 +1007,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Numbers01.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundValue = ExtraData_Numbers01[iIndex].fNumber
+			int iStructArrayIndex = ExtraData_Numbers01.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundValue = ExtraData_Numbers01[iStructArrayIndex].fNumber
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Numbers01.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]				
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Numbers01 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundValue != HIGH_INT)
@@ -988,7 +1042,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Numbers01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Numbers01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers01_NextObjectIndex])
 		endif
 	endif
 	
@@ -1016,15 +1070,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Numbers02.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundValue = ExtraData_Numbers02[iIndex].fNumber
+			int iStructArrayIndex = ExtraData_Numbers02.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundValue = ExtraData_Numbers02[iStructArrayIndex].fNumber
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Numbers02.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Numbers02 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundValue != HIGH_INT)
@@ -1038,7 +1105,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Numbers02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Numbers02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers02_NextObjectIndex])
 		endif
 	endif
 	
@@ -1066,15 +1133,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Numbers03.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundValue = ExtraData_Numbers03[iIndex].fNumber
+			int iStructArrayIndex = ExtraData_Numbers03.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundValue = ExtraData_Numbers03[iStructArrayIndex].fNumber
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Numbers03.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Numbers03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Numbers03 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundValue != HIGH_INT)
@@ -1088,7 +1168,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Numbers03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Numbers03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Numbers03_NextObjectIndex])
 		endif
 	endif
 	
@@ -1116,15 +1196,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Strings01.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundString = ExtraData_Strings01[iIndex].sString
+			int iStructArrayIndex = ExtraData_Strings01.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundString = ExtraData_Strings01[iStructArrayIndex].sString
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Strings01.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Strings01 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundString != "")
@@ -1138,7 +1231,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Strings01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Strings01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings01_NextObjectIndex])
 		endif
 	endif
 	
@@ -1166,15 +1259,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Strings02.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundString = ExtraData_Strings02[iIndex].sString
+			int iStructArrayIndex = ExtraData_Strings02.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundString = ExtraData_Strings02[iStructArrayIndex].sString
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Strings02.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Strings02 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundString != "")
@@ -1188,7 +1294,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Strings02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Strings02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings02_NextObjectIndex])
 		endif
 	endif
 	
@@ -1216,15 +1322,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Strings03.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundString = ExtraData_Strings03[iIndex].sString
+			int iStructArrayIndex = ExtraData_Strings03.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundString = ExtraData_Strings03[iStructArrayIndex].sString
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Strings03.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Strings03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Strings03 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundString != "")
@@ -1238,7 +1357,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Strings03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Strings03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Strings03_NextObjectIndex])
 		endif
 	endif
 	
@@ -1266,15 +1385,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Bools01.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundBoolTest = ExtraData_Bools01[iIndex].bBool as Int
+			int iStructArrayIndex = ExtraData_Bools01.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundBoolTest = ExtraData_Bools01[iStructArrayIndex].bBool as Int
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Bools01.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools01[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Bools01 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundBoolTest != -1)
@@ -1288,7 +1420,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Bools01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Bools01 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools01_NextObjectIndex])
 		endif
 	endif
 	
@@ -1316,15 +1448,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Bools02.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundBoolTest = ExtraData_Bools02[iIndex].bBool as Int
+			int iStructArrayIndex = ExtraData_Bools02.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundBoolTest = ExtraData_Bools02[iStructArrayIndex].bBool as Int
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Bools02.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools02[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Bools02 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundBoolTest != -1)
@@ -1338,7 +1483,7 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Bools02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Bools02 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools02_NextObjectIndex])
 		endif
 	endif
 	
@@ -1366,15 +1511,28 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 				; Flag as finished
 				aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
 			endif			
-		elseif(aiExtraDataIndexes[iThisObjectIndex] == iExtraDataValues_OutOfSequence)
+		elseif(aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence) ; Check if the broader array is set to Out of Sequence
 			; Entries are out of order, so we need to use findstruct
-			int iIndex = ExtraData_Bools03.FindStruct("iIndex", aiCurrentIndex)
-			if(iIndex >= 0)
-				FoundBoolTest = ExtraData_Bools03[iIndex].bBool as Int
+			int iStructArrayIndex = ExtraData_Bools03.FindStruct("iIndex", aiCurrentIndex)
+			if(iStructArrayIndex >= 0)
+				FoundBoolTest = ExtraData_Bools03[iStructArrayIndex].bBool as Int
 				bMatchingEntryFound = true
+				
+				if(ExtraData_Bools03.Length > iStructArrayIndex + 1)
+					aiExtraDataIndexes[iThisArrayIndex] = iStructArrayIndex + 1
+					aiExtraDataIndexes[iThisObjectIndex] = ExtraData_Bools03[aiExtraDataIndexes[iThisArrayIndex]].iIndex
+					
+					iNewLowest = aiExtraDataIndexes[iThisObjectIndex]
+				else
+					aiExtraDataIndexes[iThisArrayIndex] = iExtraDataValues_AllDistributed
+					iNewLowest = iExtraDataValues_AllDistributed
+				endif
+			elseif(bSS2PlotFound)
+				ModTrace("     Plot found, but no ExtraData_Bools03 found for index " + aiCurrentIndex)
+				iNewLowest = iExtraDataValues_OutOfSequence
+			else
+				iNewLowest = iExtraDataValues_OutOfSequence
 			endif
-			
-			iNewLowest = iExtraDataValues_OutOfSequence
 		endif
 		
 		if(FoundBoolTest != -1)
@@ -1388,8 +1546,12 @@ Function FillExtraData(WorkshopFramework:ObjectRefs:Thread_PlaceObject akThreadR
 		endif
 	else
 		if(bSS2PlotFound)
-			ModTrace("         Failed to find ExtraData_Bools03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[1] = " + aiExtraDataIndexes[1])
+			ModTrace("         Failed to find ExtraData_Bools03 entry for a plot. aiCurrentIndex = " + aiCurrentIndex + ", aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex] = " + aiExtraDataIndexes[iExtraDataIndex_Bools03_NextObjectIndex])
 		endif
+	endif
+	
+	if(iNewLowest == HIGH_INT)
+		iNewLowest = iExtraDataValues_OutOfSequence
 	endif
 	
 	aiExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iNewLowest
@@ -1541,6 +1703,12 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 				; Handle extra data indexes
 				if(aiObjectsGroupType == iGroupType_WorkshopResources)
 					; We store the next object index in iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] to avoid having to check every ExtraData_ array for each item when only a small percentage have any extra data at all
+					if(i > iExtraDataIndexes[iExtraDataIndex_NextObjectIndex])
+						; Something went wrong and the next object index failed to update
+						ModTrace("iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] was lower than current iterator (" + iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] + " vs " + i + "), flagging as out of sequence.")
+						iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] = iExtraDataValues_OutOfSequence
+					endif
+					
 					if(i == iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] || iExtraDataIndexes[iExtraDataIndex_NextObjectIndex] == iExtraDataValues_OutOfSequence)
 						FillExtraData(kThread, iExtraDataIndexes, aiCurrentIndex = i)
 					else
@@ -1549,7 +1717,7 @@ Int Function PlaceObjects(WorkshopScript akWorkshopRef, Int aiObjectsGroupType, 
 						
 						if(PlotKeyword != None && FormToPlace.HasKeyword(PlotKeyword))
 							ModTrace("        Skipping FillExtraData for Workshop object.")
-							ModTrace("              i = " + i + ", iExtraDataIndexes[0] = " + iExtraDataIndexes[iExtraDataIndex_NextObjectIndex])
+							ModTrace("              i = " + i + ", iExtraDataIndexes[" + iExtraDataIndex_NextObjectIndex + "] = " + iExtraDataIndexes[iExtraDataIndex_NextObjectIndex])
 						endif
 					endif
 				endif
