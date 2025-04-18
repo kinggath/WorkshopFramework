@@ -56,7 +56,7 @@ Auto State AllowActivate
 		AddInventoryEventFilter(None)
 
 		if(akActionRef == Game.GetPlayer())
-	    	Utility.Wait(0.1)
+	    	Utility.Wait(1.0) ; 2.4.6 - Increased delay to ensure container had time to open/close
 	    	PlaceItems()
 	    else
 		    GoToState("AllowActivate")
@@ -152,7 +152,11 @@ Function ShowDefaultRackFullMessage()
 EndFunction
 
 Bool Function DoesItemMatchDisplayPoint(Form akTestMe, Form akDisplayPointMatch)
+	ObjectReference akTestRef = akTestMe as ObjectReference
+	
 	if(akTestMe == akDisplayPointMatch)
+		return true
+	elseif(akTestRef && (akTestRef.GetBaseObject() == akDisplayPointMatch)) ; 2.4.6 - Add support for references
 		return true
 	elseif(akDisplayPointMatch as Keyword)
 		if(akTestMe.HasKeyword(akDisplayPointMatch as Keyword))
@@ -160,6 +164,13 @@ Bool Function DoesItemMatchDisplayPoint(Form akTestMe, Form akDisplayPointMatch)
 		endif
 	elseif(akDisplayPointMatch as Formlist)
 		if((akDisplayPointMatch as Formlist).HasForm(akTestMe))
+			return true
+		endif
+		
+		; 2.4.6
+		; Special check for base form if passed form is an objectref.
+		; Necessary since a formlist can have either the base or the objectref.
+		if(akTestRef && (akDisplayPointMatch as Formlist).HasForm(akTestRef.GetBaseObject()))
 			return true
 		endif
 	endif
