@@ -280,9 +280,11 @@ EndFunction
 
 Function DeleteControlledRef()
 	Self.SetLinkedRef(None, WorkshopStackedItemParentKeyword)
-	kControlledRef.SetLinkedRef(None, WorkshopStackedItemParentKeyword)
-	kControlledRef.SetLinkedRef(None, WorkshopItemKeyword)
-	kControlledRef.Disable(false)
-	kControlledRef.Delete()
-	kControlledRef = None
+	if ( kControlledRef != none )
+		kControlledRef.SetLinkedRef(None, WorkshopStackedItemParentKeyword)
+		kControlledRef.SetLinkedRef(None, WorkshopItemKeyword)
+		kControlledRef.Disable(false)
+		kControlledRef.Delete()
+		kControlledRef = None
+	endif
 EndFunction
