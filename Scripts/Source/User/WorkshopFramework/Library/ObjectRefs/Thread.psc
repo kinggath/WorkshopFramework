@@ -60,7 +60,10 @@ Function StartThread()
 	
 	if(bAutoDestroy)
 		if(IsBoundGameObjectAvailable())
-			StartTimer(3.0)
+			; this timer needs to be long enough so all registered scripts to complete ThreadRunComplete Event.
+			; if I am held as a var in any other function block when Self.Delete is called I will remain permanently persistent.
+			; 30 sec seemed to work OK in testing with a large load order. we may want to up this value to take into account any script lag.
+			StartTimer(30.0)
 		else
 			ReleaseObjectReferences()
 		endif
