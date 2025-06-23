@@ -1231,7 +1231,6 @@ Event OnStageSet(int auiStageID, int auiItemID)
 		; initialize workshop arrays
 		WorkshopLocations = new Location[WorkshopsCollection.GetCount()]
 		Workshops = new WorkshopScript[WorkshopsCollection.GetCount()]
-		WorkshopRatingValues = new ActorValue[WorkshopRatings.Length]
 
 		int index = 0
 		int crimeFactionIndex = 0
@@ -1264,6 +1263,7 @@ Event OnStageSet(int auiStageID, int auiItemID)
 		
 		index = 0
 		int resourceAVCount = 0
+		WorkshopRatingValues = new ActorValue[WorkshopRatings.Length]
 		while(index < WorkshopRatings.Length)
 			; add keyword to array
 			WorkshopRatingValues[index] = WorkshopRatings[index].resourceValue

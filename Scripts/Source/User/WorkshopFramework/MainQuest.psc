@@ -191,7 +191,7 @@ Event OnTimer(Int aiTimerID)
 					CancelBuildAreaCheck()
 					
 					 ; check to see if the player is still in the buildable area of that workshop
-					if(PlayerRef.IsWithinBuildableArea(leavingWorkshop))
+					if(Self.IsWithinBuildableAreaEX(PlayerRef, leavingWorkshop))
 						 ; they are, so don't call exit yet. Start a timer to check if they are out of the area.
 						kInBuildableAreaWorkshop = leavingWorkshop
 						Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
@@ -226,7 +226,7 @@ Event OnTimer(Int aiTimerID)
 				 ; do not trigger the enter event if it was already triggered previously and the exit event has not been triggered
 				if(kCurrentSettlement != enteringWorkshop) 
 					 ; check to see if they are in the buildable area yet. If not, start a timer to check for it.
-					if(PlayerRef.IsWithinBuildableArea(enteringWorkshop))
+					if(Self.IsWithinBuildableAreaEX(PlayerRef, enteringWorkshop))
 						 ; run the enter event
 						SendPlayerEnteredSettlementEvent(enteringWorkshop)
 					else
@@ -268,11 +268,11 @@ Event OnTimer(Int aiTimerID)
 			Var[] kArgs
 
 			; 1.0.4 - Added sanity check
-			if( ! currentWorkshop || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+			if( ! currentWorkshop || ! Self.IsWithinBuildableAreaEX(PlayerRef, currentWorkshop))
 				; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 				currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 
-				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+				if(bLeavingWorkshopLocation && ! bEnteringWorkshopLocation && currentWorkshop && ! Self.IsWithinBuildableAreaEX(PlayerRef, currentWorkshop))
 					currentWorkshop = None
 				else
 					if(currentWorkshop != None && currentWorkshop.myLocation != None)
@@ -346,7 +346,7 @@ Event OnTimer(Int aiTimerID)
 		WorkshopScript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 		Location PlayerLocation = PlayerRef.GetCurrentLocation()
 
-		if(currentWorkshop && PlayerRef.IsWithinBuildableArea(currentWorkshop))
+		if(currentWorkshop && Self.IsWithinBuildableAreaEX(PlayerRef, currentWorkshop))
 			if(currentWorkshop.myLocation && currentWorkshop.myLocation != PlayerLocation)
 				; Player is in a limbo area of a settlement not flagged as part of the settlement - repeat this loop
 				StartTimer(fTimerLength_BuildableAreaCheck, iTimerID_BuildableAreaCheck)
@@ -364,7 +364,7 @@ Event OnTimer(Int aiTimerID)
 	elseif(aiTimerID == iTimerID_BuildableAreaCheckForEntry)
 		 ; part of CBRGamer code change
 		 ; check to see if the player is in the Buildable area of the settlement. If they are not, repeat the timer. If they are, trigger the entrance event
-		if(PlayerRef.IsWithinBuildableArea(kInBuildableAreaWorkshop))
+		if(Self.IsWithinBuildableAreaEX(PlayerRef, kInBuildableAreaWorkshop))
 			SendPlayerEnteredSettlementEvent(kInBuildableAreaWorkshop)
 		else
 			Self.StartTimer(fTimerLength_BuildableAreaCheckForEntry, iTimerID_BuildableAreaCheckForEntry)
@@ -372,7 +372,7 @@ Event OnTimer(Int aiTimerID)
 	elseif(aiTimerID == iTimerID_BuildableAreaCheckForExit)
 		 ; part of CBRGamer code change
 		 ; check to see if the player is in the Buildable area of the settlement. If they are not, start the exit timer. If they are repeat this timer.
-		if(PlayerRef.IsWithinBuildableArea(kInBuildableAreaWorkshop))
+		if(Self.IsWithinBuildableAreaEX(PlayerRef, kInBuildableAreaWorkshop))
 			Self.StartTimer(fTimerLength_BuildableAreaCheckForExit, iTimerID_BuildableAreaCheckForExit)
 		else
 			StartPlayerExitedSettlementWait(kInBuildableAreaWorkshop)
@@ -380,7 +380,7 @@ Event OnTimer(Int aiTimerID)
 	elseif(aiTimerID == iTimerID_WaitToSendExitEvent)
 		 ; part of CBRGamer code change
 		 ; make sure the player has not gone back into the build area
-		if(!PlayerRef.IsWithinBuildableArea(kWaitingForSettlementExit)) 
+		if(! Self.IsWithinBuildableAreaEX(PlayerRef, kWaitingForSettlementExit)) 
 			SendPlayerExitedSettlementEvent(kWaitingForSettlementExit)
 			kWaitingForSettlementExit = none
 		else
@@ -400,7 +400,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 					 ; They are clearly actually in a settlement as they have entered workshop mode. Probably in a limbo area.
 					Workshopscript currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 					 ; make sure this is the correct workshop (it really should be - just to be sure)
-					if(PlayerRef.IsWithinBuildableArea(currentWorkshop))
+					if(Self.IsWithinBuildableAreaEX(PlayerRef, currentWorkshop))
 						SendPlayerEnteredSettlementEvent(currentWorkshop)
 					endif
 				endif
@@ -414,7 +414,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 			if(lastWorkshop != currentWorkshop)
 				 ; If this happens, there is likely some serious script lag happening - but since LastWorkshopAlias is used throughout our code, we don't ever want it to be incorrect, so use this opportunity to correct it
-				 if(currentWorkshop == None || ! PlayerRef.IsWithinBuildableArea(currentWorkshop))
+				 if(currentWorkshop == None || ! Self.IsWithinBuildableAreaEX(PlayerRef, currentWorkshop))
 					; Check if player is in a different workshop - it can sometimes take a moment before WorkshopParent updates the CurrentWorkshop
 					currentWorkshop = WorkshopFramework:WSFW_API.GetNearestWorkshop(PlayerRef)
 				endif
@@ -1193,6 +1193,24 @@ Function FixPopulationRating()
 	if(NickRef != None)
 		NickRef.SetValue(WorkshopRatingPopulation, 1.0)
 	endif
+EndFunction
+
+; Note: vanilla IsWithinBuildableArea will return true if akRef1 or akWorkshop is unloaded.
+bool Function IsWithinBuildableAreaEX(ObjectReference akRef, ObjectReference akWorkshop)
+{ return true if akRef is loaded and within settlement boundary }
+	if ( akRef == none || \
+		akWorkshop == none || \
+		Self.IsCellLoaded(akRef.GetParentCell()) == false || \
+		Self.IsCellLoaded(akWorkshop.GetParentCell()) == false )
+		return false
+	endif
+	
+	return akRef.IsWithinBuildableArea(akWorkshop)
+EndFunction
+
+
+bool Function IsCellLoaded(Cell aCell)
+	return aCell != none && aCell.IsLoaded()
 EndFunction
 
 ;
