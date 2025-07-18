@@ -1120,7 +1120,7 @@ Function AutoResolveAssault()
 			while(i < Defenders.GetCount())
 				Actor thisActor = Defenders.GetAt(i) as Actor
 				
-				if(FighterStrengthAV != None)
+				if(FighterStrengthAV == None)
 					fDefenderScore += thisActor.GetValue(FighterStrengthAV)
 				else
 					fDefenderScore += thisActor.GetLevel() as Float
@@ -1140,7 +1140,7 @@ Function AutoResolveAssault()
 				
 				fSiegeScore += thisActor.GetValue(SiegeAV)
 				
-				if(FighterStrengthAV != None)
+				if(FighterStrengthAV == None)
 					fAttackerScore += thisActor.GetValue(FighterStrengthAV)
 				else
 					fAttackerScore += thisActor.GetLevel() as Float
@@ -1172,7 +1172,7 @@ Function AutoResolveAssault()
 							fNonTurretDefenseScore -= kLinkedObjects[i].GetBaseValue(SafetyAV)
 							
 							Float fThisTurretScore = 0.0
-							if(FighterStrengthAV != None)
+							if(FighterStrengthAV == None)
 								fThisTurretScore += thisActor.GetValue(FighterStrengthAV)
 							else
 								fThisTurretScore += thisActor.GetLevel() as Float
