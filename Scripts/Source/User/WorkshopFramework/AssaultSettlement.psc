@@ -180,6 +180,7 @@ Int Property iOverrideObjectiveSet = -1 Auto Hidden ; 2.3.6
 Bool Property bAutoCaptureSettlement = false Auto Hidden
 Bool Property bChildrenFleeDuringAttack = true Auto Hidden
 Bool Property bAutoTurnTargetSettlementAgainstPlayer = true Auto Hidden ; 2.3.10
+Bool Property bAutoAttemptToPreventEnemiesUnderTheWorld = true Auto Hidden ; 2.4.7
 
 Bool Property bAutoCompleteAssaultWhenOneSideIsDown = true Auto Hidden
 
@@ -1916,8 +1917,9 @@ Bool Function CheckForEnemiesDown()
 		kMoveToRef = kDefendFromRef
 	endif
 	
-	if(iCount > 0)
-		Bool bPlayerCanSeeMoveToRef = PlayerRef.HasDetectionLOS(kMoveToRef)
+	Bool bPlayerCanSeeMoveToRef = PlayerRef.HasDetectionLOS(kMoveToRef)
+	
+	if(iCount > 0)		
 		int i = iCount
 		while(i > 0)
 			i -= 1
@@ -1931,21 +1933,23 @@ Bool Function CheckForEnemiesDown()
 						thisActor.Enable(false)
 					endif
 					
-					Bool bIsActor3dloaded = thisActor.Is3dLoaded()
-					Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
-						; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
-					if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
-					
-						; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
+					if(bAutoAttemptToPreventEnemiesUnderTheWorld)
+						Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+						Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
+							; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
+						if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
 						
-						thisActor.MoveTo(kMoveToRef)
+							; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
+							
+							thisActor.MoveTo(kMoveToRef)
+							
+							if(bIsActor3dloaded)
+								thisActor.MoveToNearestNavmeshLocation()
+							endif
+						endif				
 						
-						if(bIsActor3dloaded)
-							thisActor.MoveToNearestNavmeshLocation()
-						endif
-					endif				
-					
-					bAllDown = false
+						bAllDown = false
+					endif
 				endif
 			endif
 		endWhile
@@ -1967,16 +1971,23 @@ Bool Function CheckForEnemiesDown()
 						thisActor.Enable(false)
 					endif
 					
-					Bool bIsActor3dloaded = thisActor.Is3dLoaded()
-					if( ! bIsActor3dloaded || (bPlayerInvolved && ! PlayerRef.HasDetectionLOS(thisActor)))
-						; In case the actor fled or the AI package took it somewhere strange
+					if(bAutoAttemptToPreventEnemiesUnderTheWorld)
+						Bool bIsActor3dloaded = thisActor.Is3dLoaded()
+						Float fDistanceToPlayer = PlayerRef.GetDistance(thisActor)
+							; We're only trying to move actors that are stuck under the world - this should only happen near the start location, hence the small distance check
+						if(bIsActor3dloaded && bPlayerInvolved && ! bPlayerCanSeeMoveToRef && thisActor.GetDistance(kMoveToRef) < 1000.0 && ! PlayerRef.HasDetectionLOS(thisActor) && fDistanceToPlayer > 2000.0)
 						
-						thisActor.MoveTo(kMoveToRef)
+							; In case the actor fled, the AI package took it somewhere strange, or the game put them under the world
+							
+							thisActor.MoveTo(kMoveToRef)
+							
+							if(bIsActor3dloaded)
+								thisActor.MoveToNearestNavmeshLocation()
+							endif
+						endif				
 						
-						if(bIsActor3dloaded)
-							thisActor.MoveToNearestNavmeshLocation()
-						endif
-					endif				
+						bAllDown = false
+					endif
 					
 					bAllDown = false
 				endif

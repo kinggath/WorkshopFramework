@@ -60,7 +60,7 @@ Function StartThread()
 	
 	if(bAutoDestroy)
 		if(IsBoundGameObjectAvailable())
-			StartTimer(3.0)
+			StartTimer(30.0) ; June 2025 - Changed to 30.0 from 3.0. msabala found that if the thread was still made persistent by some other script at the time Delete is called, it would remain permanently persisted in the save and never cleaned up. This timer extension is to reduce liklihood other scripts are still working with the thread at the time of its self destruction.
 		else
 			ReleaseObjectReferences()
 		endif
