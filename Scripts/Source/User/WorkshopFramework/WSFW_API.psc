@@ -548,8 +548,8 @@ EndFunction
 ;
 ; Usage: How to use without being dependent.
 ;	Var[] args = new Var[2]
-;	args[0] = TargetMenu	; TargetMenu being a FormList var in your script.
-;	args[1] = InjectKeywordOrFormlist	; same as above
+;	args[0] = TargetMenu				; TargetMenu being a FormList var in your script.
+;	args[1] = InjectKeywordOrFormlist	; Keyword or FormList you want to inject into TargetMenu defined in your script.
 ;	Var success = Utility.CallGlobalFunction("WorkshopFramework:WSFW_API", "RegisterWorkshopMenu", args)
 ;	if ( success as bool )
 ;		; the call successfully registered the menu with WorkshopMenuManager
@@ -566,7 +566,7 @@ bool Function RegisterWorkshopMenu(Formlist aTargetMenu, Form aInjectKeywordOrFo
 	WorkshopFramework:WorkshopMenuManager WorkshopMenuManager = GetWorkshopMenuManager()
 	
 	if ( WorkshopMenuManager == none )
-		; either the GetFormFromFile has bad args or the quest is not running
+		; either the GetFormFromFile call has bad args or the quest is not running
 		return false
 	endif
 	
@@ -597,7 +597,7 @@ Function UnregisterWorkshopMenu(Formlist aTargetMenu, Form aInjectKeywordOrForml
 	WorkshopFramework:WorkshopMenuManager WorkshopMenuManager = GetWorkshopMenuManager()
 	
 	if ( WorkshopMenuManager == none )
-		; either the GetFormFromFile has bad args or the quest is not running
+		; either the GetFormFromFile call has bad args or the quest is not running
 		return false
 	endif
 	
