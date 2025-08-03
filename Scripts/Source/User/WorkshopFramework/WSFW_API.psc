@@ -539,6 +539,76 @@ ObjectReference Function GetLocationCenter(Location akLocation, Bool abGetMapMar
 EndFunction
 
 
+; ------------------------------
+; RegisterWorkshopMenu
+;
+; Description: Allow mods to inject to workshop menu without being dependent.
+;	aTargetMenu					- workshop menu to inject into
+;	aInjectKeywordOrFormlist	- workshop recipe filter keyword or formlist menu to inject into aTargetMenu
+;
+; Usage: How to use without being dependent.
+;	Var[] args = new Var[2]
+;	args[0] = TargetMenu	; TargetMenu being a FormList var in your script.
+;	args[1] = InjectKeywordOrFormlist	; same as above
+;	Var success = Utility.CallGlobalFunction("WorkshopFramework:WSFW_API", "RegisterWorkshopMenu", args)
+;	if ( success as bool )
+;		; the call successfully registered the menu with WorkshopMenuManager
+;	else
+;		; either WorkshopMenuManager is not running or your syntax is incorrect.
+;	endif
+; ------------------------------
+bool Function RegisterWorkshopMenu(Formlist aTargetMenu, Form aInjectKeywordOrFormlist)
+	if ( aTargetMenu == none || aInjectKeywordOrFormlist == none || (! aInjectKeywordOrFormlist as Keyword && ! aInjectKeywordOrFormlist as FormList )
+		; invalid or missing params
+		return false
+	endif
+	
+	WorkshopFramework:WorkshopMenuManager WorkshopMenuManager = GetWorkshopMenuManager()
+	
+	if ( WorkshopMenuManager == none )
+		; either the GetFormFromFile has bad args or the quest is not running
+		return false
+	endif
+	
+	; create new structure to send to WorkshopMenuManager.
+	WorkshopMenuInjection MenuInjection = new WorkshopMenuInjection
+	MenuInjection.TargetMenu = aTargetMenu
+	MenuInjection.InjectKeywordOrFormlist = aInjectKeywordOrFormlist
+	WorkshopMenuManager.RegisterMenu(MenuInjection)
+EndFunction
+
+
+; ------------------------------
+; UnregisterWorkshopMenu
+;
+; Description: Allow mods to remove previously injected workshop menu items without being dependent.
+;	aTargetMenu					- workshop menu injected into
+;	aInjectKeywordOrFormlist	- added workshop recipe filter keyword or formlist menu to remove from aTargetMenu
+;
+; Note: Forms not added via script can not be removed via script.
+; See RegisterWorkshopMenu for use example.
+; ------------------------------
+Function UnregisterWorkshopMenu(Formlist aTargetMenu, Form aInjectKeywordOrFormlist)
+	if ( aTargetMenu == none || aInjectKeywordOrFormlist == none || (! aInjectKeywordOrFormlist as Keyword && ! aInjectKeywordOrFormlist as FormList )
+		; invalid or missing params
+		return false
+	endif
+	
+	WorkshopFramework:WorkshopMenuManager WorkshopMenuManager = GetWorkshopMenuManager()
+	
+	if ( WorkshopMenuManager == none )
+		; either the GetFormFromFile has bad args or the quest is not running
+		return false
+	endif
+	
+	; create new structure to send to WorkshopMenuManager.
+	WorkshopMenuInjection MenuInjection = new WorkshopMenuInjection
+	MenuInjection.TargetMenu = aTargetMenu
+	MenuInjection.InjectKeywordOrFormlist = aInjectKeywordOrFormlist
+	WorkshopMenuManager.UnregisterMenu(MenuInjection)
+EndFunction
+
+
 	; -----------------------------------
 	; -----------------------------------
 	; Do NOT Use - Functions below here are needed by this API script only
@@ -566,6 +636,23 @@ WorkshopFramework:WSFW_APIQuest Function GetAPI() global
 	endif
 	
 	return API
+EndFunction
+
+
+; ------------------------------
+; GetWorkshopMenuManager
+;
+; Description: Return WorkshopFramework:WorkshopMenuManager Quest if running
+; ------------------------------
+
+WorkshopFramework:WorkshopMenuManager Function GetWorkshopMenuManager() Global
+	WorkshopFramework:WorkshopMenuManager WorkshopMenuManager = Game.GetFormFromFile(0x0001143E, "WorkshopFramework.esm") as WorkshopFramework:WorkshopMenuManager
+	
+	if ( WorkshopMenuManager == none || ! WorkshopMenuManager.IsRunning() )
+		WorkshopMenuManager = none
+	endif
+	
+	return WorkshopMenuManager
 EndFunction
 
 
