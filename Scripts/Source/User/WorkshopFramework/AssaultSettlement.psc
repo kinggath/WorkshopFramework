@@ -1287,7 +1287,7 @@ Function AutoResolveAssault()
 					i += 1
 				endWhile
 				
-				if( ! bAttackersWin && iDefendersToKill < SpawnedAttackersAlias.GetCount())
+				if( ! bAttackersWin && iDefendersToKill < SpawnedDefendersAlias.GetCount())
 					if(iDefendersToKill > 0)
 						i = 0
 						while(i < iDefendersToKill)
