@@ -418,18 +418,31 @@ Function TryToProcessNextQueuedThread()
 			int i = 0
 			
 			ObjectReference kTemp = None
+			Form thisBase
+			
 			while(i < iCount && kTemp == None)
 				; loop past any None entries which could happen due to mods being uninstalled
+				; Note: it is impossible for a none object to be in a RefCollectionAlias, verified through testing. (msalaba)
 				kTemp = QueuedThreads.GetAt(i)
 			
-				if(kTemp != None && kTemp.GetBaseObject() != None && kTemp.GetBaseObject().GetFormID() != 0x00000000)
-					WorkshopFramework:Library:ObjectRefs:Thread thisThread = kTemp as WorkshopFramework:Library:ObjectRefs:Thread
+				if(kTemp != None)
+					thisBase = kTemp.GetBaseObject()
 					
-					; Clear from queue - even if it isn't a thread object, should never happen, but just in case
-					QueuedThreads.RemoveRef(kTemp)
-					
-					if(thisThread && thisThread.IsBoundGameObjectAvailable())
-						ProcessThreadObject(thisThread)
+					if(thisBase != None && thisBase.GetFormID() != 0x00000000)
+						WorkshopFramework:Library:ObjectRefs:Thread thisThread = kTemp as WorkshopFramework:Library:ObjectRefs:Thread
+						
+						; Clear from queue - even if it isn't a thread object, should never happen, but just in case
+						QueuedThreads.RemoveRef(kTemp)
+						
+						if(thisThread && thisThread.IsBoundGameObjectAvailable())
+							ProcessThreadObject(thisThread)
+						else
+							; thread not queued, update QueueCounter.
+							QueueCounter.Mod(-1)
+						endif
+					else
+						; thread not queued, update QueueCounter.
+						QueueCounter.Mod(-1)
 					endif
 				endif
 				
