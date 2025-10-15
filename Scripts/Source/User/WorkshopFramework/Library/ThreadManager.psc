@@ -75,6 +75,9 @@ EndProperty
 ; ---------------------------------------------
 
 
+bool bLockThreadRunners = false
+
+
 ; ---------------------------------------------
 ; States 
 ; ---------------------------------------------
@@ -113,8 +116,9 @@ Function HandleGameLoaded()
 		iNextCallbackID = 0
 	endif
 	
+	; v2.4.9 - add code to make sure our count globals stay in sync, call before CheckForOvertaxing.
+	ResetQueueCounters()
 	CalculateAvailableThreads()
-	
 	CheckForOvertaxing()
 	
 	; Handle parent changes such as running install code
@@ -241,8 +245,8 @@ Int Function QueueGlobalThread(String asMyCallbackID, String asScriptName, Strin
 EndFunction
 
 
-
 Int Function QueueStoredArgumentThread(String asThreadRunnerFunction, Var[] akArgs, Bool abGlobalCall = false)
+	Self.WaitWhileLocked()
 	int iRunnerIndex = GetNextThreadRunner()
 	
 	if(iRunnerIndex < 0)
@@ -309,6 +313,7 @@ EndFunction
 
 
 Int Function QueueThread(WorkshopFramework:Library:ObjectRefs:Thread akThreadRef, String asMyCallbackID = "")
+	Self.WaitWhileLocked()
 	int iRunnerIndex = GetNextThreadRunner()
 	
 	if(iRunnerIndex < 0)
@@ -359,4 +364,40 @@ Int Function GetNextThreadRunner()
 	else
 		return QUEUEFAIL
 	endif
+EndFunction
+
+
+Function WaitWhileLocked()
+; simple spin lock to prevent new threads starting while locked.
+; called by QueueStoredArgumentThread and QueueThread.
+	int iCount = 100	; prevent infinite loop.
+	while ( bLockThreadRunners && iCount > 0 )
+		iCount -= 1
+		Utility.Wait(2.0)	; we shouldn't need to wait to long here...
+	endWhile
+EndFunction
+
+
+Function ResetQueueCounters()
+{ set each ThreadRunner.QueueCounter global to the count of refs in ThreadRunner.QueuedThreads RefCollectionAlias }
+	; an alternative to a spin lock would be to lock each ThreadRunner before updating.
+	bLockThreadRunners = true
+	int i = ThreadRunners.Length
+	int iCount
+	GlobalVariable thisQueueCounter
+	RefCollectionAlias thisColl
+	
+	while ( i > 0 )
+		i -= 1
+		
+		thisQueueCounter = ThreadRunners[i].QueueCounter
+		thisColl = ThreadRunners[i].QueuedThreads
+		; safety check.
+		if ( thisQueueCounter != none && thisColl != none )
+			iCount = thisColl.GetCount()
+			thisQueueCounter.SetValueInt(iCount)
+		endif
+	endWhile
+	
+	bLockThreadRunners = false
 EndFunction
