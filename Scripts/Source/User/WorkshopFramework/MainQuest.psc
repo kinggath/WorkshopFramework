@@ -627,6 +627,9 @@ Function CancelBuildAreaCheck()
 	kInBuildableAreaWorkshop = None
 EndFunction
 
+workshopscript Function GetCurrentSettlement()
+	return kCurrentSettlement
+EndFunction
 
 Function ClearInWorkshopModeFlags()
 	WorkshopScript[] Workshops = WorkshopParent.Workshops
