@@ -1664,7 +1664,15 @@ Function ScrapWireArray(ObjectReference[] akWireArray, WorkshopScript akWorkshop
 			
 			; TODO - Once F4SE implements Scrap, we need to remove this routing through PowerGridTools
 			ModTraceCustom(sPowerToolsLog, "     Attempting to scrap wire: " + akWireArray[i])
-			if( ! PowerGridTools.Scrap(akWireArray[i], akWorkshopRef))
+			Bool bF4SEScrapSuccessful = false
+			if(F4SEManager.iVersion_Minor >= 7) ; Nextgen
+				WSFWIdentifier.SafeScrap(akWireArray[i])
+				bF4SEScrapSuccessful = true
+			else
+				bF4SEScrapSuccessful = PowerGridTools.Scrap(akWireArray[i], akWorkshopRef)
+			endif
+			
+			if( ! bF4SEScrapSuccessful)
 				ModTrace("     PowerGridTools.Scrap failed. Manually removing wire " + akWireArray[i])
 				akWireArray[i].SetLinkedRef(None, WorkshopItemKeyword)
 				akWireArray[i].Disable(false)
@@ -1672,7 +1680,7 @@ Function ScrapWireArray(ObjectReference[] akWireArray, WorkshopScript akWorkshop
 				akWireArray[i].Delete()
 				Utility.Wait(1.0)
 			else
-				Utility.Wait(0.5) ; Short delay as spamming it seems to occasionally cause crashes in the same way doing so outside workshop mode doe
+				Utility.Wait(0.5) ; Short delay as spamming it seems to occasionally cause crashes in the same way doing so outside workshop mode does
 			endif
 		
 			akWireArray[i] = None
@@ -1820,7 +1828,15 @@ Function RecreateWireArray(ObjectReference[] aWireArray, WorkshopScript akWorksh
 			endif
 			
 			; TODO - Once F4SE implements Scrap, we need to remove this routing through PowerGridTools
-			if( ! PowerGridTools.Scrap(aWireArray[i], akWorkshopRef))
+			Bool bF4SEScrapSuccessful = false
+			if(F4SEManager.iVersion_Minor >= 7) ; Nextgen
+				WSFWIdentifier.SafeScrap(aWireArray[i])
+				bF4SEScrapSuccessful = true
+			else
+				bF4SEScrapSuccessful = PowerGridTools.Scrap(aWireArray[i], akWorkshopRef)				
+			endif
+			
+			if( ! bF4SEScrapSuccessful)
 				ModTrace("     PowerGridTools.Scrap failed. Manually removing wire " + aWireArray[i])
 				aWireArray[i].SetLinkedRef(None, WorkshopItemKeyword)
 				aWireArray[i].Disable(false)

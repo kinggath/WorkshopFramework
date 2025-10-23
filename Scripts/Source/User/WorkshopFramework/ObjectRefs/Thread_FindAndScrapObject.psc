@@ -53,8 +53,18 @@ Function RunCode()
 	
 	Form BaseForm = GetWorldObjectForm(ScrapObjectData)
 	
-	ObjectReference kFoundRef = Game.FindClosestReferenceOfTypeFromRef(BaseForm, kPositionHelper, 5.0)
+	ObjectReference kFoundRef = None
+	if(BaseForm as ActorBase)
+		; Turrets in particular can't be found by FindClosestReferenceOfTypeFromRef
+		kFoundRef = Game.FindClosestActorFromRef(kPositionHelper, 5.0) as ObjectReference
+		if(kFoundRef.GetBaseObject() != BaseForm)
+			kFoundRef = None
+		endif
+	else
+		kFoundRef = Game.FindClosestReferenceOfTypeFromRef(BaseForm, kPositionHelper, 5.0)
+	endif
 	
+;ModTrace("Thread_FindAndScrapObject search for " + BaseForm + " at " + ScrapObjectData.fPosX + ", " + ScrapObjectData.fPosY + ", " + ScrapObjectData.fPosZ + ", kPositionHelper at " + kPositionHelper.X + ", " + kPositionHelper.Y + ", " + kPositionHelper.Z + " ... found ref " + kFoundRef)
 	; If found, is it already disabled?
 	Bool bScrapNeeded = true
 	if(kFoundRef != None)

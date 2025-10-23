@@ -133,7 +133,14 @@ Bool Property bCurrentSettlementNotSetYet = true Auto Hidden ; will be changed t
 ; ---------------------------------------------
 
 workshopscript kCurrentSettlement = none ; will be set when the enter event is triggered and cleared when the exit event is triggered.
+workshopscript Function GetCurrentSettlement()
+	return kCurrentSettlement
+EndFunction
+
 location kCurrentSettlementLocation = none ; will be set when the player enters a settlment location and cleared when leaving a settlement location
+location Function GetCurrentSettlementLocation()
+	return kCurrentSettlementLocation
+EndFunction
 
 workshopscript kWaitingForSettlementExit = none  ; stores the workshop of a settlement that is waiting for the exit timer to complete before PlayerExitedSettlement is sent
 workshopscript kInBuildableAreaWorkshop = none ; stores the workshop of the settlement being checked for buildable area before triggering enter or exit events

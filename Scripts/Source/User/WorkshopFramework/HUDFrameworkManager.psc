@@ -49,6 +49,13 @@ Bool Property IsHUDFrameworkInstalled
 	EndFunction
 EndProperty
 
+Bool bReadyToRegisterWidgets = false Conditional
+Bool Property IsHUDFrameworkReadyForRegistrations
+	Bool Function Get()
+		return bReadyToRegisterWidgets
+	EndFunction
+EndProperty
+
 Float Property fWSFWWidget_HUDFrameworkX = 1000.0 Auto Hidden ; right side of screen
 Float Property fWSFWWidget_HUDFrameworkY = 70.0 Auto Hidden
 
@@ -101,19 +108,15 @@ EndFunction
 
 
 Function MustRunOnStartup() 
+	bReadyToRegisterWidgets = false
 	RegisterForMenuOpenCloseEvent("WorkshopMenu")
 	PrepareHUDFramework()
-EndFunction
-
-
-Function HandleGameLoaded()
-	MustRunOnStartup() 
-	
-	Parent.HandleGameLoaded()	
 	
 	if(HudInstance == None || RegisteredWidgets == None)
 		RegisteredWidgets = new String[0]
 	endif
+	
+	bReadyToRegisterWidgets = true
 	
 	; Register any of the WorkshopFramework included widgets
 	Float fX = fWSFWWidget_HUDFrameworkX
@@ -121,28 +124,37 @@ Function HandleGameLoaded()
 		fX = fWSFWWidget_HUDFrameworkXSS2Override
 	endif
 	
-	if(RegisteredWidgets.Find(sWSFWWidget_Framework) < 0)
+	; Let's be absolutely certain we've registered our own framework
+	Var[] kArgs = new Var[1]
+	kArgs[0] = sWSFWWidget_Framework
+	Bool bSelfIsRegistered = HudInstance.CallFunction("IsWidgetRegistered", kArgs) as Bool
+			
+	if( ! bSelfIsRegistered)
+		;Debug.MessageBox("Progress Meter Framework not registered")
+		int iIndex = RegisteredWidgets.Find(sWSFWWidget_Framework)
+		if(iIndex >= 0)
+			RegisteredWidgets.Remove(iIndex)
+		endif
+		
 		RegisterWidget(Self, sWSFWWidget_Framework, fX, fWSFWWidget_HUDFrameworkY)
 	else
+		;Debug.MessageBox("Progress Meter Framework already registered, updating position")
 		SetWidgetPosition(sWSFWWidget_Framework, fX, fWSFWWidget_HUDFrameworkY)
 	endif
+EndFunction
+
+
+Function HandleGameLoaded()
+	MustRunOnStartup() 
+	
+	Parent.HandleGameLoaded()		
 	
 	if(iNextProgressBarID > MAXPROGRESSBARID)
 		; Make sure we never go out of bounds
 		iNextProgressBarID = 0
 	endif
 	
-	; Restore any progress bars
-	int i = 0
-	if(RegisteredProgressBars != None)
-		while(i < RegisteredProgressBars.Length)
-			CreateProgressBar(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].sLabel, RegisteredProgressBars[i].sIconPath)
-			
-			UpdateProgressBarPercentage(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].fValue as Int)
-			
-			i += 1
-		endWhile
-	endif
+	RestoreProgressBars()
 EndFunction
 
 
@@ -374,6 +386,21 @@ Function UpdateProgressBarData(Form akHandler, String asCustomIdentifier, String
 EndFunction
 
 
+Function RestoreProgressBars()
+	; Restore any progress bars
+	int i = 0
+	if(RegisteredProgressBars != None)
+		while(i < RegisteredProgressBars.Length)
+			CreateProgressBar(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].sLabel, RegisteredProgressBars[i].sIconPath)
+			
+			UpdateProgressBarPercentage(RegisteredProgressBars[i].Source, RegisteredProgressBars[i].sSourceID, RegisteredProgressBars[i].fValue as Int)
+			
+			i += 1
+		endWhile
+	endif
+EndFunction
+
+
 
 
 ; ----------------------------------
@@ -393,6 +420,10 @@ Bool Function RegisterWidget(ScriptObject akHandler, String asWidgetName, Float 
 	
 	if(RegisteredWidgets.Find(asWidgetName) < 0)
 		ModTrace("[WSFW] HUDFrameworkManager: Registering Widget: " + asWidgetName)
+		
+		if( ! bReadyToRegisterWidgets)			
+			return false
+		endif
 		
 		Var[] kArgs = new Var[6]
 		kArgs[0] = akHandler

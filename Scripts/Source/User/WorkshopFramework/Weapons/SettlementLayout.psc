@@ -20,6 +20,10 @@ Float fExtraDataFlag_SkipWorkshopItemLink = 1.0 Const
 
 Int HIGH_INT = 9999999 Const
 
+Int POWERCONNECTIONTYPE_WORKSHOPRESOURCE = 1 Const
+Int POWERCONNECTIONTYPE_NONRESOURCE = 2 Const
+Int POWERCONNECTIONTYPE_VANILLA = 3 Const
+
 Int iExtraDataIndex_NextObjectIndex = 0 Const
 Int iExtraDataIndex_Forms01_NextObjectIndex = 1 Const
 Int iExtraDataIndex_Forms01_ExtraDataArrayIndex = 2 Const
@@ -172,6 +176,9 @@ Function RestoreVanillaObjects(WorkshopScript akWorkshopRef)
 	
 	WorkshopFramework:MainThreadManager ThreadManager = GetThreadManager()
 	Form RestoreObjectThread = GetRestoreObjectThread()
+	ActorValue LayoutIndexAV = GetLayoutIndexAV()
+	ActorValue LayoutIndexTypeAV = GetLayoutIndexTypeAV()
+	
 	int i = 0
 	while(i < VanillaObjectsToRestore.Length)
 		WorkshopFramework:ObjectRefs:Thread_RestoreObject kThread = ThreadManager.CreateThread(RestoreObjectThread) as WorkshopFramework:ObjectRefs:Thread_RestoreObject
@@ -180,6 +187,11 @@ Function RestoreVanillaObjects(WorkshopScript akWorkshopRef)
 			kThread.kWorkshopRef = akWorkshopRef
 			kThread.RestoreObjectData = CopyWorldObject(VanillaObjectsToRestore[i])
 			
+			; Tag with AVs to setup which group it came from to assist power code
+			int iTagIndex = i + 1
+			kThread.AddTagAVSet(LayoutIndexAV, iTagIndex as float)
+			kThread.AddTagAVSet(LayoutIndexTypeAV, POWERCONNECTIONTYPE_VANILLA)
+						
 			if(RestoreVanillaObjectThreadLastCall(kThread))
 				ThreadManager.QueueThread(kThread)
 			endif
@@ -1938,12 +1950,18 @@ Function PowerUp(WorkshopScript akWorkshopRef)
 			int iPoweredConnectableCounter = 0
 			int iPowerDataFoundFor = 0
 			while(i < kLinkedRefs.Length)
-				if( ! kLinkedRefs[i].IsDisabled() && kLinkedRefs[i].HasKeyword(TagKeyword) && (kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword) || kLinkedRefs[i].GetValue(WorkshopPowerConnectionAV) > 0))
+				;if( ! kLinkedRefs[i].IsDisabled() && kLinkedRefs[i].HasKeyword(TagKeyword) && (kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword) || kLinkedRefs[i].GetValue(WorkshopPowerConnectionAV) > 0))
+				
+				; Patch 2.4.9 - Removed HasKeyword check so we can wire to vanilla items
+				if( ! kLinkedRefs[i].IsDisabled() && (kLinkedRefs[i].HasKeyword(WorkshopPowerConnectionKeyword) || kLinkedRefs[i].GetValue(WorkshopPowerConnectionAV) > 0))
 					iPoweredConnectableCounter += 1
 					Int iIndex = (kLinkedRefs[i].GetValue(LayoutIndexAV) - 1) as Int 
 					if(iIndex >= 0) ; We have power connection data for this
 						iPowerDataFoundFor += 1
 						Int iType = kLinkedRefs[i].GetValue(LayoutIndexTypeAV) as Int 
+						if(iType == 0) ; Ie. no layoutIndexTypeAV applied, assume vanilla item or recreated vanilla item
+							iType = POWERCONNECTIONTYPE_VANILLA
+						endif
 						
 						PowerConnectionLookup newLookup = new PowerConnectionLookup
 						newLookup.kPowereableRef = kLinkedRefs[i]

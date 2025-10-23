@@ -136,6 +136,8 @@ EndFunction
 
 
 Function CheckForOvertaxing()
+	_ResetQueueCounters()
+	
 	int i = 1
 	
 	while(i < ThreadRunners.Length)
@@ -359,4 +361,25 @@ Int Function GetNextThreadRunner()
 	else
 		return QUEUEFAIL
 	endif
+EndFunction
+
+
+Function _ResetQueueCounters()
+{ set each ThreadRunner.QueueCounter global to the count of refs in ThreadRunner.QueuedThreads RefCollectionAlias }
+	int i = ThreadRunners.Length
+	int iCount
+	GlobalVariable thisQueueCounter
+	RefCollectionAlias thisColl
+
+	while ( i > 0 )
+		i -= 1
+
+		thisQueueCounter = ThreadRunners[i].QueueCounter
+		thisColl = ThreadRunners[i].QueuedThreads
+		; safety check.
+		if ( thisQueueCounter != none && thisColl != none )
+			iCount = thisColl.GetCount()
+			thisQueueCounter.SetValueInt(iCount)
+		endif
+	endWhile
 EndFunction

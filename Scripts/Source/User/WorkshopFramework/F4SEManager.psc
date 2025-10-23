@@ -77,9 +77,9 @@ Bool Property IsF4SERunning
 	EndFunction
 EndProperty
 
-Int iVersion_Major = 0
-Int iVersion_Minor = 0
-Int iVersion_Release = 0
+Int Property iVersion_Major = 0 Auto Hidden
+Int Property iVersion_Minor = 0 Auto Hidden
+Int Property iVersion_Release = 0 Auto Hidden
 
 
 ; ---------------------------------------------
@@ -311,17 +311,18 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 	
 	ModTrace("CheckAndFixPowerGrid " + akWorkshopRef + " results: " + Results)
 	
+	Bool bGridCorrupt = false
 	if(abFixAndScan) ; Should be fixed
 		Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
-		
+		bGridCorrupt = WSFWIdentifier.ArePowerGridStatisticsCorrupt(Results)
 		ModTrace("abFixAndScan == true, Rescan with iFix == 0: " + akWorkshopRef + " results: " + Results)
-		if(abResetIfFixFails && Results.broken)
+		if(abResetIfFixFails && bGridCorrupt)
 			ModTrace("Corrupt power grid detected, calling WSFWID_ResetPowerGrid on " + akWorkshopRef + ".")
 			WSFWID_ResetPowerGrid(akWorkshopRef, abAutoRan = true)
 		endif
 	endif
 	
-	return Results.broken
+	return bGridCorrupt
 EndFunction
 
 Function MCM_RepairPowerGrid()
