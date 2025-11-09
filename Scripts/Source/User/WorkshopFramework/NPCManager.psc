@@ -134,6 +134,10 @@ EndGroup
 ; 1.0.1 - Temporary fix until we can alter the framework to handle what this mod is doing
 Bool Property bOverrideInjectedSettlers = false Auto Hidden
 
+; Option to turn off new settler flag when SettlerOverride
+Bool Property bNewSettlerFlag = true Auto
+; Bool to switch if bNewSettlerFlag is set to False
+Bool Property bNewSettlerDisabled = False Auto
 
 ; ---------------------------------------------
 ; Properties
@@ -502,6 +506,9 @@ ActorBase Function GetSettlerForm(WorkshopScript akWorkshopRef = None)
 		FactionControl thisFactionControl = akWorkshopRef.FactionControlData
 		if(thisFactionControl != None && thisFactionControl.SettlerOverride != None)
 			thisActorBase = thisFactionControl.SettlerOverride
+			if (bNewSettlerFlag == False)
+				bNewSettlerDisabled = True
+			endif
 		endif
 	endif
 	
@@ -592,6 +599,10 @@ WorkshopNPCScript Function CreateWorkshopNPC(ActorBase aActorForm, WorkshopScrip
 		endif
 
 		WorkshopNewSettlerAlias.ForceRefTo(asWorkshopNPC)
+
+		if bNewSettlerDisabled == True
+		WorkshopFramework:WorkshopFunctions.SetNewSettler(asWorkshopNPC, False)
+		endif
 		
 		; 1.1.1 - Add event when a new settler is spawned and added to workshop
 		Var[] kArgs = new Var[2]		
