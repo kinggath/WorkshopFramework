@@ -23,8 +23,12 @@ import WSFWIdentifier
 ; ---------------------------------------------
 
 int iExpectedVersion_Major = 0 Const
-int iExpectedVersion_Minor = 6 Const
-int iExpectedVersion_Release = 12 Const
+int iExpectedVersion_Minor = 7 Const
+int iExpectedVersion_Release = 2 Const
+
+; Fallout 4 Pre-next gen version: 1.10.163 - F4SE = 0.6.23
+; Fallout 4 Next gen version: 1.10.984 - F4SE = 0.7.2
+; Fallout 4 Live version as of 12/12/25: 1.11.169 - F4SE = 0.7.6
 
 ; ---------------------------------------------
 ; Editor Properties 
@@ -121,7 +125,7 @@ Bool Function F4SECheck()
 	if(Setting_IgnoreF4SEVersion.GetValueInt() == 1)
 		return true
 	else
-		if(iVersion_Major == iExpectedVersion_Major && iVersion_Minor == iExpectedVersion_Minor && iVersion_Release == iExpectedVersion_Release)
+		if(iVersion_Major == iExpectedVersion_Major && iVersion_Minor == iExpectedVersion_Minor && iVersion_Release >= iExpectedVersion_Release)
 			return true
 		endif		
 	endif
@@ -314,6 +318,7 @@ Bool Function WSFWID_CheckAndFixPowerGrid(WorkshopScript akWorkshopRef = None, B
 	Bool bGridCorrupt = false
 	if(abFixAndScan) ; Should be fixed
 		Results = WSFWIdentifier.CheckAndFixPowerGrid(akWorkshopRef, 0) ; Scan again - should be clean
+			; 2.4.9 - ArePowerGridStatisticsCorrupt is a stop gap function so we can have the same code for the old gen and next gen dll's - this will likely go away in the future. ; 2.5.0 we're even more screwed up as Anniversary Editon (after next gen) was broken and we didn't get a new update to WSFWIdentifier yet
 		bGridCorrupt = WSFWIdentifier.ArePowerGridStatisticsCorrupt(Results)
 		ModTrace("abFixAndScan == true, Rescan with iFix == 0: " + akWorkshopRef + " results: " + Results)
 		if(abResetIfFixFails && bGridCorrupt)
