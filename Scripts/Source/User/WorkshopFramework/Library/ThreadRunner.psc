@@ -490,6 +490,17 @@ Function TryToProcessNextQueuedThread()
 		; Lock acquired - do work
 		;
 		
+		; Check again now that we hold the lock: another call may have started a thread while we waited in GetLock.
+		; Starting a second one here strands the first thread's completion and leaves the runner stuck busy
+		; (iRunningThreads > 0 with kRunningThread = None) until the next game load.
+		if(iRunningThreads > 0)
+			if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE)
+				ModTrace("Failed to release lock " + iLockKey + "!", 2)
+			endif
+			
+			return
+		endif
+		
 		int iCount = QueuedThreads.GetCount()
 		if(iCount > 0)
 			int i = 0
