@@ -1768,9 +1768,19 @@ bool Function Safe_RemoveAllItems(ObjectReference akSourceContainer, ObjectRefer
  	; setup to prevent possible infinite loop
 	int iBreakCount = 0
 	int iBreakCountMax = 0x7FFFFFFF	; max Papyrus int, 32 bit signed integer, which I assume is the max number of forms a Container can hold
+	int	uint_16max = 0x0000FFFF	; max value for unsigned 16 bit integer
+
+	int iTotalItems = akSourceContainer.getItemCount(None)
+
+	; short-circuit for performance: use the default function if the number of items is below the treshold
+	if(iTotalItems < uint_16max)
+		akSourceContainer.removeAllItems(akTransferTo)
+		return true
+	endif
 	
     ; this will loop while akSourceContainer has inventory and our break condition is false
     while(akSourceContainer.GetItemCount(None) > 0 && iBreakCount < iBreakCountMax)
+		; This could be optimized further, if we can check whenever F4SE is installed: akSourceContainer.GetInventoryItems() will return an array of all contained BaseObjects
         ; we will individually move one BaseObject at a time...        
         ObjectReference kDropped = akSourceContainer.DropFirstObject(abInitiallyDisabled=true)
         
