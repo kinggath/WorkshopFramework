@@ -489,6 +489,12 @@ Function TryToProcessNextQueuedThread()
 		;
 		; Lock acquired - do work
 		;
+		if(iRunningThreads > 0)
+			if(ReleaseLock(iLockKey) < GENERICLOCK_KEY_NONE)
+				ModTrace("Failed to release lock " + iLockKey + "!", 2)
+			endif
+			return
+		endif
 		
 		int iCount = QueuedThreads.GetCount()
 		if(iCount > 0)
