@@ -244,8 +244,10 @@ Function SafeDelete(ObjectReference akDeleteMe)
 	
 	; Delete
 	if( ! bIsDeleted && bSafeToDelete)
-		akDeleteMe.SetLinkedRef(akDeleteMe, WorkshopItemKeyword)
-		akDeleteMe.SetLinkedRef(None, WorkshopItemKeyword)
+		if(akDeleteMe.IsCreated())
+			akDeleteMe.SetLinkedRef(akDeleteMe, WorkshopItemKeyword)
+			akDeleteMe.SetLinkedRef(None, WorkshopItemKeyword)
+		endif
 		akDeleteMe.Delete()
 	endif
 EndFunction
